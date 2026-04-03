@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart, ThumbsUp, ThumbsDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -38,23 +38,24 @@ export default function Today() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const generateList = useGenerateShoppingList();
-  const [feedbackGiven, setFeedbackGiven] = useState<Record<string, "thumbs_up" | "thumbs_down">>({});
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<string, "thumbs_up" | "neutral" | "thumbs_down">>({});
 
   const feedbackMutation = useAiSubmitFeedback({
     mutation: {
       onSuccess: (_, variables) => {
-        const key = variables.recipeId ? `recipe-${variables.recipeId}` : `entry-${variables.mealEntryId}`;
-        setFeedbackGiven((prev) => ({ ...prev, [key]: variables.rating }));
+        const { rating, recipeId, mealEntryId } = variables.data;
+        const key = recipeId ? `recipe-${recipeId}` : `entry-${mealEntryId}`;
+        setFeedbackGiven((prev) => ({ ...prev, [key]: rating }));
         toast({
-          title: variables.rating === "thumbs_up" ? "👍 Danke für dein Feedback!" : "👎 Schade! Wir merken uns das.",
+          title: rating === "thumbs_up" ? "👍 Danke!" : rating === "thumbs_down" ? "👎 Schade! Wir merken uns das." : "😐 Feedback gespeichert.",
           description: "Dein Feedback hilft uns, bessere Vorschläge zu machen.",
         });
       },
     },
   });
 
-  const handleFeedback = (rating: "thumbs_up" | "thumbs_down", recipeId?: number | null) => {
-    feedbackMutation.mutate({ rating, recipeId: recipeId ?? undefined });
+  const handleFeedback = (rating: "thumbs_up" | "neutral" | "thumbs_down", recipeId?: number | null) => {
+    feedbackMutation.mutate({ data: { rating, recipeId: recipeId ?? undefined } });
   };
 
   const handleGenerateList = () => {
@@ -176,6 +177,16 @@ export default function Today() {
                               data-testid={`btn-thumbsup-${meal.mealType}`}
                             >
                               <ThumbsUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`h-7 w-7 p-0 rounded-full transition-all ${given === "neutral" ? "text-amber-500 bg-amber-500/10" : "text-muted-foreground hover:text-amber-500"}`}
+                              onClick={() => handleFeedback("neutral", meal.recipeId)}
+                              disabled={!!given || feedbackMutation.isPending}
+                              data-testid={`btn-neutral-${meal.mealType}`}
+                            >
+                              <Minus className="w-3.5 h-3.5" />
                             </Button>
                             <Button
                               variant="ghost"

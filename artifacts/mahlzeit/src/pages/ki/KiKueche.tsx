@@ -59,17 +59,17 @@ export default function KiKueche() {
 
   const handleGenerateRecipe = () => {
     if (!recipePrompt.trim()) return;
-    generateRecipeMutation.mutate({ prompt: recipePrompt });
+    generateRecipeMutation.mutate({ data: { prompt: recipePrompt } });
   };
 
   const handleGeneratePlan = () => {
     if (!planPreferences.trim()) return;
-    generatePlanMutation.mutate({ preferences: planPreferences });
+    generatePlanMutation.mutate({ data: { preferences: planPreferences } });
   };
 
   const handleSaveRecipe = () => {
     if (!generatedRecipe) return;
-    saveRecipeMutation.mutate(generatedRecipe);
+    saveRecipeMutation.mutate({ data: generatedRecipe });
   };
 
   return (

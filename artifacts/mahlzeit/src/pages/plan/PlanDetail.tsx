@@ -45,6 +45,7 @@ import {
   Trash2,
   Zap,
   Plus,
+  PlusCircle,
   ChefHat,
   X,
   ShoppingCart,
@@ -179,6 +180,14 @@ export default function PlanDetail() {
   const [aiPlanDialogOpen, setAiPlanDialogOpen] = useState(false);
   const [aiPlanPreferences, setAiPlanPreferences] = useState("");
   const [generatedAiPlan, setGeneratedAiPlan] = useState<AiPlanOutput | null>(null);
+  const [materializingPlan, setMaterializingPlan] = useState(false);
+
+  const MEAL_TYPE_MAP: Record<string, string> = {
+    "Frühstück": "breakfast",
+    "Mittagessen": "lunch",
+    "Abendessen": "dinner",
+    "Snack": "snack",
+  };
 
   const aiGeneratePlanMutation = useAiGeneratePlan({
     mutation: {
@@ -191,6 +200,36 @@ export default function PlanDetail() {
       },
     },
   });
+
+  const handleMaterializePlan = async () => {
+    if (!generatedAiPlan || !plan) return;
+    setMaterializingPlan(true);
+    try {
+      const sortedDays = [...plan.days].sort((a, b) => a.dayNumber - b.dayNumber);
+      for (let i = 0; i < Math.min(generatedAiPlan.days.length, sortedDays.length); i++) {
+        const aiDay = generatedAiPlan.days[i]!;
+        const planDay = sortedDays[i]!;
+        for (const meal of aiDay.meals) {
+          const mealType = MEAL_TYPE_MAP[meal.mealType] ?? "lunch";
+          const customNote = `${meal.suggestion}: ${meal.description}`;
+          await new Promise<void>((resolve) => {
+            addEntry.mutate(
+              { id: planId, dayId: planDay.id, data: { mealType, customNote, recipeId: null } },
+              { onSettled: () => resolve() }
+            );
+          });
+        }
+      }
+      toast({ title: "Plan eingefügt!", description: "KI-Vorschläge wurden als Notizen in deinen Plan eingefügt." });
+      queryClient.invalidateQueries({ queryKey: [`/api/meal-plans/${planId}`] });
+      setAiPlanDialogOpen(false);
+      setGeneratedAiPlan(null);
+    } catch {
+      toast({ title: "Fehler beim Einfügen", variant: "destructive" });
+    } finally {
+      setMaterializingPlan(false);
+    }
+  };
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<{ dayId: number; mealType: MealTypeKey; entryId?: number } | null>(null);
@@ -519,7 +558,7 @@ export default function PlanDetail() {
               />
             </div>
             <Button
-              onClick={() => aiGeneratePlanMutation.mutate({ preferences: aiPlanPreferences })}
+              onClick={() => aiGeneratePlanMutation.mutate({ data: { preferences: aiPlanPreferences } })}
               disabled={!aiPlanPreferences.trim() || aiGeneratePlanMutation.isPending}
               className="w-full"
               data-testid="btn-ai-generate-plan"
@@ -533,7 +572,22 @@ export default function PlanDetail() {
 
             {generatedAiPlan && (
               <div className="space-y-3 animate-in fade-in duration-200">
-                <p className="text-sm font-semibold text-foreground">{generatedAiPlan.weekTitle}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">{generatedAiPlan.weekTitle}</p>
+                  <Button
+                    size="sm"
+                    onClick={handleMaterializePlan}
+                    disabled={materializingPlan}
+                    className="text-xs"
+                    data-testid="btn-materialize-plan"
+                  >
+                    {materializingPlan ? (
+                      <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Einfügen…</>
+                    ) : (
+                      <><PlusCircle className="w-3 h-3 mr-1" />In Plan einfügen</>
+                    )}
+                  </Button>
+                </div>
                 {generatedAiPlan.notes && (
                   <p className="text-xs text-muted-foreground bg-muted rounded-lg p-2">{generatedAiPlan.notes}</p>
                 )}

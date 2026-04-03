@@ -1541,7 +1541,7 @@ components:
           type: integer
         rating:
           type: string
-          enum: [thumbs_up, thumbs_down]
+          enum: [thumbs_up, neutral, thumbs_down]
       required:
         - rating
 

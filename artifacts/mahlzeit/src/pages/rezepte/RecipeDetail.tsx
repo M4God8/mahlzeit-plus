@@ -53,7 +53,7 @@ export default function RecipeDetail() {
 
   const handleAdjust = () => {
     if (!adjustPrompt.trim()) return;
-    adjustMutation.mutate({ recipeId: id, adjustmentPrompt: adjustPrompt });
+    adjustMutation.mutate({ data: { recipeId: id, adjustmentPrompt: adjustPrompt } });
   };
 
   const handleSubstitute = () => {
@@ -61,7 +61,7 @@ export default function RecipeDetail() {
     const ingredientNames = recipe.ingredients
       .map((i) => i.customName || i.ingredientName || "")
       .filter(Boolean);
-    substituteMutation.mutate({ recipeId: id, ingredients: ingredientNames });
+    substituteMutation.mutate({ data: { recipeId: id, ingredients: ingredientNames } });
   };
 
   const handleDelete = () => {

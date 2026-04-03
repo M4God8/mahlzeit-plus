@@ -11,5 +11,6 @@ export type AiFeedbackInputRating =
 
 export const AiFeedbackInputRating = {
   thumbs_up: "thumbs_up",
+  neutral: "neutral",
   thumbs_down: "thumbs_down",
 } as const;

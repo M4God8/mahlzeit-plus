@@ -7,8 +7,10 @@ import {
   ingredientsTable,
   aiGenerationsTable,
   mealFeedbackTable,
+  userSettingsTable,
+  nutritionProfilesTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
   AiGenerateRecipeBody,
@@ -29,6 +31,52 @@ const router = Router();
 const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 8192;
 
+interface UserContext {
+  householdSize: number;
+  cookTimeLimit: number;
+  budgetLevel: string;
+  bioPreferred: boolean;
+  profileNames: string[];
+}
+
+async function getUserContext(userId: string): Promise<UserContext> {
+  const [settings] = await db
+    .select()
+    .from(userSettingsTable)
+    .where(eq(userSettingsTable.userId, userId));
+
+  if (!settings) {
+    return { householdSize: 2, cookTimeLimit: 30, budgetLevel: "medium", bioPreferred: false, profileNames: [] };
+  }
+
+  let profileNames: string[] = [];
+  if (settings.activeProfileIds.length > 0) {
+    const profiles = await db
+      .select({ name: nutritionProfilesTable.name })
+      .from(nutritionProfilesTable)
+      .where(inArray(nutritionProfilesTable.id, settings.activeProfileIds));
+    profileNames = profiles.map((p) => p.name);
+  }
+
+  return {
+    householdSize: settings.householdSize,
+    cookTimeLimit: settings.cookTimeLimit,
+    budgetLevel: settings.budgetLevel,
+    bioPreferred: settings.bioPreferred,
+    profileNames,
+  };
+}
+
+function buildContextBlock(ctx: UserContext): string {
+  const lines: string[] = [];
+  lines.push(`Haushaltsgröße: ${ctx.householdSize} Person(en)`);
+  lines.push(`Maximale Kochzeit: ${ctx.cookTimeLimit} Minuten`);
+  lines.push(`Budget: ${ctx.budgetLevel === "low" ? "sparsam" : ctx.budgetLevel === "high" ? "großzügig" : "mittel"}`);
+  if (ctx.bioPreferred) lines.push("Bio-Produkte werden bevorzugt.");
+  if (ctx.profileNames.length > 0) lines.push(`Ernährungsstil: ${ctx.profileNames.join(", ")}`);
+  return lines.join("\n");
+}
+
 async function safeKiCall<T>(
   schema: z.ZodSchema<T>,
   prompt: string,
@@ -46,47 +94,70 @@ async function safeKiCall<T>(
     .map((b) => (b as { type: "text"; text: string }).text)
     .join("");
 
-  const jsonMatch = text.match(/```json\s*([\s\S]*?)```/) ||
-    text.match(/\{[\s\S]*\}/) ||
-    text.match(/\[[\s\S]*\]/);
+  function extractJson(raw: string): unknown {
+    const codeBlock = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+    const candidate = codeBlock ? codeBlock[1]!.trim() : raw.trim();
+    return JSON.parse(candidate);
+  }
 
-  let rawJson = jsonMatch
-    ? jsonMatch[1] ?? jsonMatch[0]
-    : text;
+  try {
+    const parsed = extractJson(text);
+    return schema.parse(parsed);
+  } catch {
+    const repairResponse = await anthropic.messages.create({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      system: "Du bist ein JSON-Reparatur-Assistent. Antworte NUR mit dem reparierten JSON-Objekt, ohne Markdown oder Text.",
+      messages: [
+        { role: "user", content: prompt },
+        { role: "assistant", content: text },
+        {
+          role: "user",
+          content: "Das war kein valides JSON. Antworte jetzt NUR mit dem korrekten JSON-Objekt, ohne ```-Blöcke oder anderen Text.",
+        },
+      ],
+    });
 
-  rawJson = rawJson.trim();
+    const repairText = repairResponse.content
+      .filter((b) => b.type === "text")
+      .map((b) => (b as { type: "text"; text: string }).text)
+      .join("")
+      .trim();
 
-  const parsed = JSON.parse(rawJson);
-  return schema.parse(parsed);
+    const repairedParsed = JSON.parse(repairText);
+    return schema.parse(repairedParsed);
+  }
 }
 
 router.post("/ai/generate-recipe", requireAuth, async (req, res) => {
-  const userId = req.auth!.userId;
+  const userId = req.userId!;
   const body = AiGenerateRecipeBody.parse(req.body);
+  const ctx = await getUserContext(userId);
 
   const systemPrompt = `Du bist ein kreativer Koch-Assistent für bewusstes und natürliches Essen. 
-Du sprichst Deutsch und erstellst gesunde, saisonale Rezepte.
-Antworte IMMER mit einem validen JSON-Objekt im exakten Format ohne zusätzlichen Text.`;
+Du erstellst gesunde, saisonale Rezepte auf Deutsch.
+Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.`;
 
-  const prompt = `Erstelle ein Rezept für: "${body.prompt}".
-${body.tags?.length ? `Tags: ${body.tags.join(", ")}.` : ""}
-${body.servings ? `Portionen: ${body.servings}.` : "Portionen: 2."}
+  const prompt = `Nutzerprofil:
+${buildContextBlock(ctx)}
 
-Antworte mit folgendem JSON-Format:
-\`\`\`json
+Erstelle ein Rezept für: "${body.prompt}".
+${body.tags?.length ? `Gewünschte Tags: ${body.tags.join(", ")}.` : ""}
+${body.servings ? `Portionen: ${body.servings}.` : `Portionen: ${ctx.householdSize}.`}
+
+Antworte mit folgendem JSON:
 {
   "name": "Rezeptname",
-  "description": "Kurze Beschreibung",
-  "instructions": "Schritt-für-Schritt Anleitung",
-  "servings": 2,
+  "description": "Kurze Beschreibung (1-2 Sätze)",
+  "instructions": "Detaillierte Schritt-für-Schritt Anleitung",
+  "servings": ${body.servings ?? ctx.householdSize},
   "prepTime": 15,
-  "cookTime": 30,
+  "cookTime": 25,
   "tags": ["tag1", "tag2"],
   "ingredients": [
-    {"name": "Zutat", "amount": "200", "unit": "g"}
+    {"name": "Zutatname", "amount": "200", "unit": "g"}
   ]
-}
-\`\`\``;
+}`;
 
   const result = await safeKiCall(AiGenerateRecipeResponse, prompt, systemPrompt);
 
@@ -102,33 +173,35 @@ Antworte mit folgendem JSON-Format:
 });
 
 router.post("/ai/generate-plan", requireAuth, async (req, res) => {
-  const userId = req.auth!.userId;
+  const userId = req.userId!;
   const body = AiGeneratePlanBody.parse(req.body);
+  const ctx = await getUserContext(userId);
 
   const systemPrompt = `Du bist ein Ernährungsberater für bewusstes und natürliches Essen. 
 Du erstellst ausgewogene Wochenspeisepläne auf Deutsch.
-Antworte IMMER mit einem validen JSON-Objekt ohne zusätzlichen Text.`;
+Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.`;
 
-  const prompt = `Erstelle einen Wochenspeiseplan basierend auf folgenden Präferenzen: "${body.preferences}".
+  const prompt = `Nutzerprofil:
+${buildContextBlock(ctx)}
 
-Antworte mit folgendem JSON-Format:
-\`\`\`json
+Erstelle einen Wochenspeiseplan (7 Tage: Montag bis Sonntag) mit je 3 Mahlzeiten (Frühstück, Mittagessen, Abendessen).
+Nutzerpräferenzen: "${body.preferences}"
+
+Antworte mit folgendem JSON:
 {
-  "weekTitle": "Wochenplan KW XX",
+  "weekTitle": "Wochenplan: Kurze Beschreibung",
   "days": [
     {
       "day": "Montag",
       "meals": [
         {"mealType": "Frühstück", "suggestion": "Haferporridge", "description": "Mit Beeren und Nüssen"},
         {"mealType": "Mittagessen", "suggestion": "Gemüsesuppe", "description": "Saisonal und frisch"},
-        {"mealType": "Abendessen", "suggestion": "Salat", "description": "Mit Quinoa"}
+        {"mealType": "Abendessen", "suggestion": "Salat mit Quinoa", "description": "Leicht und sättigend"}
       ]
     }
   ],
-  "notes": "Allgemeine Hinweise"
-}
-\`\`\`
-Erstelle Pläne für alle 7 Tage (Montag bis Sonntag) mit je 3 Mahlzeiten.`;
+  "notes": "Allgemeine Hinweise zum Plan"
+}`;
 
   const result = await safeKiCall(AiGeneratePlanResponse, prompt, systemPrompt);
 
@@ -144,7 +217,7 @@ Erstelle Pläne für alle 7 Tage (Montag bis Sonntag) mit je 3 Mahlzeiten.`;
 });
 
 router.post("/ai/adjust-recipe", requireAuth, async (req, res) => {
-  const userId = req.auth!.userId;
+  const userId = req.userId!;
   const body = AiAdjustRecipeBody.parse(req.body);
 
   const [recipe] = await db
@@ -156,6 +229,12 @@ router.post("/ai/adjust-recipe", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Rezept nicht gefunden" });
     return;
   }
+  if (!recipe.isPublic && recipe.userId !== userId) {
+    res.status(403).json({ error: "Kein Zugriff auf dieses Rezept" });
+    return;
+  }
+
+  const ctx = await getUserContext(userId);
 
   const ingredients = await db
     .select({
@@ -168,29 +247,30 @@ router.post("/ai/adjust-recipe", requireAuth, async (req, res) => {
     .leftJoin(ingredientsTable, eq(recipeIngredientsTable.ingredientId, ingredientsTable.id))
     .where(eq(recipeIngredientsTable.recipeId, recipe.id));
 
-  const systemPrompt = `Du bist ein Koch-Assistent. Du passt bestehende Rezepte an Wünsche an.
-Antworte IMMER mit einem validen JSON-Objekt ohne zusätzlichen Text.`;
+  const systemPrompt = `Du bist ein Koch-Assistent. Du passt bestehende Rezepte an Nutzerwünsche an.
+Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.`;
 
-  const prompt = `Passe dieses Rezept an: "${recipe.name}"
+  const prompt = `Nutzerprofil:
+${buildContextBlock(ctx)}
+
+Passe dieses Rezept an: "${recipe.title}"
 Zutaten: ${ingredients.map((i) => `${i.amount} ${i.unit} ${i.name ?? i.customName}`).join(", ")}
 
 Anpassungswunsch: "${body.adjustmentPrompt}"
 
-Antworte mit folgendem JSON-Format:
-\`\`\`json
+Antworte mit folgendem JSON:
 {
   "name": "Angepasster Rezeptname",
   "description": "Kurze Beschreibung",
-  "instructions": "Angepasste Anleitung",
-  "servings": 2,
+  "instructions": "Angepasste Zubereitung",
+  "servings": ${ctx.householdSize},
   "prepTime": 15,
-  "cookTime": 30,
+  "cookTime": 25,
   "tags": ["tag1"],
   "ingredients": [
     {"name": "Zutat", "amount": "200", "unit": "g"}
   ]
-}
-\`\`\``;
+}`;
 
   const result = await safeKiCall(AiAdjustRecipeResponse, prompt, systemPrompt);
 
@@ -206,7 +286,7 @@ Antworte mit folgendem JSON-Format:
 });
 
 router.post("/ai/substitute-ingredient", requireAuth, async (req, res) => {
-  const userId = req.auth!.userId;
+  const userId = req.userId!;
   const body = AiSubstituteIngredientBody.parse(req.body);
 
   const [recipe] = await db
@@ -218,27 +298,35 @@ router.post("/ai/substitute-ingredient", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Rezept nicht gefunden" });
     return;
   }
+  if (!recipe.isPublic && recipe.userId !== userId) {
+    res.status(403).json({ error: "Kein Zugriff auf dieses Rezept" });
+    return;
+  }
 
-  const systemPrompt = `Du bist ein Koch-Experte für Zutaten-Substitutionen. Du schlägst passende Alternativen vor.
-Antworte IMMER mit einem validen JSON-Objekt ohne zusätzlichen Text.`;
+  const ctx = await getUserContext(userId);
 
-  const prompt = `Für das Rezept "${recipe.name}" fehlen folgende Zutaten: ${body.ingredients.join(", ")}.
+  const systemPrompt = `Du bist ein Koch-Experte für Zutaten-Substitutionen. 
+Du schlägst passende Alternativen für nicht verfügbare oder unerwünschte Zutaten vor.
+Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.`;
+
+  const prompt = `Nutzerprofil:
+${buildContextBlock(ctx)}
+
+Für das Rezept "${recipe.title}" werden Alternativen gesucht für: ${body.ingredients.join(", ")}.
 ${body.reason ? `Grund: ${body.reason}` : ""}
 
-Schlage Alternativen vor und antworte mit folgendem JSON-Format:
-\`\`\`json
+Antworte mit folgendem JSON:
 {
   "substitutions": [
     {
       "original": "Original-Zutat",
       "substitute": "Ersatz-Zutat",
       "ratio": "1:1",
-      "notes": "Hinweis"
+      "notes": "Hinweis zur Verwendung"
     }
   ],
-  "generalAdvice": "Allgemeiner Rat"
-}
-\`\`\``;
+  "generalAdvice": "Allgemeiner Rat zum Ersetzen"
+}`;
 
   const result = await safeKiCall(AiSubstituteIngredientResponse, prompt, systemPrompt);
 
@@ -254,19 +342,19 @@ Schlage Alternativen vor und antworte mit folgendem JSON-Format:
 });
 
 router.post("/ai/save-recipe", requireAuth, async (req, res) => {
-  const userId = req.auth!.userId;
+  const userId = req.userId!;
   const body = AiSaveRecipeBody.parse(req.body);
 
   const [saved] = await db
     .insert(recipesTable)
     .values({
       userId,
-      name: body.name,
+      title: body.name,
       description: body.description ?? "",
       instructions: body.instructions,
       servings: body.servings,
-      prepTime: body.prepTime ?? null,
-      cookTime: body.cookTime ?? null,
+      prepTime: body.prepTime ?? 10,
+      cookTime: body.cookTime ?? 20,
       tags: body.tags ?? [],
       aiGenerated: true,
       isPublic: false,
@@ -285,32 +373,29 @@ router.post("/ai/save-recipe", requireAuth, async (req, res) => {
         .from(ingredientsTable)
         .where(eq(ingredientsTable.name, ing.name));
 
-      let ingredientId: number | null = null;
-      if (existing.length > 0) {
-        ingredientId = existing[0]!.id;
-      }
+      const ingredientId: number | null = existing.length > 0 ? existing[0]!.id : null;
 
       await db.insert(recipeIngredientsTable).values({
         recipeId: saved.id,
         ingredientId,
         customName: ingredientId ? null : ing.name,
-        amount: parseFloat(ing.amount) || 1,
+        amount: ing.amount,
         unit: ing.unit,
         optional: false,
       });
     }
   }
 
-  const fullRecipe = await db
+  const [fullRecipe] = await db
     .select()
     .from(recipesTable)
     .where(eq(recipesTable.id, saved.id));
 
-  res.status(201).json(fullRecipe[0]);
+  res.status(201).json(fullRecipe);
 });
 
 router.post("/ai/feedback", requireAuth, async (req, res) => {
-  const userId = req.auth!.userId;
+  const userId = req.userId!;
   const body = AiSubmitFeedbackBody.parse(req.body);
 
   const [feedback] = await db

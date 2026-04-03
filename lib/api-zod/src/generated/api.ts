@@ -983,5 +983,5 @@ export const AiSaveRecipeBody = zod.object({
 export const AiSubmitFeedbackBody = zod.object({
   mealEntryId: zod.number().optional(),
   recipeId: zod.number().optional(),
-  rating: zod.enum(["thumbs_up", "thumbs_down"]),
+  rating: zod.enum(["thumbs_up", "neutral", "thumbs_down"]),
 });
