@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { nutritionProfilesTable } from "./nutritionProfiles";
@@ -10,6 +10,10 @@ export const userSettingsTable = pgTable("user_settings", {
   budgetLevel: text("budget_level").notNull().default("medium"),
   cookTimeLimit: integer("cook_time_limit").notNull().default(30),
   bioPreferred: boolean("bio_preferred").notNull().default(false),
+  role: text("role").notNull().default("user"),
+  blocked: boolean("blocked").notNull().default(false),
+  premiumUntil: timestamp("premium_until"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const insertUserSettingsSchema = createInsertSchema(userSettingsTable).omit({ userId: true });

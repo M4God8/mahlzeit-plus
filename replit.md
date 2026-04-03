@@ -41,11 +41,11 @@ Mahlzeit+ ist eine deutschsprachige Mahlzeitenplanungs-App für bewusste Esser. 
 
 Tabellen in `lib/db/src/schema/`:
 - `nutrition_profiles` — 5 Ernährungsprofile (Vollwertig, Pflanzenbasiert, Mediterran, Kraftvoll, Leicht)
-- `user_settings` — Benutzereinstellungen (activeProfileIds int[], Haushaltsgröße, Budget, Kochzeit)
+- `user_settings` — Benutzereinstellungen (activeProfileIds int[], Haushaltsgröße, Budget, Kochzeit, role, blocked, premiumUntil, createdAt)
 - `ingredients` — 60 Zutaten mit Kategorien und Bio-Empfehlung
 - `recipes` + `recipe_ingredients` — Rezepte mit Zutaten (10 Starterrezepte)
 - `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne
-- `ai_generations` — KI-Anfragen-Log (userId, type, input, output, model)
+- `ai_generations` — KI-Anfragen-Log (userId, type, input, output, model, inputTokens, outputTokens, costEur)
 - `meal_feedback` — Mahlzeit-Feedback (thumbs_up/thumbs_down)
 
 ### DB-Befehle
@@ -92,6 +92,13 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | POST | /api/ai/substitute-ingredient | Ja | KI: Zutatens-Alternativen (Claude) |
 | POST | /api/ai/save-recipe | Ja | KI-Rezept in Rezeptbibliothek speichern |
 | POST | /api/ai/feedback | Ja | Mahlzeit-Feedback (thumbs_up/down) |
+| GET | /api/admin/role-check | Ja | User-Rolle prüfen (für Admin Guard) |
+| GET | /api/admin/stats | Admin | Dashboard-Statistiken |
+| GET | /api/admin/users | Admin | User-Liste mit KI-Kosten |
+| PATCH | /api/admin/users/:id/premium | Admin | Premium aktivieren/deaktivieren |
+| PATCH | /api/admin/users/:id/block | Admin | User sperren/entsperren |
+| GET | /api/admin/costs | Admin | KI-Kosten Übersicht (Filter: dateFrom, dateTo, userId, aiType) |
+| GET | /api/admin/health | Admin | System Health Check (DB, Claude, Open Food Facts) |
 
 ## Frontend-Seiten (wouter)
 
@@ -109,6 +116,7 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 - `/rezepte/:id/bearbeiten` — Rezept bearbeiten (protected)
 - `/ki` — KI-Küche: Rezeptgenerator + Wochenplan-Generator via Claude AI (protected)
 - `/einstellungen` — Einstellungen (protected)
+- `/admin` — Admin-Panel (nur für role=admin, sonst Redirect zu /heute)
 
 ## Umgebungsvariablen (Secrets)
 

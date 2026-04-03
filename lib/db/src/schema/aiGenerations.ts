@@ -1,4 +1,4 @@
-import { pgTable, serial, text, jsonb, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, jsonb, timestamp, index, integer, numeric } from "drizzle-orm/pg-core";
 
 export const aiGenerationsTable = pgTable(
   "ai_generations",
@@ -9,6 +9,9 @@ export const aiGenerationsTable = pgTable(
     input: text("input").notNull(),
     output: jsonb("output"),
     model: text("model").notNull().default("claude-sonnet-4-6"),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    costEur: numeric("cost_eur"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [

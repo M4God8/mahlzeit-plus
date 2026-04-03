@@ -10,6 +10,7 @@ import shoppingListsRouter from "./shoppingLists";
 import aiRouter from "./ai";
 import scannerRouter from "./scanner";
 import learnRouter from "./learn";
+import adminRouter from "./admin";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(shoppingListsRouter);
 router.use(aiRouter);
 router.use(scannerRouter);
 router.use(learnRouter);
+router.use(adminRouter);
 
 export default router;
