@@ -10,7 +10,11 @@
   },
   "private": true,
   "devDependencies": {
-    "typescript": "~5.9.2",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "tsx": "catalog:",
+    "typescript": "~5.9.2"
+  },
+  "dependencies": {
+    "date-fns": "^3.6.0"
   }
 }

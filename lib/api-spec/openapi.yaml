@@ -3,20 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Mahlzeit+ API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: nutrition-profiles
+    description: Nutrition profile operations
+  - name: user-settings
+    description: User settings operations
+  - name: ingredients
+    description: Ingredient operations
+  - name: recipes
+    description: Recipe operations
+  - name: meal-plans
+    description: Meal plan operations
+  - name: today
+    description: Today screen operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +36,266 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /nutrition-profiles:
+    get:
+      operationId: listNutritionProfiles
+      tags: [nutrition-profiles]
+      summary: List all nutrition profiles
+      responses:
+        "200":
+          description: List of nutrition profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NutritionProfile"
+
+  /nutrition-profiles/{id}:
+    get:
+      operationId: getNutritionProfile
+      tags: [nutrition-profiles]
+      summary: Get a nutrition profile by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Nutrition profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NutritionProfile"
+        "404":
+          description: Not found
+
+  /user-settings:
+    get:
+      operationId: getUserSettings
+      tags: [user-settings]
+      summary: Get current user settings
+      responses:
+        "200":
+          description: User settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+        "404":
+          description: Not found (user has no settings yet)
+    post:
+      operationId: createOrUpdateUserSettings
+      tags: [user-settings]
+      summary: Create or update user settings (upsert)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserSettingsInput"
+      responses:
+        "200":
+          description: Updated user settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSettings"
+
+  /ingredients:
+    get:
+      operationId: listIngredients
+      tags: [ingredients]
+      summary: List ingredients
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of ingredients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ingredient"
+
+  /recipes:
+    get:
+      operationId: listRecipes
+      tags: [recipes]
+      summary: List recipes for current user
+      parameters:
+        - name: energyType
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: tags
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of recipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Recipe"
+    post:
+      operationId: createRecipe
+      tags: [recipes]
+      summary: Create a new recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeInput"
+      responses:
+        "201":
+          description: Created recipe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+
+  /recipes/{id}:
+    get:
+      operationId: getRecipe
+      tags: [recipes]
+      summary: Get a recipe by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recipe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateRecipe
+      tags: [recipes]
+      summary: Update a recipe
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecipeInput"
+      responses:
+        "200":
+          description: Updated recipe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+    delete:
+      operationId: deleteRecipe
+      tags: [recipes]
+      summary: Delete a recipe
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /meal-plans:
+    get:
+      operationId: listMealPlans
+      tags: [meal-plans]
+      summary: List meal plans for current user
+      responses:
+        "200":
+          description: List of meal plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MealPlan"
+    post:
+      operationId: createMealPlan
+      tags: [meal-plans]
+      summary: Create a new meal plan
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealPlanInput"
+      responses:
+        "201":
+          description: Created meal plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlan"
+
+  /meal-plans/active:
+    get:
+      operationId: getActiveMealPlan
+      tags: [meal-plans]
+      summary: Get the active meal plan with all entries
+      responses:
+        "200":
+          description: Active meal plan with days and entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlanDetail"
+        "404":
+          description: No active plan
+
+  /today:
+    get:
+      operationId: getTodayMeals
+      tags: [today]
+      summary: Get today's meals from the active plan
+      responses:
+        "200":
+          description: Today's meals summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodaySummary"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +306,373 @@ components:
       required:
         - status
 
+    NutritionProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        excludedIngredients:
+          type: array
+          items:
+            type: string
+        preferredCategories:
+          type: array
+          items:
+            type: string
+        mealStyle:
+          type: string
+        energyLabel:
+          type: string
+      required:
+        - id
+        - name
+        - description
+        - excludedIngredients
+        - preferredCategories
+        - mealStyle
+        - energyLabel
+
+    UserSettings:
+      type: object
+      properties:
+        userId:
+          type: string
+        profileId:
+          type: ["integer", "null"]
+        householdSize:
+          type: integer
+        budgetLevel:
+          type: string
+        cookTimeLimit:
+          type: integer
+        bioPreferred:
+          type: boolean
+        profile:
+          $ref: "#/components/schemas/NutritionProfile"
+      required:
+        - userId
+        - householdSize
+        - budgetLevel
+        - cookTimeLimit
+        - bioPreferred
+
+    UserSettingsInput:
+      type: object
+      properties:
+        profileId:
+          type: ["integer", "null"]
+        householdSize:
+          type: integer
+        budgetLevel:
+          type: string
+        cookTimeLimit:
+          type: integer
+        bioPreferred:
+          type: boolean
+      required:
+        - householdSize
+        - budgetLevel
+        - cookTimeLimit
+        - bioPreferred
+
+    Ingredient:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        defaultUnit:
+          type: string
+        bioRecommended:
+          type: boolean
+        scoreBase:
+          type: integer
+      required:
+        - id
+        - name
+        - category
+        - defaultUnit
+        - bioRecommended
+        - scoreBase
+
+    RecipeIngredient:
+      type: object
+      properties:
+        id:
+          type: integer
+        ingredientId:
+          type: ["integer", "null"]
+        customName:
+          type: ["string", "null"]
+        amount:
+          type: number
+        unit:
+          type: string
+        optional:
+          type: boolean
+        ingredientName:
+          type: ["string", "null"]
+      required:
+        - id
+        - amount
+        - unit
+        - optional
+
+    Recipe:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: ["string", "null"]
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        prepTime:
+          type: integer
+        cookTime:
+          type: integer
+        servings:
+          type: integer
+        instructions:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        aiGenerated:
+          type: boolean
+        energyType:
+          type: string
+        isPublic:
+          type: boolean
+        createdAt:
+          type: string
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecipeIngredient"
+      required:
+        - id
+        - title
+        - prepTime
+        - cookTime
+        - servings
+        - instructions
+        - tags
+        - aiGenerated
+        - energyType
+        - isPublic
+        - createdAt
+        - ingredients
+
+    RecipeInput:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        prepTime:
+          type: integer
+        cookTime:
+          type: integer
+        servings:
+          type: integer
+        instructions:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        energyType:
+          type: string
+        isPublic:
+          type: boolean
+        ingredients:
+          type: array
+          items:
+            type: object
+            properties:
+              ingredientId:
+                type: ["integer", "null"]
+              customName:
+                type: ["string", "null"]
+              amount:
+                type: number
+              unit:
+                type: string
+              optional:
+                type: boolean
+            required:
+              - amount
+              - unit
+              - optional
+      required:
+        - title
+        - prepTime
+        - cookTime
+        - servings
+        - instructions
+        - energyType
+
+    MealEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        mealPlanDayId:
+          type: integer
+        mealType:
+          type: string
+        recipeId:
+          type: ["integer", "null"]
+        customNote:
+          type: ["string", "null"]
+        timeSlot:
+          type: ["string", "null"]
+        recipe:
+          $ref: "#/components/schemas/Recipe"
+      required:
+        - id
+        - mealPlanDayId
+        - mealType
+
+    MealPlanDay:
+      type: object
+      properties:
+        id:
+          type: integer
+        mealPlanId:
+          type: integer
+        dayNumber:
+          type: integer
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/MealEntry"
+      required:
+        - id
+        - mealPlanId
+        - dayNumber
+        - entries
+
+    MealPlan:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        cycleLengthDays:
+          type: integer
+        repeatEnabled:
+          type: boolean
+        active:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - title
+        - cycleLengthDays
+        - repeatEnabled
+        - active
+        - createdAt
+
+    MealPlanDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        cycleLengthDays:
+          type: integer
+        repeatEnabled:
+          type: boolean
+        active:
+          type: boolean
+        createdAt:
+          type: string
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/MealPlanDay"
+      required:
+        - id
+        - userId
+        - title
+        - cycleLengthDays
+        - repeatEnabled
+        - active
+        - createdAt
+        - days
+
+    MealPlanInput:
+      type: object
+      properties:
+        title:
+          type: string
+        cycleLengthDays:
+          type: integer
+        repeatEnabled:
+          type: boolean
+      required:
+        - title
+        - cycleLengthDays
+        - repeatEnabled
+
+    TodayMealEntry:
+      type: object
+      properties:
+        mealType:
+          type: string
+        recipeName:
+          type: ["string", "null"]
+        cookTime:
+          type: ["integer", "null"]
+        prepTime:
+          type: ["integer", "null"]
+        customNote:
+          type: ["string", "null"]
+        recipeId:
+          type: ["integer", "null"]
+        energyType:
+          type: ["string", "null"]
+      required:
+        - mealType
+
+    TodaySummary:
+      type: object
+      properties:
+        date:
+          type: string
+        dayName:
+          type: string
+        planTitle:
+          type: ["string", "null"]
+        meals:
+          type: array
+          items:
+            $ref: "#/components/schemas/TodayMealEntry"
+        hasPlan:
+          type: boolean
+      required:
+        - date
+        - dayName
+        - meals
+        - hasPlan
