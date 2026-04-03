@@ -30,7 +30,10 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(cors({ credentials: true, origin: true }));
+const allowedOrigin = process.env.NODE_ENV === "production"
+  ? process.env.ALLOWED_ORIGIN || false
+  : true;
+app.use(cors({ credentials: true, origin: allowedOrigin }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

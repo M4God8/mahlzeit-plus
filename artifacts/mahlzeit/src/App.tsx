@@ -91,7 +91,10 @@ function useHasUserSettings() {
     queryFn: async () => {
       const res = await fetch("/api/user-settings", { credentials: "include" });
       if (res.status === 404) return false;
-      if (!res.ok) return true;
+      if (res.status === 401 || res.status >= 500) {
+        throw new Error(`Settings check failed: ${res.status}`);
+      }
+      if (!res.ok) throw new Error(`Unexpected status: ${res.status}`);
       return true;
     },
     retry: false,
