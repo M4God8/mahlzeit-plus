@@ -6,3 +6,4 @@ export * from "./mealPlans";
 export * from "./shoppingLists";
 export * from "./aiGenerations";
 export * from "./mealFeedback";
+export * from "./scannedProducts";

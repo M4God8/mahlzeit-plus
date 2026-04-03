@@ -20,6 +20,7 @@ import RecipeEdit from "@/pages/rezepte/RecipeEdit";
 import RecipeDetail from "@/pages/rezepte/RecipeDetail";
 import Onboarding from "@/pages/Onboarding";
 import KiKueche from "@/pages/ki/KiKueche";
+import ScannerPage from "@/pages/scanner/Scanner";
 import NotFound from "@/pages/not-found";
 
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -231,6 +232,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/rezepte/:id/bearbeiten" component={() => <ProtectedRoute component={RecipeEdit} />} />
           <Route path="/rezepte/:id" component={() => <ProtectedRoute component={RecipeDetail} />} />
           <Route path="/ki" component={() => <ProtectedRoute component={KiKueche} />} />
+          <Route path="/scanner" component={() => <ProtectedRoute component={ScannerPage} />} />
           <Route path="/einstellungen" component={() => <ProtectedRoute component={Settings} />} />
 
           <Route component={NotFound} />

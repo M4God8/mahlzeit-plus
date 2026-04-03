@@ -988,3 +988,56 @@ export const AiSubmitFeedbackBody = zod.object({
   recipeId: zod.number().optional(),
   rating: zod.enum(["thumbs_up", "neutral", "thumbs_down"]),
 });
+
+/**
+ * @summary Look up a product by barcode (cached or live Open Food Facts)
+ */
+export const ScannerLookupParams = zod.object({
+  barcode: zod.coerce.string(),
+});
+
+export const ScannerLookupResponse = zod.object({
+  id: zod.number(),
+  barcode: zod.string(),
+  userId: zod.string(),
+  productName: zod.string().nullish(),
+  brand: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  ingredients: zod.string().nullish(),
+  nutriments: zod.object({}).passthrough().nullish(),
+  labels: zod.array(zod.string()),
+  scoreNaturalness: zod.number().describe("Zutatenklarheit score (0–25)"),
+  scoreNutrientBalance: zod.number().describe("Nährwert-Balance score (0–25)"),
+  scoreProfileFit: zod.number().describe("Profil-Fit score (0–25)"),
+  scoreQualityBonus: zod.number().describe("Qualitätsbonus score (0–25)"),
+  totalScore: zod.number().describe("Gesamt-Score (0–100)"),
+  profileFitExclusions: zod
+    .array(zod.string())
+    .describe("List of excluded ingredients found in this product"),
+  scannedAt: zod.string(),
+});
+
+/**
+ * @summary List user's scan history (most recent first)
+ */
+export const GetScanHistoryResponseItem = zod.object({
+  id: zod.number(),
+  barcode: zod.string(),
+  userId: zod.string(),
+  productName: zod.string().nullish(),
+  brand: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  ingredients: zod.string().nullish(),
+  nutriments: zod.object({}).passthrough().nullish(),
+  labels: zod.array(zod.string()),
+  scoreNaturalness: zod.number().describe("Zutatenklarheit score (0–25)"),
+  scoreNutrientBalance: zod.number().describe("Nährwert-Balance score (0–25)"),
+  scoreProfileFit: zod.number().describe("Profil-Fit score (0–25)"),
+  scoreQualityBonus: zod.number().describe("Qualitätsbonus score (0–25)"),
+  totalScore: zod.number().describe("Gesamt-Score (0–100)"),
+  profileFitExclusions: zod
+    .array(zod.string())
+    .describe("List of excluded ingredients found in this product"),
+  scannedAt: zod.string(),
+});
+export const GetScanHistoryResponse = zod.array(GetScanHistoryResponseItem);

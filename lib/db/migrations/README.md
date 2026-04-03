@@ -35,10 +35,25 @@ pnpm --filter @workspace/db run migrate
 pnpm --filter @workspace/db run push
 ```
 
+### `0002_phase5_scanned_products.sql` — Phase 5 incremental (existing databases)
+Adds `scanned_products` table (introduced in Phase 5 / Barcode Scanner).
+Includes:
+- `CREATE TABLE IF NOT EXISTS` for the scanned_products table (barcode, userId, product data, 4 sub-scores, totalScore, profileFitExclusions)
+- Indexes on `barcode`, `user_id`, `scanned_at`
+
 ### Existing environment (upgrading to Phase 4)
 ```bash
 # Apply only the Phase 4 incremental migration
 psql "$DATABASE_URL" -f lib/db/migrations/0001_phase4_ai_tables.sql
+
+# Or use push to sync schema safely
+pnpm --filter @workspace/db run push
+```
+
+### Existing environment (upgrading to Phase 5)
+```bash
+# Apply the Phase 5 incremental migration
+psql "$DATABASE_URL" -f lib/db/migrations/0002_phase5_scanned_products.sql
 
 # Or use push to sync schema safely
 pnpm --filter @workspace/db run push

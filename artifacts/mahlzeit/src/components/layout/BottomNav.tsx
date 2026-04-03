@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Calendar, Home, Settings, ShoppingBag, BookOpen, Sparkles } from "lucide-react";
+import { Calendar, Home, Settings, ShoppingBag, BookOpen, Sparkles, ScanBarcode } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function BottomNav() {
@@ -8,7 +8,7 @@ export function BottomNav() {
   const tabs = [
     { name: "Heute", path: "/heute", icon: Home },
     { name: "Plan", path: "/plan", icon: Calendar },
-    { name: "Einkauf", path: "/einkauf", icon: ShoppingBag },
+    { name: "Scanner", path: "/scanner", icon: ScanBarcode },
     { name: "Rezepte", path: "/rezepte", icon: BookOpen },
     { name: "KI", path: "/ki", icon: Sparkles },
     { name: "Mehr", path: "/einstellungen", icon: Settings },
@@ -22,7 +22,8 @@ export function BottomNav() {
           const isActive = location === tab.path ||
             (tab.path === "/rezepte" && location.startsWith("/rezepte")) ||
             (tab.path === "/plan" && location.startsWith("/plan")) ||
-            (tab.path === "/ki" && location.startsWith("/ki"));
+            (tab.path === "/ki" && location.startsWith("/ki")) ||
+            (tab.path === "/scanner" && location.startsWith("/scanner"));
           
           return (
             <Link 

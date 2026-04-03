@@ -43,6 +43,7 @@ import type {
   NutritionProfile,
   Recipe,
   RecipeInput,
+  ScannedProduct,
   ShoppingList,
   ShoppingListItem,
   ShoppingListSummary,
@@ -3469,3 +3470,165 @@ export const useAiSubmitFeedback = <
 > => {
   return useMutation(getAiSubmitFeedbackMutationOptions(options));
 };
+
+/**
+ * @summary Look up a product by barcode (cached or live Open Food Facts)
+ */
+export const getScannerLookupUrl = (barcode: string) => {
+  return `/api/scanner/lookup/${barcode}`;
+};
+
+export const scannerLookup = async (
+  barcode: string,
+  options?: RequestInit,
+): Promise<ScannedProduct> => {
+  return customFetch<ScannedProduct>(getScannerLookupUrl(barcode), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getScannerLookupQueryKey = (barcode: string) => {
+  return [`/api/scanner/lookup/${barcode}`] as const;
+};
+
+export const getScannerLookupQueryOptions = <
+  TData = Awaited<ReturnType<typeof scannerLookup>>,
+  TError = ErrorType<void>,
+>(
+  barcode: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof scannerLookup>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getScannerLookupQueryKey(barcode);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof scannerLookup>>> = ({
+    signal,
+  }) => scannerLookup(barcode, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!barcode,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof scannerLookup>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ScannerLookupQueryResult = NonNullable<
+  Awaited<ReturnType<typeof scannerLookup>>
+>;
+export type ScannerLookupQueryError = ErrorType<void>;
+
+/**
+ * @summary Look up a product by barcode (cached or live Open Food Facts)
+ */
+
+export function useScannerLookup<
+  TData = Awaited<ReturnType<typeof scannerLookup>>,
+  TError = ErrorType<void>,
+>(
+  barcode: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof scannerLookup>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getScannerLookupQueryOptions(barcode, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List user's scan history (most recent first)
+ */
+export const getGetScanHistoryUrl = () => {
+  return `/api/scanner/history`;
+};
+
+export const getScanHistory = async (
+  options?: RequestInit,
+): Promise<ScannedProduct[]> => {
+  return customFetch<ScannedProduct[]>(getGetScanHistoryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetScanHistoryQueryKey = () => {
+  return [`/api/scanner/history`] as const;
+};
+
+export const getGetScanHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getScanHistory>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getScanHistory>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetScanHistoryQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getScanHistory>>> = ({
+    signal,
+  }) => getScanHistory({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getScanHistory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetScanHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getScanHistory>>
+>;
+export type GetScanHistoryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List user's scan history (most recent first)
+ */
+
+export function useGetScanHistory<
+  TData = Awaited<ReturnType<typeof getScanHistory>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getScanHistory>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetScanHistoryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

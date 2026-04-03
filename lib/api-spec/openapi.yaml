@@ -24,6 +24,8 @@ tags:
     description: Today screen operations
   - name: shopping-lists
     description: Shopping list operations
+  - name: scanner
+    description: Barcode scanner and product score operations
 
 paths:
   /healthz:
@@ -843,6 +845,44 @@ paths:
               schema:
                 $ref: "#/components/schemas/MealFeedback"
 
+  /scanner/lookup/{barcode}:
+    get:
+      operationId: scannerLookup
+      tags: [scanner]
+      summary: Look up a product by barcode (cached or live Open Food Facts)
+      parameters:
+        - name: barcode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product with score breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScannedProduct"
+        "404":
+          description: Product not found
+        "400":
+          description: Invalid barcode
+
+  /scanner/history:
+    get:
+      operationId: getScanHistory
+      tags: [scanner]
+      summary: List user's scan history (most recent first)
+      responses:
+        "200":
+          description: List of scanned products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScannedProduct"
+
 components:
   schemas:
     HealthStatus:
@@ -1574,3 +1614,61 @@ components:
         - userId
         - rating
         - createdAt
+
+    ScannedProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+        barcode:
+          type: string
+        userId:
+          type: string
+        productName:
+          type: ["string", "null"]
+        brand:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        ingredients:
+          type: ["string", "null"]
+        nutriments:
+          type: ["object", "null"]
+        labels:
+          type: array
+          items:
+            type: string
+        scoreNaturalness:
+          type: integer
+          description: Zutatenklarheit score (0–25)
+        scoreNutrientBalance:
+          type: integer
+          description: Nährwert-Balance score (0–25)
+        scoreProfileFit:
+          type: integer
+          description: Profil-Fit score (0–25)
+        scoreQualityBonus:
+          type: integer
+          description: Qualitätsbonus score (0–25)
+        totalScore:
+          type: integer
+          description: Gesamt-Score (0–100)
+        profileFitExclusions:
+          type: array
+          items:
+            type: string
+          description: List of excluded ingredients found in this product
+        scannedAt:
+          type: string
+      required:
+        - id
+        - barcode
+        - userId
+        - labels
+        - scoreNaturalness
+        - scoreNutrientBalance
+        - scoreProfileFit
+        - scoreQualityBonus
+        - totalScore
+        - profileFitExclusions
+        - scannedAt

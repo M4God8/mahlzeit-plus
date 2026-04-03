@@ -341,6 +341,41 @@ export interface MealFeedback {
   createdAt: string;
 }
 
+/**
+ * @nullable
+ */
+export type ScannedProductNutriments = { [key: string]: unknown } | null;
+
+export interface ScannedProduct {
+  id: number;
+  barcode: string;
+  userId: string;
+  /** @nullable */
+  productName?: string | null;
+  /** @nullable */
+  brand?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  /** @nullable */
+  ingredients?: string | null;
+  /** @nullable */
+  nutriments?: ScannedProductNutriments;
+  labels: string[];
+  /** Zutatenklarheit score (0–25) */
+  scoreNaturalness: number;
+  /** Nährwert-Balance score (0–25) */
+  scoreNutrientBalance: number;
+  /** Profil-Fit score (0–25) */
+  scoreProfileFit: number;
+  /** Qualitätsbonus score (0–25) */
+  scoreQualityBonus: number;
+  /** Gesamt-Score (0–100) */
+  totalScore: number;
+  /** List of excluded ingredients found in this product */
+  profileFitExclusions: string[];
+  scannedAt: string;
+}
+
 export type ListIngredientsParams = {
   category?: string;
   search?: string;
