@@ -116,7 +116,6 @@ async function getMealPlanWithDays(planId: number): Promise<MealPlanDetail | nul
 
   return {
     ...plan,
-    createdAt: plan.createdAt instanceof Date ? plan.createdAt : plan.createdAt,
     days: daysWithEntries.sort((a, b) => a.dayNumber - b.dayNumber),
   };
 }
@@ -283,7 +282,6 @@ router.get("/meal-plans/:id", requireAuth, async (req, res): Promise<void> => {
 
 const updateMealPlanSchema = z.object({
   title: z.string().min(1).max(200).optional(),
-  cycleLengthDays: z.number().int().min(1).max(30).optional(),
   repeatEnabled: z.boolean().optional(),
 });
 
@@ -301,7 +299,6 @@ router.patch("/meal-plans/:id", requireAuth, async (req, res): Promise<void> => 
 
     const updates: Partial<typeof mealPlansTable.$inferInsert> = {};
     if (parsed.data.title !== undefined) updates.title = parsed.data.title;
-    if (parsed.data.cycleLengthDays !== undefined) updates.cycleLengthDays = parsed.data.cycleLengthDays;
     if (parsed.data.repeatEnabled !== undefined) updates.repeatEnabled = parsed.data.repeatEnabled;
 
     const [updated] = await db.update(mealPlansTable).set(updates).where(eq(mealPlansTable.id, planId)).returning();

@@ -144,7 +144,12 @@ function CalendarView() {
     planStart.setHours(0, 0, 0, 0);
     const target = new Date(date);
     target.setHours(0, 0, 0, 0);
-    return target >= planStart;
+    if (target < planStart) return false;
+    if (!activePlan.repeatEnabled) {
+      const planEnd = new Date(planStart.getTime() + activePlan.cycleLengthDays * 24 * 60 * 60 * 1000);
+      return target < planEnd;
+    }
+    return true;
   };
 
   const hasMealsOnDay = (date: Date) => {
