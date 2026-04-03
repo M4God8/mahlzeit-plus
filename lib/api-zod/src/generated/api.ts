@@ -735,3 +735,124 @@ export const GetTodayMealsResponse = zod.object({
   ),
   hasPlan: zod.boolean(),
 });
+
+/**
+ * @summary List all shopping lists for current user
+ */
+export const ListShoppingListsResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  title: zod.string(),
+  weekFrom: zod.string(),
+  weekTo: zod.string(),
+  isArchived: zod.boolean(),
+  mealPlanId: zod.number().nullish(),
+  createdAt: zod.string(),
+  itemCount: zod.number(),
+  checkedCount: zod.number(),
+});
+export const ListShoppingListsResponse = zod.array(
+  ListShoppingListsResponseItem,
+);
+
+/**
+ * @summary Get a shopping list with all items
+ */
+export const GetShoppingListParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetShoppingListResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  title: zod.string(),
+  weekFrom: zod.string(),
+  weekTo: zod.string(),
+  isArchived: zod.boolean(),
+  mealPlanId: zod.number().nullish(),
+  createdAt: zod.string(),
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      shoppingListId: zod.number(),
+      name: zod.string(),
+      amount: zod.string().nullish(),
+      unit: zod.string().nullish(),
+      category: zod.string(),
+      isChecked: zod.boolean(),
+      bioRecommended: zod.boolean(),
+      isManual: zod.boolean(),
+      ingredientId: zod.number().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a shopping list
+ */
+export const DeleteShoppingListParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Archive a shopping list
+ */
+export const ArchiveShoppingListParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ArchiveShoppingListResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  title: zod.string(),
+  weekFrom: zod.string(),
+  weekTo: zod.string(),
+  isArchived: zod.boolean(),
+  mealPlanId: zod.number().nullish(),
+  createdAt: zod.string(),
+  itemCount: zod.number(),
+  checkedCount: zod.number(),
+});
+
+/**
+ * @summary Add a manual item to a shopping list
+ */
+export const AddShoppingListItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AddShoppingListItemBody = zod.object({
+  name: zod.string(),
+  amount: zod.string().nullish(),
+  unit: zod.string().nullish(),
+  category: zod.string().optional(),
+});
+
+/**
+ * @summary Toggle the checked state of a shopping list item
+ */
+export const ToggleShoppingListItemParams = zod.object({
+  id: zod.coerce.number(),
+  itemId: zod.coerce.number(),
+});
+
+export const ToggleShoppingListItemResponse = zod.object({
+  id: zod.number(),
+  shoppingListId: zod.number(),
+  name: zod.string(),
+  amount: zod.string().nullish(),
+  unit: zod.string().nullish(),
+  category: zod.string(),
+  isChecked: zod.boolean(),
+  bioRecommended: zod.boolean(),
+  isManual: zod.boolean(),
+  ingredientId: zod.number().nullish(),
+});
+
+/**
+ * @summary Delete a manual shopping list item
+ */
+export const DeleteShoppingListItemParams = zod.object({
+  id: zod.coerce.number(),
+  itemId: zod.coerce.number(),
+});

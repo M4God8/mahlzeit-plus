@@ -190,6 +190,58 @@ export interface TodaySummary {
   hasPlan: boolean;
 }
 
+export interface ShoppingListItem {
+  id: number;
+  shoppingListId: number;
+  name: string;
+  /** @nullable */
+  amount?: string | null;
+  /** @nullable */
+  unit?: string | null;
+  category: string;
+  isChecked: boolean;
+  bioRecommended: boolean;
+  isManual: boolean;
+  /** @nullable */
+  ingredientId?: number | null;
+}
+
+export interface ShoppingList {
+  id: number;
+  userId: string;
+  title: string;
+  weekFrom: string;
+  weekTo: string;
+  isArchived: boolean;
+  /** @nullable */
+  mealPlanId?: number | null;
+  createdAt: string;
+  items: ShoppingListItem[];
+}
+
+export interface ShoppingListSummary {
+  id: number;
+  userId: string;
+  title: string;
+  weekFrom: string;
+  weekTo: string;
+  isArchived: boolean;
+  /** @nullable */
+  mealPlanId?: number | null;
+  createdAt: string;
+  itemCount: number;
+  checkedCount: number;
+}
+
+export interface ManualItemInput {
+  name: string;
+  /** @nullable */
+  amount?: string | null;
+  /** @nullable */
+  unit?: string | null;
+  category?: string;
+}
+
 export type ListIngredientsParams = {
   category?: string;
   search?: string;

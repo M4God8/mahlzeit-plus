@@ -22,6 +22,8 @@ tags:
     description: Meal plan operations
   - name: today
     description: Today screen operations
+  - name: shopping-lists
+    description: Shopping list operations
 
 paths:
   /healthz:
@@ -575,6 +577,158 @@ paths:
               schema:
                 $ref: "#/components/schemas/TodaySummary"
 
+  /shopping-lists:
+    get:
+      operationId: listShoppingLists
+      tags: [shopping-lists]
+      summary: List all shopping lists for current user
+      responses:
+        "200":
+          description: List of shopping lists (summaries)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ShoppingListSummary"
+
+  /shopping-lists/generate:
+    post:
+      operationId: generateShoppingList
+      tags: [shopping-lists]
+      summary: Auto-generate a shopping list from the active meal plan
+      responses:
+        "201":
+          description: Generated shopping list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShoppingList"
+        "404":
+          description: No active meal plan
+
+  /shopping-lists/{id}:
+    get:
+      operationId: getShoppingList
+      tags: [shopping-lists]
+      summary: Get a shopping list with all items
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Shopping list with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShoppingList"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteShoppingList
+      tags: [shopping-lists]
+      summary: Delete a shopping list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /shopping-lists/{id}/archive:
+    post:
+      operationId: archiveShoppingList
+      tags: [shopping-lists]
+      summary: Archive a shopping list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Archived shopping list summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShoppingListSummary"
+
+  /shopping-lists/{id}/items:
+    post:
+      operationId: addShoppingListItem
+      tags: [shopping-lists]
+      summary: Add a manual item to a shopping list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ManualItemInput"
+      responses:
+        "201":
+          description: Added item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShoppingListItem"
+
+  /shopping-lists/{id}/items/{itemId}/toggle:
+    patch:
+      operationId: toggleShoppingListItem
+      tags: [shopping-lists]
+      summary: Toggle the checked state of a shopping list item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShoppingListItem"
+
+  /shopping-lists/{id}/items/{itemId}:
+    delete:
+      operationId: deleteShoppingListItem
+      tags: [shopping-lists]
+      summary: Delete a manual shopping list item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
@@ -981,3 +1135,116 @@ components:
         - dayName
         - meals
         - hasPlan
+
+    ShoppingListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        shoppingListId:
+          type: integer
+        name:
+          type: string
+        amount:
+          type: ["string", "null"]
+        unit:
+          type: ["string", "null"]
+        category:
+          type: string
+        isChecked:
+          type: boolean
+        bioRecommended:
+          type: boolean
+        isManual:
+          type: boolean
+        ingredientId:
+          type: ["integer", "null"]
+      required:
+        - id
+        - shoppingListId
+        - name
+        - category
+        - isChecked
+        - bioRecommended
+        - isManual
+
+    ShoppingList:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        weekFrom:
+          type: string
+        weekTo:
+          type: string
+        isArchived:
+          type: boolean
+        mealPlanId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShoppingListItem"
+      required:
+        - id
+        - userId
+        - title
+        - weekFrom
+        - weekTo
+        - isArchived
+        - createdAt
+        - items
+
+    ShoppingListSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        title:
+          type: string
+        weekFrom:
+          type: string
+        weekTo:
+          type: string
+        isArchived:
+          type: boolean
+        mealPlanId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+        itemCount:
+          type: integer
+        checkedCount:
+          type: integer
+      required:
+        - id
+        - userId
+        - title
+        - weekFrom
+        - weekTo
+        - isArchived
+        - createdAt
+        - itemCount
+        - checkedCount
+
+    ManualItemInput:
+      type: object
+      properties:
+        name:
+          type: string
+        amount:
+          type: ["string", "null"]
+        unit:
+          type: ["string", "null"]
+        category:
+          type: string
+      required:
+        - name
