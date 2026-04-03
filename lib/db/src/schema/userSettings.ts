@@ -5,7 +5,7 @@ import { nutritionProfilesTable } from "./nutritionProfiles";
 
 export const userSettingsTable = pgTable("user_settings", {
   userId: text("user_id").primaryKey(),
-  profileId: integer("profile_id").references(() => nutritionProfilesTable.id),
+  activeProfileIds: integer("active_profile_ids").array().notNull().default([]),
   householdSize: integer("household_size").notNull().default(2),
   budgetLevel: text("budget_level").notNull().default("medium"),
   cookTimeLimit: integer("cook_time_limit").notNull().default(30),

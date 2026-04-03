@@ -52,13 +52,13 @@ export const GetNutritionProfileResponse = zod.object({
  */
 export const GetUserSettingsResponse = zod.object({
   userId: zod.string(),
-  profileId: zod.number().nullish(),
+  activeProfileIds: zod.array(zod.number()),
   householdSize: zod.number(),
   budgetLevel: zod.string(),
   cookTimeLimit: zod.number(),
   bioPreferred: zod.boolean(),
-  profile: zod
-    .union([
+  profiles: zod
+    .array(
       zod.object({
         id: zod.number(),
         name: zod.string(),
@@ -68,16 +68,20 @@ export const GetUserSettingsResponse = zod.object({
         mealStyle: zod.string(),
         energyLabel: zod.string(),
       }),
-      zod.null(),
-    ])
+    )
     .optional(),
 });
 
 /**
  * @summary Create or update user settings (upsert)
  */
+export const createOrUpdateUserSettingsBodyActiveProfileIdsMax = 3;
+
 export const CreateOrUpdateUserSettingsBody = zod.object({
-  profileId: zod.number().nullish(),
+  activeProfileIds: zod
+    .array(zod.number())
+    .min(1)
+    .max(createOrUpdateUserSettingsBodyActiveProfileIdsMax),
   householdSize: zod.number(),
   budgetLevel: zod.string(),
   cookTimeLimit: zod.number(),
@@ -86,13 +90,13 @@ export const CreateOrUpdateUserSettingsBody = zod.object({
 
 export const CreateOrUpdateUserSettingsResponse = zod.object({
   userId: zod.string(),
-  profileId: zod.number().nullish(),
+  activeProfileIds: zod.array(zod.number()),
   householdSize: zod.number(),
   budgetLevel: zod.string(),
   cookTimeLimit: zod.number(),
   bioPreferred: zod.boolean(),
-  profile: zod
-    .union([
+  profiles: zod
+    .array(
       zod.object({
         id: zod.number(),
         name: zod.string(),
@@ -102,8 +106,7 @@ export const CreateOrUpdateUserSettingsResponse = zod.object({
         mealStyle: zod.string(),
         energyLabel: zod.string(),
       }),
-      zod.null(),
-    ])
+    )
     .optional(),
 });
 

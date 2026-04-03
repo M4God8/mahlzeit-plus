@@ -774,8 +774,10 @@ components:
       properties:
         userId:
           type: string
-        profileId:
-          type: ["integer", "null"]
+        activeProfileIds:
+          type: array
+          items:
+            type: integer
         householdSize:
           type: integer
         budgetLevel:
@@ -784,12 +786,13 @@ components:
           type: integer
         bioPreferred:
           type: boolean
-        profile:
-          oneOf:
-            - $ref: "#/components/schemas/NutritionProfile"
-            - type: "null"
+        profiles:
+          type: array
+          items:
+            $ref: "#/components/schemas/NutritionProfile"
       required:
         - userId
+        - activeProfileIds
         - householdSize
         - budgetLevel
         - cookTimeLimit
@@ -798,8 +801,12 @@ components:
     UserSettingsInput:
       type: object
       properties:
-        profileId:
-          type: ["integer", "null"]
+        activeProfileIds:
+          type: array
+          items:
+            type: integer
+          minItems: 1
+          maxItems: 3
         householdSize:
           type: integer
         budgetLevel:
@@ -809,6 +816,7 @@ components:
         bioPreferred:
           type: boolean
       required:
+        - activeProfileIds
         - householdSize
         - budgetLevel
         - cookTimeLimit

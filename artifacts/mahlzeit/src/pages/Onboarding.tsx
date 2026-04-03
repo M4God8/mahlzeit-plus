@@ -2,12 +2,12 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { useListNutritionProfiles, useCreateOrUpdateUserSettings } from "@workspace/api-client-react";
-import { ArrowRight, CheckCircle2, ChevronLeft, Loader2, Sparkles } from "lucide-react";
+import { ArrowRight, Check, ChevronLeft, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Onboarding() {
@@ -16,7 +16,7 @@ export default function Onboarding() {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   
-  const [profileId, setProfileId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [householdSize, setHouseholdSize] = useState(2);
   const [budgetLevel, setBudgetLevel] = useState("medium");
   const [cookTimeLimit, setCookTimeLimit] = useState(30);
@@ -27,15 +27,28 @@ export default function Onboarding() {
   const handleNext = () => setStep(s => s + 1);
   const handleBack = () => setStep(s => s - 1);
 
+  const toggleProfile = (id: number) => {
+    setSelectedIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(x => x !== id);
+      }
+      if (prev.length >= 3) {
+        toast({ title: "Maximal 3 Profile", description: "Du kannst höchstens 3 Ernährungsprofile auswählen.", variant: "destructive" });
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
+
   const handleComplete = () => {
-    if (!profileId) {
-      toast({ title: "Fehler", description: "Bitte wähle ein Profil aus.", variant: "destructive" });
+    if (selectedIds.length === 0) {
+      toast({ title: "Fehler", description: "Bitte wähle mindestens ein Profil aus.", variant: "destructive" });
       return;
     }
     
     updateSettings.mutate({
       data: {
-        profileId,
+        activeProfileIds: selectedIds,
         householdSize,
         budgetLevel,
         cookTimeLimit,
@@ -44,7 +57,6 @@ export default function Onboarding() {
     }, {
       onSuccess: async () => {
         queryClient.setQueryData(["user-settings-check"], true);
-
         let starterPlanCreated = false;
         try {
           const res = await fetch("/api/meal-plans/starter", {
@@ -73,7 +85,6 @@ export default function Onboarding() {
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background text-foreground pt-12 pb-safe px-4">
       <div className="max-w-md w-full mx-auto flex-1 flex flex-col">
-        {/* Header / Progress */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             {step > 1 && (
@@ -97,7 +108,6 @@ export default function Onboarding() {
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1">
           {step === 1 && (
             <div className="flex flex-col items-center text-center justify-center h-full space-y-6 animate-in fade-in slide-in-from-bottom-4">
@@ -118,37 +128,45 @@ export default function Onboarding() {
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
               <div>
                 <h2 className="font-display text-2xl font-bold mb-2">Wie isst du am liebsten?</h2>
-                <p className="text-muted-foreground">Wähle die Ernährungsweise, die am besten zu dir passt.</p>
+                <p className="text-muted-foreground">Wähle 1–3 Ernährungsweisen, die zu dir passen.</p>
               </div>
 
               {isLoadingProfiles ? (
                 <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
               ) : (
                 <div className="grid gap-3">
-                  {profiles?.map(profile => (
-                    <Card 
-                      key={profile.id} 
-                      className={`cursor-pointer transition-all hover-elevate ${profileId === profile.id ? 'border-primary ring-1 ring-primary bg-primary/5' : ''}`}
-                      onClick={() => setProfileId(profile.id)}
-                      data-testid={`card-profile-${profile.id}`}
-                    >
-                      <CardContent className="p-4 flex items-start gap-4">
-                        <div className="mt-1">
-                          <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${profileId === profile.id ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'}`}>
-                            {profileId === profile.id && <CheckCircle2 className="w-4 h-4" />}
+                  {profiles?.map(profile => {
+                    const isSelected = selectedIds.includes(profile.id);
+                    return (
+                      <Card 
+                        key={profile.id} 
+                        className={`cursor-pointer transition-all hover-elevate ${isSelected ? 'border-primary ring-1 ring-primary bg-primary/5' : ''}`}
+                        onClick={() => toggleProfile(profile.id)}
+                        data-testid={`card-profile-${profile.id}`}
+                      >
+                        <CardContent className="p-4 flex items-start gap-4">
+                          <div className="mt-1">
+                            <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'}`}>
+                              {isSelected && <Check className="w-3.5 h-3.5" />}
+                            </div>
                           </div>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-lg">{profile.name}</h3>
-                          <p className="text-sm text-muted-foreground mt-1">{profile.description}</p>
-                          <div className="inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium bg-accent/20 text-accent-foreground">
-                            {profile.energyLabel}
+                          <div>
+                            <h3 className="font-semibold text-lg">{profile.name}</h3>
+                            <p className="text-sm text-muted-foreground mt-1">{profile.description}</p>
+                            <div className="inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium bg-accent/20 text-accent-foreground">
+                              {profile.energyLabel}
+                            </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
+              )}
+              {selectedIds.length > 0 && (
+                <p className="text-sm text-muted-foreground text-center">
+                  {selectedIds.length}/3 Profile ausgewählt
+                </p>
               )}
             </div>
           )}
@@ -216,13 +234,12 @@ export default function Onboarding() {
           )}
         </div>
 
-        {/* Footer */}
         <div className="mt-8 pt-4 border-t">
           {step < 3 ? (
             <Button 
               className="w-full h-12 text-base rounded-full" 
               onClick={handleNext}
-              disabled={step === 2 && !profileId}
+              disabled={step === 2 && selectedIds.length === 0}
               data-testid="button-next"
             >
               Weiter <ArrowRight className="w-4 h-4 ml-2" />

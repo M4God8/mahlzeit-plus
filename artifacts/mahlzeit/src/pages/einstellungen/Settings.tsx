@@ -3,11 +3,10 @@ import { useUser, useClerk } from "@clerk/react";
 import { useGetUserSettings, useListNutritionProfiles, useCreateOrUpdateUserSettings } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, LogOut, User as UserIcon } from "lucide-react";
+import { Check, Loader2, LogOut, User as UserIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
@@ -19,23 +18,41 @@ export default function Settings() {
   const { data: profiles, isLoading: isLoadingProfiles } = useListNutritionProfiles();
   const updateSettings = useCreateOrUpdateUserSettings();
 
-  const [profileId, setProfileId] = useState<string>("");
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [householdSize, setHouseholdSize] = useState<number>(2);
   const [budgetLevel, setBudgetLevel] = useState<string>("medium");
   const [cookTimeLimit, setCookTimeLimit] = useState<number>(30);
+
   useEffect(() => {
     if (settings) {
-      setProfileId(settings.profileId?.toString() || "");
+      setSelectedIds(settings.activeProfileIds ?? []);
       setHouseholdSize(settings.householdSize);
       setBudgetLevel(settings.budgetLevel);
       setCookTimeLimit(settings.cookTimeLimit);
     }
   }, [settings]);
 
+  const toggleProfile = (id: number) => {
+    setSelectedIds(prev => {
+      if (prev.includes(id)) {
+        if (prev.length <= 1) {
+          toast({ title: "Mindestens 1 Profil", description: "Du brauchst mindestens ein aktives Ernährungsprofil.", variant: "destructive" });
+          return prev;
+        }
+        return prev.filter(x => x !== id);
+      }
+      if (prev.length >= 3) {
+        toast({ title: "Maximal 3 Profile", description: "Du kannst höchstens 3 Ernährungsprofile auswählen.", variant: "destructive" });
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
+
   const handleSave = () => {
     updateSettings.mutate({
       data: {
-        profileId: profileId ? parseInt(profileId) : null,
+        activeProfileIds: selectedIds,
         householdSize,
         budgetLevel,
         cookTimeLimit,
@@ -86,19 +103,31 @@ export default function Settings() {
             </CardHeader>
             <CardContent className="space-y-8">
               <div className="space-y-3">
-                <Label>Ernährungsprofil</Label>
-                <Select value={profileId} onValueChange={setProfileId}>
-                  <SelectTrigger className="h-12 rounded-xl" data-testid="select-profile">
-                    <SelectValue placeholder="Profil wählen" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {profiles?.map(p => (
-                      <SelectItem key={p.id} value={p.id.toString()}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex justify-between items-center">
+                  <Label>Ernährungsprofile</Label>
+                  <span className="text-sm text-muted-foreground">{selectedIds.length}/3 ausgewählt</span>
+                </div>
+                <div className="grid gap-2">
+                  {profiles?.map(p => {
+                    const isSelected = selectedIds.includes(p.id);
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => toggleProfile(p.id)}
+                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isSelected ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted'}`}
+                        data-testid={`settings-profile-${p.id}`}
+                      >
+                        <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground'}`}>
+                          {isSelected && <Check className="w-3.5 h-3.5" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium">{p.name}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">{p.energyLabel}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -144,7 +173,7 @@ export default function Settings() {
               <Button 
                 className="w-full h-12 rounded-full" 
                 onClick={handleSave} 
-                disabled={isSaving}
+                disabled={isSaving || selectedIds.length === 0}
                 data-testid="btn-save-settings"
               >
                 {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

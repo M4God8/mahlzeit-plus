@@ -41,7 +41,7 @@ Mahlzeit+ ist eine deutschsprachige Mahlzeitenplanungs-App für bewusste Esser. 
 
 Tabellen in `lib/db/src/schema/`:
 - `nutrition_profiles` — 5 Ernährungsprofile (Vollwertig, Pflanzenbasiert, Mediterran, Kraftvoll, Leicht)
-- `user_settings` — Benutzereinstellungen (Haushaltsgröße, Budget, Kochzeit)
+- `user_settings` — Benutzereinstellungen (activeProfileIds int[], Haushaltsgröße, Budget, Kochzeit)
 - `ingredients` — 60 Zutaten mit Kategorien und Bio-Empfehlung
 - `recipes` + `recipe_ingredients` — Rezepte mit Zutaten (10 Starterrezepte)
 - `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne

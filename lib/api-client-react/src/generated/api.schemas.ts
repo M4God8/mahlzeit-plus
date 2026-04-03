@@ -21,18 +21,20 @@ export interface NutritionProfile {
 
 export interface UserSettings {
   userId: string;
-  /** @nullable */
-  profileId?: number | null;
+  activeProfileIds: number[];
   householdSize: number;
   budgetLevel: string;
   cookTimeLimit: number;
   bioPreferred: boolean;
-  profile?: NutritionProfile | null;
+  profiles?: NutritionProfile[];
 }
 
 export interface UserSettingsInput {
-  /** @nullable */
-  profileId?: number | null;
+  /**
+   * @minItems 1
+   * @maxItems 3
+   */
+  activeProfileIds: number[];
   householdSize: number;
   budgetLevel: string;
   cookTimeLimit: number;

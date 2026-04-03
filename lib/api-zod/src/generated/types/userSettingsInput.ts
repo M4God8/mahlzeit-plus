@@ -7,8 +7,11 @@
  */
 
 export interface UserSettingsInput {
-  /** @nullable */
-  profileId?: number | null;
+  /**
+   * @minItems 1
+   * @maxItems 3
+   */
+  activeProfileIds: number[];
   householdSize: number;
   budgetLevel: string;
   cookTimeLimit: number;

@@ -9,11 +9,10 @@ import type { NutritionProfile } from "./nutritionProfile";
 
 export interface UserSettings {
   userId: string;
-  /** @nullable */
-  profileId?: number | null;
+  activeProfileIds: number[];
   householdSize: number;
   budgetLevel: string;
   cookTimeLimit: number;
   bioPreferred: boolean;
-  profile?: NutritionProfile | null;
+  profiles?: NutritionProfile[];
 }
