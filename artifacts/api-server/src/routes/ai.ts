@@ -164,12 +164,12 @@ router.post("/ai/generate-recipe", requireAuth, async (req, res) => {
 
   const systemPrompt = `Du bist ein kreativer Koch-Assistent für bewusstes und natürliches Essen. 
 Du erstellst gesunde, saisonale Rezepte auf Deutsch.
-Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.`;
+Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.
 
-  const prompt = `Nutzerprofil:
-${buildContextBlock(ctx)}
+Nutzerprofil:
+${buildContextBlock(ctx)}`;
 
-Erstelle ein Rezept für: "${body.prompt}".
+  const prompt = `Erstelle ein Rezept für: "${body.prompt}".
 ${body.tags?.length ? `Gewünschte Tags: ${body.tags.join(", ")}.` : ""}
 ${body.servings ? `Portionen: ${body.servings}.` : `Portionen: ${ctx.householdSize}.`}
 
@@ -207,12 +207,12 @@ router.post("/ai/generate-plan", requireAuth, async (req, res) => {
 
   const systemPrompt = `Du bist ein Ernährungsberater für bewusstes und natürliches Essen. 
 Du erstellst ausgewogene Wochenspeisepläne auf Deutsch.
-Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.`;
+Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.
 
-  const prompt = `Nutzerprofil:
-${buildContextBlock(ctx)}
+Nutzerprofil:
+${buildContextBlock(ctx)}`;
 
-Erstelle einen Wochenspeiseplan (7 Tage: Montag bis Sonntag) mit je 3 Mahlzeiten (Frühstück, Mittagessen, Abendessen).
+  const prompt = `Erstelle einen Wochenspeiseplan (7 Tage: Montag bis Sonntag) mit je 3 Mahlzeiten (Frühstück, Mittagessen, Abendessen).
 Nutzerpräferenzen: "${body.preferences}"
 
 Antworte mit folgendem JSON:
@@ -276,12 +276,12 @@ router.post("/ai/adjust-recipe", requireAuth, async (req, res) => {
     .where(eq(recipeIngredientsTable.recipeId, recipe.id));
 
   const systemPrompt = `Du bist ein Koch-Assistent. Du passt bestehende Rezepte an Nutzerwünsche an.
-Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.`;
+Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.
 
-  const prompt = `Nutzerprofil:
-${buildContextBlock(ctx)}
+Nutzerprofil:
+${buildContextBlock(ctx)}`;
 
-Passe dieses Rezept an: "${recipe.title}"
+  const prompt = `Passe dieses Rezept an: "${recipe.title}"
 Zutaten: ${ingredients.map((i) => `${i.amount} ${i.unit} ${i.name ?? i.customName}`).join(", ")}
 
 Anpassungswunsch: "${body.adjustmentPrompt}"
@@ -335,12 +335,12 @@ router.post("/ai/substitute-ingredient", requireAuth, async (req, res) => {
 
   const systemPrompt = `Du bist ein Koch-Experte für Zutaten-Substitutionen. 
 Du schlägst passende Alternativen für nicht verfügbare oder unerwünschte Zutaten vor.
-Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.`;
+Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.
 
-  const prompt = `Nutzerprofil:
-${buildContextBlock(ctx)}
+Nutzerprofil:
+${buildContextBlock(ctx)}`;
 
-Für das Rezept "${recipe.title}" werden Alternativen gesucht für: ${body.ingredients.join(", ")}.
+  const prompt = `Für das Rezept "${recipe.title}" werden Alternativen gesucht für: ${body.ingredients.join(", ")}.
 ${body.reason ? `Grund: ${body.reason}` : ""}
 
 Beachte besonders die ausgeschlossenen Zutaten aus dem Nutzerprofil — diese dürfen NICHT als Ersatz vorgeschlagen werden.
