@@ -1,0 +1,68 @@
+#9 - Admin-Panel
+
+What & Why
+Martin (Owner) braucht eine Admin-Übersicht bevor 
+Stripe/Launch. Zeigt User, Revenue, KI-Kosten pro 
+User und System-Health. Nur erreichbar für User 
+mit role: 'admin' in der DB.
+
+Done looks like
+* /admin ist nur für Admin-User erreichbar
+* Dashboard zeigt: Gesamt-User, Premium-User, 
+  MRR (aus Stripe), neue User heute/Woche/Monat
+* User-Tabelle mit Filtern:
+  - nach Profil (Natürlich & Clean etc.)
+  - nach Plan (Free / Premium)
+  - nach Zeitraum (Erstellt von–bis)
+  - nach KI-Usage (hoch / mittel / niedrig)
+* Pro User sichtbar:
+  - Email, Ernährungsprofil(e), Erstellt am
+  - Premium ja/nein, Ablaufdatum
+  - KI-Calls gesamt + geschätzte Kosten in €
+    (Berechnung: Input-Tokens × 0.000003 + 
+     Output-Tokens × 0.000015)
+* KOSTEN-ÜBERSICHT (mit Filtern):
+  - Gesamtkosten KI pro Tag / Woche / Monat
+  - Kosten pro User (sortierbar)
+  - Kosten nach KI-Typ 
+    (recipe_from_fridge / plan_generate / 
+     recipe_adjust / ingredient_sub)
+  - Filter: Zeitraum, User, KI-Typ
+  - Warnung wenn ein User > X € Kosten verursacht
+* Premium manuell aktivieren/deaktivieren
+* User sperren (blockiert Login)
+* Stripe Webhook-Status (live check)
+* API Health Check (DB, Claude API, 
+  Open Food Facts)
+
+Tasks
+1. DB: users Tabelle um role TEXT 
+   ('user' | 'admin') erweitern. 
+   Martin's User auf 'admin' setzen.
+
+2. ai_generations Tabelle erweitern:
+   input_tokens INT, output_tokens INT, 
+   cost_eur DECIMAL(10,6) — wird bei 
+   jedem KI-Call berechnet und gespeichert.
+
+3. requireAdmin Middleware — prüft 
+   role === 'admin', sonst 403.
+
+4. Backend-Routen /admin/*:
+   - GET /admin/stats (Dashboard-Zahlen)
+   - GET /admin/users (mit Filter-Params)
+   - GET /admin/costs (mit Filter-Params: 
+     dateFrom, dateTo, userId, aiType)
+   - PATCH /admin/users/:id/premium
+   - PATCH /admin/users/:id/block
+
+5. Frontend /admin:
+   - Geschützte Route (nur admin)
+   - Dashboard-Cards (User, Revenue, Kosten)
+   - User-Tabelle mit Filter-UI
+   - Kosten-Tabelle sortierbar + filterbar
+   - Kosten-Chart (Linie: täglich/wöchentlich)
+   - Warn-Badges bei hohem User-Verbrauch
+
+Dependencies: Phase 5 (KI-Layer muss 
+ai_generations befüllen)
