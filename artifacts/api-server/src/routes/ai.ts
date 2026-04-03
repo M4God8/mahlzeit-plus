@@ -458,8 +458,6 @@ router.post("/ai/feedback", requireAuth, async (req, res) => {
     return;
   }
 
-  let mealEntryOwnershipVerified = false;
-
   if (body.mealEntryId != null) {
     const [entry] = await db
       .select({ id: mealEntriesTable.id })
@@ -471,15 +469,14 @@ router.post("/ai/feedback", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Meal entry not found or access denied" });
       return;
     }
-    mealEntryOwnershipVerified = true;
   }
 
-  if (body.recipeId != null && !mealEntryOwnershipVerified) {
+  if (body.recipeId != null) {
     const [recipe] = await db
-      .select({ id: recipesTable.id })
+      .select({ id: recipesTable.id, userId: recipesTable.userId, isPublic: recipesTable.isPublic })
       .from(recipesTable)
-      .where(and(eq(recipesTable.id, body.recipeId), eq(recipesTable.userId, userId)));
-    if (!recipe) {
+      .where(eq(recipesTable.id, body.recipeId));
+    if (!recipe || (recipe.userId !== userId && !recipe.isPublic)) {
       res.status(403).json({ error: "Recipe not found or access denied" });
       return;
     }
