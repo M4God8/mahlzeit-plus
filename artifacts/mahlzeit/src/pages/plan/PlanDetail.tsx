@@ -11,6 +11,7 @@ import {
   useDeleteMealEntry,
   useDeleteMealPlan,
   useListRecipes,
+  useGenerateShoppingList,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { MealPlanDetail, MealPlanDay, MealEntry, Recipe } from "@workspace/api-client-react";
@@ -44,6 +45,7 @@ import {
   Plus,
   ChefHat,
   X,
+  ShoppingCart,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -169,6 +171,7 @@ export default function PlanDetail() {
   const updateEntry = useUpdateMealEntry();
   const deleteEntry = useDeleteMealEntry();
   const deletePlan = useDeleteMealPlan();
+  const generateList = useGenerateShoppingList();
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<{ dayId: number; mealType: MealTypeKey; entryId?: number } | null>(null);
@@ -339,6 +342,28 @@ export default function PlanDetail() {
               data-testid="switch-loop"
             />
           </div>
+
+          {plan.active && (
+            <Button
+              variant="outline"
+              className="rounded-full text-sm flex items-center gap-2"
+              onClick={() => {
+                generateList.mutate(undefined, {
+                  onSuccess: () => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists"] });
+                    toast({ title: "Einkaufsliste erstellt" });
+                    setLocation("/einkauf");
+                  },
+                  onError: () => toast({ title: "Fehler beim Erstellen", variant: "destructive" }),
+                });
+              }}
+              disabled={generateList.isPending}
+              data-testid="btn-generate-shopping-list"
+            >
+              {generateList.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingCart className="w-4 h-4" />}
+              Einkaufsliste generieren
+            </Button>
+          )}
         </div>
 
         <div className="space-y-4">

@@ -56,8 +56,8 @@ function convertToBase(amount: number, unit: string): { amount: number; unit: st
 
 function formatAmount(n: number, unit: string): string {
   const u = normalizeUnit(unit);
-  if (u === "g" && n >= 1000) return `${+(n / 1000).toFixed(2)} kg`;
-  if (u === "ml" && n >= 1000) return `${+(n / 1000).toFixed(2)} l`;
+  if (u === "g" && n >= 1000) return String(+(n / 1000).toFixed(2));
+  if (u === "ml" && n >= 1000) return String(+(n / 1000).toFixed(2));
   return String(Math.round(n * 100) / 100);
 }
 

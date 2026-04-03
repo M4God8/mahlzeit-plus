@@ -1,11 +1,13 @@
 import { Link, useLocation } from "wouter";
-import { useGetTodayMeals, useGetActiveMealPlan } from "@workspace/api-client-react";
+import { useGetTodayMeals, useGetActiveMealPlan, useGenerateShoppingList } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw } from "lucide-react";
+import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
   breakfast: "Frühstück",
@@ -32,6 +34,20 @@ export default function Today() {
   const { data: todaySummary, isLoading } = useGetTodayMeals();
   const { data: activePlan } = useGetActiveMealPlan({ query: { queryKey: ["/api/meal-plans/active"], retry: false } });
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const generateList = useGenerateShoppingList();
+
+  const handleGenerateList = () => {
+    generateList.mutate(undefined, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/shopping-lists"] });
+        toast({ title: "Einkaufsliste erstellt" });
+        setLocation("/einkauf");
+      },
+      onError: () => toast({ title: "Fehler beim Erstellen", variant: "destructive" }),
+    });
+  };
 
   const todayDate = new Date();
   const dayName = format(todayDate, "EEEE", { locale: de });
@@ -148,7 +164,23 @@ export default function Today() {
           </div>
         )}
 
-        <div className="mt-8 pt-4 pb-4">
+        <div className="mt-8 pt-4 pb-4 space-y-3">
+          {activePlan && (
+            <Button
+              className="w-full rounded-2xl h-14 text-base shadow-sm"
+              variant="outline"
+              onClick={handleGenerateList}
+              disabled={generateList.isPending}
+              data-testid="btn-generate-shopping-list"
+            >
+              {generateList.isPending ? (
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              ) : (
+                <ShoppingCart className="w-5 h-5 mr-2" />
+              )}
+              Einkaufsliste für diese Woche generieren
+            </Button>
+          )}
           <Link href="/einkauf" data-testid="link-shopping-banner">
             <div className="bg-primary text-primary-foreground rounded-2xl p-5 flex items-center justify-between shadow-md hover:shadow-lg transition-shadow">
               <div>
