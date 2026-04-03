@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useGetTodayMeals, useGetActiveMealPlan, useGenerateShoppingList, useAiSubmitFeedback } from "@workspace/api-client-react";
+import { useGetTodayMeals, useGetActiveMealPlan, useGenerateShoppingList, useAiSubmitFeedback, useGetLearnProfile } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart, ThumbsUp, ThumbsDown, Minus } from "lucide-react";
+import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart, ThumbsUp, ThumbsDown, Minus, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -34,11 +34,13 @@ const MEAL_BAR_COLORS: Record<string, string> = {
 export default function Today() {
   const { data: todaySummary, isLoading } = useGetTodayMeals();
   const { data: activePlan } = useGetActiveMealPlan({ query: { queryKey: ["/api/meal-plans/active"], retry: false } });
+  const { data: learnProfile } = useGetLearnProfile({ query: { queryKey: ["/api/learn/profile"], retry: false } });
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const generateList = useGenerateShoppingList();
   const [feedbackGiven, setFeedbackGiven] = useState<Record<string, "thumbs_up" | "neutral" | "thumbs_down">>({});
+  const [insightDismissed, setInsightDismissed] = useState(false);
 
   const feedbackMutation = useAiSubmitFeedback({
     mutation: {
@@ -97,6 +99,23 @@ export default function Today() {
       </header>
 
       <main className="flex-1 px-4 space-y-6">
+        {learnProfile?.insightMessage && !insightDismissed && (
+          <div className="relative flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 animate-in slide-in-from-top-2 duration-300">
+            <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+            <p className="text-sm text-amber-800 flex-1 leading-snug">
+              <span className="font-semibold">Dein Profil sagt: </span>
+              {learnProfile.insightMessage}
+            </p>
+            <button
+              onClick={() => setInsightDismissed(true)}
+              className="text-amber-400 hover:text-amber-600 shrink-0"
+              aria-label="Schließen"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {!hasMeals ? (
           <div className="flex flex-col items-center justify-center text-center py-16 px-4 bg-primary/5 rounded-3xl border border-primary/10">
             <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center mb-4 shadow-sm">

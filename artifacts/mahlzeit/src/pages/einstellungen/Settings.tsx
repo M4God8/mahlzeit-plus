@@ -1,22 +1,43 @@
 import { useState, useEffect } from "react";
 import { useUser, useClerk } from "@clerk/react";
-import { useGetUserSettings, useListNutritionProfiles, useCreateOrUpdateUserSettings } from "@workspace/api-client-react";
+import {
+  useGetUserSettings,
+  useListNutritionProfiles,
+  useCreateOrUpdateUserSettings,
+  useGetLearnProfile,
+  useResetLearnProfile,
+  useTriggerLearnAggregate,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Check, Loader2, LogOut, User as UserIcon } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Check, Loader2, LogOut, User as UserIcon, Brain, RotateCcw, RefreshCw, Clock, Utensils, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const COMPLEXITY_LABEL: Record<string, string> = {
+  simple: "Einfach & schnell",
+  varied: "Abwechslungsreich & aufwendig",
+  mixed: "Ausgewogen",
+};
 
 export default function Settings() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const { data: settings, isLoading: isLoadingSettings } = useGetUserSettings();
   const { data: profiles, isLoading: isLoadingProfiles } = useListNutritionProfiles();
+  const { data: learnProfile, isLoading: isLoadingLearn } = useGetLearnProfile({
+    query: { queryKey: ["/api/learn/profile"], retry: false },
+  });
   const updateSettings = useCreateOrUpdateUserSettings();
+  const resetLearn = useResetLearnProfile();
+  const aggregate = useTriggerLearnAggregate();
 
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [householdSize, setHouseholdSize] = useState<number>(2);
@@ -69,6 +90,26 @@ export default function Settings() {
   };
 
   const isSaving = updateSettings.isPending;
+
+  const handleAggregate = () => {
+    aggregate.mutate(undefined, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/learn/profile"] });
+        toast({ title: "Essmuster aktualisiert", description: "Dein Lernprofil wurde neu berechnet." });
+      },
+      onError: () => toast({ title: "Fehler", description: "Aktualisierung fehlgeschlagen.", variant: "destructive" }),
+    });
+  };
+
+  const handleResetLearn = () => {
+    resetLearn.mutate(undefined, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["/api/learn/profile"] });
+        toast({ title: "Essmuster zurückgesetzt", description: "Dein Lernprofil wurde gelöscht." });
+      },
+      onError: () => toast({ title: "Fehler", description: "Zurücksetzen fehlgeschlagen.", variant: "destructive" }),
+    });
+  };
 
   return (
     <div className="flex flex-col min-h-[100dvh] pb-24 animate-in fade-in duration-500 bg-background text-foreground">
@@ -182,6 +223,107 @@ export default function Settings() {
             </CardContent>
           </Card>
         )}
+
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="font-display text-2xl flex items-center gap-2">
+              <Brain className="w-5 h-5 text-primary" />
+              Mein Essmuster
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Mahlzeit+ lernt aus deinem Feedback und passt Vorschläge an.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingLearn ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              </div>
+            ) : learnProfile ? (
+              <div className="space-y-3">
+                {learnProfile.insightMessage && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800">
+                    {learnProfile.insightMessage}
+                  </div>
+                )}
+                <div className="grid gap-3">
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                    <Clock className="w-4 h-4 text-primary shrink-0" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Ø Zubereitungszeit (gemochte Rezepte)</div>
+                      <div className="font-medium">
+                        {learnProfile.avgPreferredPrepTime !== null && learnProfile.avgPreferredPrepTime !== undefined
+                          ? `${learnProfile.avgPreferredPrepTime} Minuten`
+                          : "Noch nicht genug Daten"}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                    <Utensils className="w-4 h-4 text-primary shrink-0" />
+                    <div>
+                      <div className="text-xs text-muted-foreground">Mahlzeitkomplexität</div>
+                      <div className="font-medium">
+                        {COMPLEXITY_LABEL[learnProfile.preferredMealComplexity] ?? learnProfile.preferredMealComplexity}
+                      </div>
+                    </div>
+                  </div>
+                  {learnProfile.frequentlyReplacedRecipeIds.length > 0 && (
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                      <TrendingUp className="w-4 h-4 text-primary shrink-0" />
+                      <div>
+                        <div className="text-xs text-muted-foreground">Häufig abgelehnte Rezepte</div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {learnProfile.frequentlyReplacedRecipeIds.map((id: number) => (
+                            <Badge key={id} variant="outline" className="text-xs">#{id}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Zuletzt aktualisiert: {new Date(learnProfile.updatedAt).toLocaleDateString("de-DE")}
+                </p>
+              </div>
+            ) : (
+              <div className="text-center py-4 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Noch kein Lernprofil. Gib Feedback zu deinen Mahlzeiten, um ein Essmuster zu entwickeln.
+                </p>
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 rounded-full"
+                onClick={handleAggregate}
+                disabled={aggregate.isPending}
+                data-testid="btn-learn-aggregate"
+              >
+                {aggregate.isPending
+                  ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                Aktualisieren
+              </Button>
+              {learnProfile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="flex-1 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={handleResetLearn}
+                  disabled={resetLearn.isPending}
+                  data-testid="btn-learn-reset"
+                >
+                  {resetLearn.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    : <RotateCcw className="w-3.5 h-3.5 mr-1.5" />}
+                  Zurücksetzen
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <Button 
           variant="ghost" 

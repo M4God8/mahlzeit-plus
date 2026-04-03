@@ -26,6 +26,8 @@ tags:
     description: Shopping list operations
   - name: scanner
     description: Barcode scanner and product score operations
+  - name: learn
+    description: Learning profile and personalisation aggregation
 
 paths:
   /healthz:
@@ -845,6 +847,41 @@ paths:
               schema:
                 $ref: "#/components/schemas/MealFeedback"
 
+  /learn/profile:
+    get:
+      operationId: getLearnProfile
+      tags: [learn]
+      summary: Get the user's learned preferences profile
+      responses:
+        "200":
+          description: Learned preferences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserLearnedPreferences"
+        "404":
+          description: No profile yet (run aggregate first)
+    delete:
+      operationId: resetLearnProfile
+      tags: [learn]
+      summary: Reset the user's learned preferences (deletes all aggregated data)
+      responses:
+        "204":
+          description: Profile deleted
+
+  /learn/aggregate:
+    post:
+      operationId: triggerLearnAggregate
+      tags: [learn]
+      summary: Manually trigger the aggregation job for the current user
+      responses:
+        "200":
+          description: Aggregation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserLearnedPreferences"
+
   /scanner/lookup/{barcode}:
     get:
       operationId: scannerLookup
@@ -1637,6 +1674,37 @@ components:
         - userId
         - rating
         - createdAt
+
+    UserLearnedPreferences:
+      type: object
+      properties:
+        userId:
+          type: string
+        avgPreferredPrepTime:
+          type: integer
+          nullable: true
+          description: Average total cook+prep time (minutes) of liked recipes; null if insufficient data
+        frequentlyReplacedRecipeIds:
+          type: array
+          items:
+            type: integer
+          description: Recipe IDs that were disliked (thumbs_down) >= 2x in the last 4 weeks
+        preferredMealComplexity:
+          type: string
+          enum: [simple, varied, mixed]
+          description: Derived from avg cook time of liked recipes
+        insightMessage:
+          type: string
+          nullable: true
+          description: Human-readable insight for the Heute-Screen hint banner
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - userId
+        - frequentlyReplacedRecipeIds
+        - preferredMealComplexity
+        - updatedAt
 
     ScoreBreakdown:
       type: object

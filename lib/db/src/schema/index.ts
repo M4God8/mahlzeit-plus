@@ -7,3 +7,4 @@ export * from "./shoppingLists";
 export * from "./aiGenerations";
 export * from "./mealFeedback";
 export * from "./scannedProducts";
+export * from "./userLearnedPreferences";

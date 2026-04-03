@@ -990,6 +990,58 @@ export const AiSubmitFeedbackBody = zod.object({
 });
 
 /**
+ * @summary Get the user's learned preferences profile
+ */
+export const GetLearnProfileResponse = zod.object({
+  userId: zod.string(),
+  avgPreferredPrepTime: zod
+    .number()
+    .nullish()
+    .describe(
+      "Average total cook+prep time (minutes) of liked recipes; null if insufficient data",
+    ),
+  frequentlyReplacedRecipeIds: zod
+    .array(zod.number())
+    .describe(
+      "Recipe IDs that were disliked (thumbs_down) >= 2x in the last 4 weeks",
+    ),
+  preferredMealComplexity: zod
+    .enum(["simple", "varied", "mixed"])
+    .describe("Derived from avg cook time of liked recipes"),
+  insightMessage: zod
+    .string()
+    .nullish()
+    .describe("Human-readable insight for the Heute-Screen hint banner"),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Manually trigger the aggregation job for the current user
+ */
+export const TriggerLearnAggregateResponse = zod.object({
+  userId: zod.string(),
+  avgPreferredPrepTime: zod
+    .number()
+    .nullish()
+    .describe(
+      "Average total cook+prep time (minutes) of liked recipes; null if insufficient data",
+    ),
+  frequentlyReplacedRecipeIds: zod
+    .array(zod.number())
+    .describe(
+      "Recipe IDs that were disliked (thumbs_down) >= 2x in the last 4 weeks",
+    ),
+  preferredMealComplexity: zod
+    .enum(["simple", "varied", "mixed"])
+    .describe("Derived from avg cook time of liked recipes"),
+  insightMessage: zod
+    .string()
+    .nullish()
+    .describe("Human-readable insight for the Heute-Screen hint banner"),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
  * @summary Look up a product by barcode (cached or live Open Food Facts)
  */
 export const ScannerLookupParams = zod.object({

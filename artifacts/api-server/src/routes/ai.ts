@@ -12,6 +12,7 @@ import {
   mealEntriesTable,
   mealPlanDaysTable,
   mealPlansTable,
+  userLearnedPreferencesTable,
 } from "@workspace/db";
 import { eq, inArray, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -34,6 +35,12 @@ const router = Router();
 const MODEL = "claude-sonnet-4-6";
 const MAX_TOKENS = 8192;
 
+interface LearnedPrefs {
+  avgPreferredPrepTime: number | null;
+  preferredMealComplexity: string;
+  frequentlyReplacedRecipeIds: number[];
+}
+
 interface UserContext {
   householdSize: number;
   cookTimeLimit: number;
@@ -43,13 +50,22 @@ interface UserContext {
   excludedIngredients: string[];
   preferredCategories: string[];
   mealStyles: string[];
+  learnedPrefs: LearnedPrefs | null;
 }
 
 async function getUserContext(userId: string): Promise<UserContext> {
-  const [settings] = await db
-    .select()
-    .from(userSettingsTable)
-    .where(eq(userSettingsTable.userId, userId));
+  const [[settings], [learnedRow]] = await Promise.all([
+    db.select().from(userSettingsTable).where(eq(userSettingsTable.userId, userId)),
+    db.select().from(userLearnedPreferencesTable).where(eq(userLearnedPreferencesTable.userId, userId)),
+  ]);
+
+  const learnedPrefs: LearnedPrefs | null = learnedRow
+    ? {
+        avgPreferredPrepTime: learnedRow.avgPreferredPrepTime,
+        preferredMealComplexity: learnedRow.preferredMealComplexity,
+        frequentlyReplacedRecipeIds: learnedRow.frequentlyReplacedRecipeIds,
+      }
+    : null;
 
   if (!settings) {
     return {
@@ -61,6 +77,7 @@ async function getUserContext(userId: string): Promise<UserContext> {
       excludedIngredients: [],
       preferredCategories: [],
       mealStyles: [],
+      learnedPrefs,
     };
   }
 
@@ -89,6 +106,7 @@ async function getUserContext(userId: string): Promise<UserContext> {
     excludedIngredients,
     preferredCategories,
     mealStyles,
+    learnedPrefs,
   };
 }
 
@@ -102,6 +120,26 @@ function buildContextBlock(ctx: UserContext): string {
   if (ctx.mealStyles.length > 0) lines.push(`Mahlzeitenstil: ${ctx.mealStyles.join(", ")}`);
   if (ctx.preferredCategories.length > 0) lines.push(`Bevorzugte Kategorien: ${ctx.preferredCategories.join(", ")}`);
   if (ctx.excludedIngredients.length > 0) lines.push(`AUSGESCHLOSSENE ZUTATEN (NIEMALS verwenden): ${ctx.excludedIngredients.join(", ")}`);
+
+  if (ctx.learnedPrefs) {
+    lines.push("\n--- Gelerntes Nutzerprofil ({{learned_preferences}}) ---");
+    if (ctx.learnedPrefs.avgPreferredPrepTime !== null) {
+      lines.push(`Bevorzugte Zubereitungszeit (aus Feedback): Ø ${ctx.learnedPrefs.avgPreferredPrepTime} Minuten`);
+    }
+    const complexityMap: Record<string, string> = {
+      simple: "einfach und schnell",
+      varied: "abwechslungsreich und aufwendig",
+      mixed: "ausgewogen",
+    };
+    lines.push(`Mahlzeitkomplexität-Präferenz: ${complexityMap[ctx.learnedPrefs.preferredMealComplexity] ?? "ausgewogen"}`);
+    if (ctx.learnedPrefs.frequentlyReplacedRecipeIds.length > 0) {
+      lines.push(`Häufig abgelehnte Rezepte (IDs, BITTE VERMEIDEN): ${ctx.learnedPrefs.frequentlyReplacedRecipeIds.join(", ")}`);
+    }
+  } else {
+    lines.push("\n--- Gelerntes Nutzerprofil ({{learned_preferences}}) ---");
+    lines.push("Noch kein Lernprofil vorhanden — Standardpräferenzen anwenden.");
+  }
+
   return lines.join("\n");
 }
 

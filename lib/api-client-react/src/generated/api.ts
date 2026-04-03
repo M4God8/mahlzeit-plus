@@ -50,6 +50,7 @@ import type {
   ShoppingListSummary,
   SwapMealPlanDaysBody,
   TodaySummary,
+  UserLearnedPreferences,
   UserSettings,
   UserSettingsInput,
 } from "./api.schemas";
@@ -3470,6 +3471,243 @@ export const useAiSubmitFeedback = <
   TContext
 > => {
   return useMutation(getAiSubmitFeedbackMutationOptions(options));
+};
+
+/**
+ * @summary Get the user's learned preferences profile
+ */
+export const getGetLearnProfileUrl = () => {
+  return `/api/learn/profile`;
+};
+
+export const getLearnProfile = async (
+  options?: RequestInit,
+): Promise<UserLearnedPreferences> => {
+  return customFetch<UserLearnedPreferences>(getGetLearnProfileUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLearnProfileQueryKey = () => {
+  return [`/api/learn/profile`] as const;
+};
+
+export const getGetLearnProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLearnProfile>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLearnProfile>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLearnProfileQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLearnProfile>>> = ({
+    signal,
+  }) => getLearnProfile({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLearnProfile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLearnProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLearnProfile>>
+>;
+export type GetLearnProfileQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the user's learned preferences profile
+ */
+
+export function useGetLearnProfile<
+  TData = Awaited<ReturnType<typeof getLearnProfile>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLearnProfile>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLearnProfileQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Reset the user's learned preferences (deletes all aggregated data)
+ */
+export const getResetLearnProfileUrl = () => {
+  return `/api/learn/profile`;
+};
+
+export const resetLearnProfile = async (
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getResetLearnProfileUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getResetLearnProfileMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetLearnProfile>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetLearnProfile>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["resetLearnProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetLearnProfile>>,
+    void
+  > = () => {
+    return resetLearnProfile(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResetLearnProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetLearnProfile>>
+>;
+
+export type ResetLearnProfileMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Reset the user's learned preferences (deletes all aggregated data)
+ */
+export const useResetLearnProfile = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetLearnProfile>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resetLearnProfile>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getResetLearnProfileMutationOptions(options));
+};
+
+/**
+ * @summary Manually trigger the aggregation job for the current user
+ */
+export const getTriggerLearnAggregateUrl = () => {
+  return `/api/learn/aggregate`;
+};
+
+export const triggerLearnAggregate = async (
+  options?: RequestInit,
+): Promise<UserLearnedPreferences> => {
+  return customFetch<UserLearnedPreferences>(getTriggerLearnAggregateUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getTriggerLearnAggregateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof triggerLearnAggregate>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof triggerLearnAggregate>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["triggerLearnAggregate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof triggerLearnAggregate>>,
+    void
+  > = () => {
+    return triggerLearnAggregate(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TriggerLearnAggregateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof triggerLearnAggregate>>
+>;
+
+export type TriggerLearnAggregateMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Manually trigger the aggregation job for the current user
+ */
+export const useTriggerLearnAggregate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof triggerLearnAggregate>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof triggerLearnAggregate>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getTriggerLearnAggregateMutationOptions(options));
 };
 
 /**

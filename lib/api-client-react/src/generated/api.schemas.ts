@@ -341,6 +341,31 @@ export interface MealFeedback {
   createdAt: string;
 }
 
+/**
+ * Derived from avg cook time of liked recipes
+ */
+export type UserLearnedPreferencesPreferredMealComplexity =
+  (typeof UserLearnedPreferencesPreferredMealComplexity)[keyof typeof UserLearnedPreferencesPreferredMealComplexity];
+
+export const UserLearnedPreferencesPreferredMealComplexity = {
+  simple: "simple",
+  varied: "varied",
+  mixed: "mixed",
+} as const;
+
+export interface UserLearnedPreferences {
+  userId: string;
+  /** Average total cook+prep time (minutes) of liked recipes; null if insufficient data */
+  avgPreferredPrepTime?: number | null;
+  /** Recipe IDs that were disliked (thumbs_down) >= 2x in the last 4 weeks */
+  frequentlyReplacedRecipeIds: number[];
+  /** Derived from avg cook time of liked recipes */
+  preferredMealComplexity: UserLearnedPreferencesPreferredMealComplexity;
+  /** Human-readable insight for the Heute-Screen hint banner */
+  insightMessage?: string | null;
+  updatedAt: string;
+}
+
 export type ScoreBreakdownColor =
   (typeof ScoreBreakdownColor)[keyof typeof ScoreBreakdownColor];
 

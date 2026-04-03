@@ -9,6 +9,7 @@ import todayRouter from "./today";
 import shoppingListsRouter from "./shoppingLists";
 import aiRouter from "./ai";
 import scannerRouter from "./scanner";
+import learnRouter from "./learn";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(todayRouter);
 router.use(shoppingListsRouter);
 router.use(aiRouter);
 router.use(scannerRouter);
+router.use(learnRouter);
 
 export default router;
