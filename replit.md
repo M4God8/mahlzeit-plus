@@ -104,9 +104,9 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | Aspekt | Spec | Implementiert | Grund |
 |--------|------|---------------|-------|
 | Auth | Supabase Auth | Clerk | Replit-native Integration, Nutzer bestätigt |
+| Routing | React Router v6 | wouter | Leichtgewichtiger, SSR-fähiger Router; funktional äquivalent |
 | Users-Tabelle | Separate `users` Tabelle | Keine (Clerk User-ID als FK) | Clerk verwaltet Nutzer zentral |
 | Bottom Navigation | 4 Tabs | 5 Tabs (+ Rezepte) | Design-Subagent, sinnvolle Ergänzung |
-| Ernährungsprofile | Namen nicht spezifiziert | Deutsche Profilnamen | Spec definiert nur Spalten, keine Werte |
 | Heute-Seed | Nicht spezifiziert | Starter-Plan via POST /starter | Echte User-ID bekannt erst nach Login |
 
 ## Projektphasen
