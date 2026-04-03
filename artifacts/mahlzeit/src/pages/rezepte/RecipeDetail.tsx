@@ -311,14 +311,28 @@ export default function RecipeDetail() {
                       {substituteResult && (
                         <div className="mt-3 space-y-2 animate-in fade-in duration-200">
                           {substituteResult.substitutions.map((sub, i) => (
-                            <div key={i} className="p-3 bg-muted/30 rounded-xl">
-                              <div className="flex items-center gap-2 mb-1">
+                            <div key={i} className="p-3 bg-muted/30 rounded-xl space-y-1.5">
+                              <div className="flex items-center gap-2">
                                 <span className="text-xs text-muted-foreground line-through">{sub.original}</span>
                                 <span className="text-xs text-muted-foreground">→</span>
                                 <span className="text-xs font-medium text-foreground">{sub.substitute}</span>
                                 <Badge variant="outline" className="text-xs ml-auto">{sub.ratio}</Badge>
                               </div>
-                              {sub.notes && <p className="text-xs text-muted-foreground">{sub.notes}</p>}
+                              {sub.reasoning && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium text-foreground/70">Warum: </span>{sub.reasoning}
+                                </p>
+                              )}
+                              {sub.tasteImpact && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium text-foreground/70">Geschmack: </span>{sub.tasteImpact}
+                                </p>
+                              )}
+                              {sub.notes && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium text-foreground/70">Tipp: </span>{sub.notes}
+                                </p>
+                              )}
                             </div>
                           ))}
                           {substituteResult.generalAdvice && (

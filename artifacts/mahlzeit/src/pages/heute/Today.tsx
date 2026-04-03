@@ -162,49 +162,12 @@ export default function Today() {
                           )}
                         </div>
                       </div>
-                      {(() => {
-                        const feedbackKey = `entry-${meal.id}`;
-                        const given = feedbackGiven[feedbackKey];
-                        return (
-                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30">
-                            <span className="text-xs text-muted-foreground">Hat's geschmeckt?</span>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={`h-7 w-7 p-0 rounded-full transition-all ${given === "thumbs_up" ? "text-emerald-500 bg-emerald-500/10" : "text-muted-foreground hover:text-emerald-500"}`}
-                              onClick={() => handleFeedback("thumbs_up", meal.id, meal.recipeId)}
-                              disabled={!!given || feedbackMutation.isPending}
-                              data-testid={`btn-thumbsup-${meal.mealType}`}
-                            >
-                              <ThumbsUp className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={`h-7 w-7 p-0 rounded-full transition-all ${given === "neutral" ? "text-amber-500 bg-amber-500/10" : "text-muted-foreground hover:text-amber-500"}`}
-                              onClick={() => handleFeedback("neutral", meal.id, meal.recipeId)}
-                              disabled={!!given || feedbackMutation.isPending}
-                              data-testid={`btn-neutral-${meal.mealType}`}
-                            >
-                              <Minus className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className={`h-7 w-7 p-0 rounded-full transition-all ${given === "thumbs_down" ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground hover:text-rose-500"}`}
-                              onClick={() => handleFeedback("thumbs_down", meal.id, meal.recipeId)}
-                              disabled={!!given || feedbackMutation.isPending}
-                              data-testid={`btn-thumbsdown-${meal.mealType}`}
-                            >
-                              <ThumbsDown className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        );
-                      })()}
                     </>
                   ) : (
                     <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground italic">Freie Mahlzeit</span>
+                      <span className="text-muted-foreground italic">
+                        {meal.customNote ?? "Freie Mahlzeit"}
+                      </span>
                       {activePlan && (
                         <Button
                           variant="ghost"
@@ -217,6 +180,45 @@ export default function Today() {
                       )}
                     </div>
                   )}
+                  {(() => {
+                    const feedbackKey = `entry-${meal.id}`;
+                    const given = feedbackGiven[feedbackKey];
+                    return (
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30">
+                        <span className="text-xs text-muted-foreground">Hat's geschmeckt?</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 rounded-full transition-all ${given === "thumbs_up" ? "text-emerald-500 bg-emerald-500/10" : "text-muted-foreground hover:text-emerald-500"}`}
+                          onClick={() => handleFeedback("thumbs_up", meal.id, meal.recipeId)}
+                          disabled={!!given || feedbackMutation.isPending}
+                          data-testid={`btn-thumbsup-${meal.mealType}`}
+                        >
+                          <ThumbsUp className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 rounded-full transition-all ${given === "neutral" ? "text-amber-500 bg-amber-500/10" : "text-muted-foreground hover:text-amber-500"}`}
+                          onClick={() => handleFeedback("neutral", meal.id, meal.recipeId)}
+                          disabled={!!given || feedbackMutation.isPending}
+                          data-testid={`btn-neutral-${meal.mealType}`}
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={`h-7 w-7 p-0 rounded-full transition-all ${given === "thumbs_down" ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground hover:text-rose-500"}`}
+                          onClick={() => handleFeedback("thumbs_down", meal.id, meal.recipeId)}
+                          disabled={!!given || feedbackMutation.isPending}
+                          data-testid={`btn-thumbsdown-${meal.mealType}`}
+                        >
+                          <ThumbsDown className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             ))}
