@@ -204,12 +204,14 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
         const normalizedAmount = singleAmount !== null ? singleAmount * occurrenceCount : null;
         const normalizedUnit = converted?.unit ?? baseUnit;
 
+        const rawAmountsForEntry = Array.from({ length: occurrenceCount }, () => ing.amount);
+
         const existing = mergedMap.get(key);
         if (existing) {
           if (normalizedAmount !== null && existing.hasNumericAmount) {
             existing.totalAmount = (existing.totalAmount ?? 0) + normalizedAmount;
           } else {
-            existing.rawAmounts.push(ing.amount);
+            existing.rawAmounts.push(...rawAmountsForEntry);
             existing.hasNumericAmount = false;
           }
         } else {
@@ -221,7 +223,7 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
             bioRecommended: ing.ingBio ?? false,
             ingredientId: ing.ingredientId,
             hasNumericAmount: normalizedAmount !== null,
-            rawAmounts: [ing.amount],
+            rawAmounts: rawAmountsForEntry,
           });
         }
       }
