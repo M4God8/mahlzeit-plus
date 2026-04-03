@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock, Sparkles, LayoutTemplate, PenLine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PlanCreateProps {
@@ -26,6 +26,32 @@ const CYCLE_OPTIONS = [
   { label: "14 Tage", value: 14 },
 ];
 
+type PlanMode = "manual" | "ai" | "template";
+
+const PLAN_MODES = [
+  {
+    key: "manual" as PlanMode,
+    label: "Manuell",
+    description: "Selbst befüllen",
+    icon: PenLine,
+    locked: false,
+  },
+  {
+    key: "ai" as PlanMode,
+    label: "KI-generiert",
+    description: "Kommt bald",
+    icon: Sparkles,
+    locked: true,
+  },
+  {
+    key: "template" as PlanMode,
+    label: "Vorlage",
+    description: "Kommt bald",
+    icon: LayoutTemplate,
+    locked: true,
+  },
+];
+
 export default function PlanCreate({ open, onOpenChange, onCreated }: PlanCreateProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -34,6 +60,7 @@ export default function PlanCreate({ open, onOpenChange, onCreated }: PlanCreate
   const [title, setTitle] = useState("Mein Wochenplan");
   const [cycleLengthDays, setCycleLengthDays] = useState(7);
   const [repeatEnabled, setRepeatEnabled] = useState(true);
+  const [planMode, setPlanMode] = useState<PlanMode>("manual");
 
   const handleCreate = () => {
     if (!title.trim()) {
@@ -65,6 +92,34 @@ export default function PlanCreate({ open, onOpenChange, onCreated }: PlanCreate
         </DialogHeader>
 
         <div className="space-y-5 pt-2">
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Modus</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {PLAN_MODES.map(({ key, label, description, icon: Icon, locked }) => (
+                <button
+                  key={key}
+                  disabled={locked}
+                  onClick={() => !locked && setPlanMode(key)}
+                  className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all ${
+                    planMode === key && !locked
+                      ? "bg-primary/5 border-primary text-primary"
+                      : locked
+                      ? "opacity-50 cursor-not-allowed border-border/50 text-muted-foreground"
+                      : "border-border/50 text-muted-foreground hover:border-primary/40"
+                  }`}
+                  data-testid={`btn-mode-${key}`}
+                >
+                  {locked && <Lock className="absolute top-1.5 right-1.5 w-3 h-3 text-muted-foreground/60" />}
+                  <Icon className="w-4 h-4" />
+                  <div>
+                    <div className="text-xs font-semibold leading-tight">{label}</div>
+                    <div className="text-[10px] opacity-70">{description}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="plan-title">Planname</Label>
             <Input

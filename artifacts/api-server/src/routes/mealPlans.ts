@@ -171,8 +171,15 @@ router.post("/meal-plans", requireAuth, async (req, res): Promise<void> => {
     }
     await db.insert(mealPlanDaysTable).values(days);
 
-    const detail = await getMealPlanWithDays(plan.id);
-    res.status(201).json(detail);
+    res.status(201).json({
+      id: plan.id,
+      userId: plan.userId,
+      title: plan.title,
+      cycleLengthDays: plan.cycleLengthDays,
+      repeatEnabled: plan.repeatEnabled,
+      active: plan.active,
+      createdAt: plan.createdAt instanceof Date ? plan.createdAt.toISOString() : String(plan.createdAt),
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to create meal plan");
     res.status(500).json({ error: "Internal server error" });
@@ -480,6 +487,12 @@ router.post("/meal-plans/:id/days/:dayId/entries", requireAuth, async (req, res)
     const [day] = await db.select().from(mealPlanDaysTable).where(and(eq(mealPlanDaysTable.id, dayId), eq(mealPlanDaysTable.mealPlanId, planId)));
     if (!day) { res.status(404).json({ error: "Tag nicht gefunden" }); return; }
 
+    if (parsed.data.recipeId) {
+      const [r] = await db.select().from(recipesTable).where(eq(recipesTable.id, parsed.data.recipeId)).limit(1);
+      if (!r) { res.status(404).json({ error: "Rezept nicht gefunden" }); return; }
+      if (!r.isPublic && r.userId !== userId) { res.status(403).json({ error: "Kein Zugriff auf dieses Rezept" }); return; }
+    }
+
     const [entry] = await db.insert(mealEntriesTable).values({
       mealPlanDayId: dayId,
       mealType: parsed.data.mealType,
@@ -533,6 +546,12 @@ router.put("/meal-plans/:id/days/:dayId/entries/:entryId", requireAuth, async (r
 
     const [entry] = await db.select().from(mealEntriesTable).where(and(eq(mealEntriesTable.id, entryId), eq(mealEntriesTable.mealPlanDayId, dayId)));
     if (!entry) { res.status(404).json({ error: "Eintrag nicht gefunden" }); return; }
+
+    if (parsed.data.recipeId) {
+      const [r] = await db.select().from(recipesTable).where(eq(recipesTable.id, parsed.data.recipeId)).limit(1);
+      if (!r) { res.status(404).json({ error: "Rezept nicht gefunden" }); return; }
+      if (!r.isPublic && r.userId !== userId) { res.status(403).json({ error: "Kein Zugriff auf dieses Rezept" }); return; }
+    }
 
     const [updated] = await db.update(mealEntriesTable).set({
       mealType: parsed.data.mealType,

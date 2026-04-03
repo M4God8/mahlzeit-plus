@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useListMealPlans, useActivateMealPlan, useGetActiveMealPlan } from "@workspace/api-client-react";
+import type { MealPlanDetail, MealPlanDay } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Loader2,
   Calendar as CalendarIcon,
@@ -12,18 +19,117 @@ import {
   Plus,
   Zap,
   ChevronRight,
+  ChefHat,
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+} from "date-fns";
 import { de } from "date-fns/locale";
 import PlanCreate from "./PlanCreate";
 import { useToast } from "@/hooks/use-toast";
 
 type ViewMode = "list" | "calendar";
 
+const MEAL_TYPE_LABELS: Record<string, string> = {
+  breakfast: "Frühstück",
+  lunch: "Mittagessen",
+  dinner: "Abendessen",
+  snack: "Snack",
+};
+
+const DAY_NAMES = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So", "Tag 8", "Tag 9", "Tag 10", "Tag 11", "Tag 12", "Tag 13", "Tag 14"];
+
+function getDayNumberForDate(activePlan: MealPlanDetail, date: Date): number {
+  const planStart = new Date(activePlan.createdAt);
+  planStart.setHours(0, 0, 0, 0);
+  const target = new Date(date);
+  target.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((target.getTime() - planStart.getTime()) / (24 * 60 * 60 * 1000));
+  return (diffDays % activePlan.cycleLengthDays) + 1;
+}
+
+function getPlanDayForDate(activePlan: MealPlanDetail, date: Date): MealPlanDay | undefined {
+  const dayNumber = getDayNumberForDate(activePlan, date);
+  return activePlan.days?.find(d => d.dayNumber === dayNumber);
+}
+
+interface DayDetailDialogProps {
+  open: boolean;
+  onClose: () => void;
+  date: Date | null;
+  activePlan: MealPlanDetail | null;
+  onOpenPlan: () => void;
+}
+
+function DayDetailDialog({ open, onClose, date, activePlan, onOpenPlan }: DayDetailDialogProps) {
+  if (!date || !activePlan) return null;
+
+  const planDay = getPlanDayForDate(activePlan, date);
+  const dayNumber = getDayNumberForDate(activePlan, date);
+  const dayName = DAY_NAMES[dayNumber - 1] ?? `Tag ${dayNumber}`;
+
+  const mealTypes = ["breakfast", "lunch", "dinner", "snack"];
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="rounded-2xl max-w-sm mx-auto">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl">
+            {format(date, "EEEE, d. MMM", { locale: de })}
+          </DialogTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {activePlan.title} · {dayName}
+          </p>
+        </DialogHeader>
+
+        <div className="space-y-2 mt-2">
+          {mealTypes.map(mealType => {
+            const entry = planDay?.entries?.find(e => e.mealType === mealType);
+            return (
+              <div
+                key={mealType}
+                className={`p-3 rounded-xl ${entry?.recipe ? "bg-primary/5 border border-primary/15" : "bg-muted/50 border border-dashed border-border/50"}`}
+              >
+                <div className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase mb-1">
+                  {MEAL_TYPE_LABELS[mealType] ?? mealType}
+                </div>
+                {entry?.recipe ? (
+                  <div className="font-semibold text-sm">{entry.recipe.title}</div>
+                ) : (
+                  <div className="text-xs text-muted-foreground italic">Noch kein Gericht geplant</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <Button
+          className="w-full rounded-xl mt-2"
+          variant="outline"
+          onClick={() => { onClose(); onOpenPlan(); }}
+          data-testid="btn-day-detail-open-plan"
+        >
+          <ChefHat className="w-4 h-4 mr-2" />
+          Plan bearbeiten
+        </Button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function CalendarView() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const { data: activePlan } = useGetActiveMealPlan({ query: { queryKey: ["/api/meal-plans/active"], retry: false } });
   const [, setLocation] = useLocation();
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [dayDetailOpen, setDayDetailOpen] = useState(false);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -32,26 +138,25 @@ function CalendarView() {
   const startDayOfWeek = monthStart.getDay();
   const paddingDays = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
 
-  const planCreatedAt = activePlan ? new Date(activePlan.createdAt) : null;
-  const planEndDay = planCreatedAt && activePlan
-    ? new Date(planCreatedAt.getTime() + activePlan.cycleLengthDays * 24 * 60 * 60 * 1000)
-    : null;
-
   const isDayPlanned = (date: Date) => {
-    if (!planCreatedAt || !planEndDay) return false;
-    return date >= planCreatedAt && date < planEndDay;
+    if (!activePlan) return false;
+    const planStart = new Date(activePlan.createdAt);
+    planStart.setHours(0, 0, 0, 0);
+    const target = new Date(date);
+    target.setHours(0, 0, 0, 0);
+    return target >= planStart;
   };
 
   const hasMealsOnDay = (date: Date) => {
     if (!activePlan) return false;
-    const planStart = new Date(activePlan.createdAt);
-    planStart.setHours(0, 0, 0, 0);
-    const targetDate = new Date(date);
-    targetDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.floor((targetDate.getTime() - planStart.getTime()) / (24 * 60 * 60 * 1000));
-    const dayNumber = (diffDays % activePlan.cycleLengthDays) + 1;
-    const planDay = activePlan.days?.find(d => d.dayNumber === dayNumber);
+    const planDay = getPlanDayForDate(activePlan, date);
     return planDay ? (planDay.entries?.length ?? 0) > 0 : false;
+  };
+
+  const handleDayTap = (day: Date) => {
+    if (!activePlan || !isDayPlanned(day)) return;
+    setSelectedDay(day);
+    setDayDetailOpen(true);
   };
 
   const weekDayNames = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -84,14 +189,13 @@ function CalendarView() {
           return (
             <button
               key={day.toISOString()}
-              onClick={() => {
-                if (activePlan && planned) setLocation(`/plan/${activePlan.id}`);
-              }}
+              onClick={() => handleDayTap(day)}
+              disabled={!planned}
               className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-0.5 text-sm font-medium transition-all ${
                 today ? "bg-primary text-primary-foreground" :
                 planned && hasMeals ? "bg-primary/15 text-foreground hover:bg-primary/20" :
                 planned ? "bg-muted/80 text-muted-foreground hover:bg-muted" :
-                "text-foreground/60"
+                "text-foreground/40 cursor-default"
               } ${!inMonth ? "opacity-30" : ""}`}
               data-testid={`cal-day-${format(day, "d")}`}
             >
@@ -110,6 +214,7 @@ function CalendarView() {
             <div>
               <div className="text-xs text-muted-foreground mb-1">Aktiver Plan</div>
               <div className="font-display font-bold">{activePlan.title}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{activePlan.cycleLengthDays} Tage · Tippe auf einen Tag für Details</div>
             </div>
             <Button size="sm" variant="outline" className="rounded-full" onClick={() => setLocation(`/plan/${activePlan.id}`)}>
               Öffnen
@@ -121,6 +226,14 @@ function CalendarView() {
           Kein aktiver Plan. Erstelle einen Plan, um Tage zu markieren.
         </div>
       )}
+
+      <DayDetailDialog
+        open={dayDetailOpen}
+        onClose={() => { setDayDetailOpen(false); setSelectedDay(null); }}
+        date={selectedDay}
+        activePlan={activePlan ?? null}
+        onOpenPlan={() => activePlan && setLocation(`/plan/${activePlan.id}`)}
+      />
     </div>
   );
 }
@@ -217,10 +330,14 @@ export default function Plan() {
                           <CalendarIcon className="w-3.5 h-3.5" />
                           {plan.cycleLengthDays} Tage
                         </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50 inline-block" />
+                          Manuell
+                        </span>
                         {plan.repeatEnabled && (
                           <span className="flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />
-                            Wiederholt sich
+                            Loop
                           </span>
                         )}
                       </div>
