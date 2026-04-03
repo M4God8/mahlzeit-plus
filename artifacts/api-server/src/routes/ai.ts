@@ -291,9 +291,9 @@ Antworte mit folgendem JSON:
   "name": "Angepasster Rezeptname",
   "description": "Kurze Beschreibung",
   "instructions": "Angepasste Zubereitung",
-  "servings": ${ctx.householdSize},
-  "prepTime": 15,
-  "cookTime": 25,
+  "servings": ${recipe.servings},
+  "prepTime": ${recipe.prepTime},
+  "cookTime": ${recipe.cookTime},
   "tags": ["tag1"],
   "ingredients": [
     {"name": "Zutat", "amount": "200", "unit": "g"}
@@ -452,6 +452,11 @@ router.post("/ai/save-recipe", requireAuth, async (req, res) => {
 router.post("/ai/feedback", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const body = AiSubmitFeedbackBody.parse(req.body);
+
+  if (body.mealEntryId == null && body.recipeId == null) {
+    res.status(400).json({ error: "mealEntryId oder recipeId muss angegeben werden" });
+    return;
+  }
 
   let mealEntryOwnershipVerified = false;
 
