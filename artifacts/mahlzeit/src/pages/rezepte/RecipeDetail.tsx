@@ -3,7 +3,7 @@ import { Link, useRoute, useLocation } from "wouter";
 import { useGetRecipe, useDeleteRecipe, useAiAdjustRecipe, useAiSubstituteIngredient } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, Clock, Users, Flame, ChefHat, Trash2, Edit2, Loader2, Sparkles, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronLeft, Clock, Users, Flame, ChefHat, Trash2, Edit2, Loader2, Sparkles, RefreshCw, ChevronDown, ChevronUp, ArrowLeftRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ export default function RecipeDetail() {
   const [adjustPrompt, setAdjustPrompt] = useState("");
   const [adjustedRecipe, setAdjustedRecipe] = useState<AiRecipeOutput | null>(null);
   const [substituteResult, setSubstituteResult] = useState<AiSubstituteOutput | null>(null);
+  const [substitutingIngredient, setSubstitutingIngredient] = useState<string | null>(null);
 
   const { data: recipe, isLoading } = useGetRecipe(id, {
     query: { enabled: !!id, queryKey: ["/api/recipes", id.toString()] }
@@ -56,12 +57,11 @@ export default function RecipeDetail() {
     adjustMutation.mutate({ data: { recipeId: id, adjustmentPrompt: adjustPrompt } });
   };
 
-  const handleSubstitute = () => {
-    if (!recipe?.ingredients?.length) return;
-    const ingredientNames = recipe.ingredients
-      .map((i) => i.customName || i.ingredientName || "")
-      .filter(Boolean);
-    substituteMutation.mutate({ data: { recipeId: id, ingredients: ingredientNames } });
+  const handleSubstituteIngredient = (ingredientName: string) => {
+    setSubstitutingIngredient(ingredientName);
+    setSubstituteResult(null);
+    setShowAiTools(true);
+    substituteMutation.mutate({ data: { recipeId: id, ingredients: [ingredientName] } });
   };
 
   const handleDelete = () => {
@@ -198,13 +198,28 @@ export default function RecipeDetail() {
           <section>
             <h3 className="font-display text-2xl font-bold mb-4">Zutaten</h3>
             {recipe.ingredients && recipe.ingredients.length > 0 ? (
-              <ul className="space-y-3">
-                {recipe.ingredients.map((ing, i) => (
-                  <li key={i} className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
-                    <span className="font-medium">{ing.customName || ing.ingredientName || "Zutat"}</span>
-                    <span className="font-mono text-primary font-semibold">{ing.amount} {ing.unit}</span>
-                  </li>
-                ))}
+              <ul className="space-y-2">
+                {recipe.ingredients.map((ing, i) => {
+                  const ingName = ing.customName || ing.ingredientName || "Zutat";
+                  const isSubbing = substitutingIngredient === ingName && substituteMutation.isPending;
+                  return (
+                    <li key={i} className="flex items-center gap-2 p-3 rounded-xl bg-muted/30 group">
+                      <span className="font-medium flex-1">{ingName}</span>
+                      <span className="font-mono text-primary font-semibold text-sm">{ing.amount} {ing.unit}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        title={`Alternative für ${ingName} suchen`}
+                        disabled={substituteMutation.isPending}
+                        onClick={() => handleSubstituteIngredient(ingName)}
+                        data-testid={`btn-substitute-${i}`}
+                      >
+                        {isSubbing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                      </Button>
+                    </li>
+                  );
+                })}
               </ul>
             ) : (
               <div className="p-4 rounded-xl bg-muted/30 text-muted-foreground text-sm italic">
@@ -287,26 +302,23 @@ export default function RecipeDetail() {
                       <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-primary" />
                         Zutaten-Alternativen
+                        {substitutingIngredient && (
+                          <span className="text-xs font-normal text-muted-foreground ml-auto">für „{substitutingIngredient}"</span>
+                        )}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="pt-0 space-y-3">
-                      <p className="text-xs text-muted-foreground">
-                        Finde Alternativen für alle Zutaten dieses Rezepts.
-                      </p>
-                      <Button
-                        onClick={handleSubstitute}
-                        disabled={substituteMutation.isPending}
-                        size="sm"
-                        variant="outline"
-                        className="w-full"
-                        data-testid="btn-substitute"
-                      >
-                        {substituteMutation.isPending ? (
-                          <><Loader2 className="w-3 h-3 mr-2 animate-spin" />Suche Alternativen…</>
-                        ) : (
-                          <><RefreshCw className="w-3 h-3 mr-2" />Alternativen finden</>
-                        )}
-                      </Button>
+                      {substituteMutation.isPending ? (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Suche Alternativen für „{substitutingIngredient}"…
+                        </div>
+                      ) : !substituteResult ? (
+                        <p className="text-xs text-muted-foreground">
+                          Klicke auf <ArrowLeftRight className="w-3 h-3 inline mx-0.5" /> neben einer Zutat, um eine Alternative zu suchen.
+                        </p>
+                      ) : null}
+                      <div data-testid="btn-substitute" className="hidden" />
 
                       {substituteResult && (
                         <div className="mt-3 space-y-2 animate-in fade-in duration-200">
