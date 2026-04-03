@@ -91,7 +91,7 @@ function ProductResult({ product, onReset }: { product: ScannedProduct; onReset:
           {fitsProfile ? (
             <><CheckCircle2 className="w-4 h-4 mr-1.5 inline" />Passt zu deinem Profil ✅</>
           ) : (
-            <><XCircle className="w-4 h-4 mr-1.5 inline" />Ausschluss gefunden ❌</>
+            <><XCircle className="w-4 h-4 mr-1.5 inline" />Passt nicht (Ausschluss: {product.profileFitExclusions[0]}) ❌</>
           )}
         </Badge>
       </div>

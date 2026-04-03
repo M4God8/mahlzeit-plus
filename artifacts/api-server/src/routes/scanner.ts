@@ -60,27 +60,32 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
     return;
   }
 
-  const product = await fetchProductFromOff(barcode);
+  const offResult = await fetchProductFromOff(barcode);
 
-  if (!product) {
+  if (offResult === "upstream_error") {
+    res.status(502).json({ error: "Externer Dienst nicht erreichbar — bitte erneut versuchen" });
+    return;
+  }
+
+  if (offResult === null) {
     res.status(404).json({ error: "Produkt nicht gefunden" });
     return;
   }
 
   const excludedIngredients = await getExcludedIngredients(userId);
-  const score = calculateScore(product, excludedIngredients);
+  const score = calculateScore(offResult, excludedIngredients);
 
   const [inserted] = await db
     .insert(scannedProductsTable)
     .values({
       barcode,
       userId,
-      productName: product.productName,
-      brand: product.brand,
-      imageUrl: product.imageUrl,
-      ingredients: product.ingredients,
-      nutriments: product.nutriments as Record<string, unknown>,
-      labels: product.labels,
+      productName: offResult.productName,
+      brand: offResult.brand,
+      imageUrl: offResult.imageUrl,
+      ingredients: offResult.ingredients,
+      nutriments: offResult.nutriments as Record<string, unknown>,
+      labels: offResult.labels,
       scoreNaturalness: score.naturalness,
       scoreNutrientBalance: score.nutrientBalance,
       scoreProfileFit: score.profileFit,
@@ -135,14 +140,38 @@ router.get("/scanner/score/:barcode", requireAuth, async (req, res) => {
     return;
   }
 
-  const product = await fetchProductFromOff(barcode);
-  if (!product) {
+  const offResult = await fetchProductFromOff(barcode);
+
+  if (offResult === "upstream_error") {
+    res.status(502).json({ error: "Externer Dienst nicht erreichbar — bitte erneut versuchen" });
+    return;
+  }
+
+  if (offResult === null) {
     res.status(404).json({ error: "Produkt nicht gefunden" });
     return;
   }
 
   const excludedIngredients = await getExcludedIngredients(userId);
-  const score = calculateScore(product, excludedIngredients);
+  const score = calculateScore(offResult, excludedIngredients);
+
+  await db.insert(scannedProductsTable).values({
+    barcode,
+    userId,
+    productName: offResult.productName,
+    brand: offResult.brand,
+    imageUrl: offResult.imageUrl,
+    ingredients: offResult.ingredients,
+    nutriments: offResult.nutriments as Record<string, unknown>,
+    labels: offResult.labels,
+    scoreNaturalness: score.naturalness,
+    scoreNutrientBalance: score.nutrientBalance,
+    scoreProfileFit: score.profileFit,
+    scoreQualityBonus: score.qualityBonus,
+    totalScore: score.total,
+    profileFitExclusions: score.profileFitExclusions,
+  });
+
   res.json(score);
 });
 

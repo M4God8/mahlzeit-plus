@@ -37,7 +37,9 @@ interface OffApiResponse {
 const OFF_BASE = "https://world.openfoodfacts.org/api/v2/product";
 const TIMEOUT_MS = 8000;
 
-export async function fetchProductFromOff(barcode: string): Promise<OffProduct | null> {
+export type OffResult = OffProduct | null | "upstream_error";
+
+export async function fetchProductFromOff(barcode: string): Promise<OffResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -50,7 +52,7 @@ export async function fetchProductFromOff(barcode: string): Promise<OffProduct |
       }
     );
 
-    if (!res.ok) return null;
+    if (!res.ok) return "upstream_error";
 
     const json = (await res.json()) as OffApiResponse;
     if (json.status !== 1 || !json.product) return null;
@@ -80,8 +82,9 @@ export async function fetchProductFromOff(barcode: string): Promise<OffProduct |
       nutriments,
       labels,
     };
-  } catch {
-    return null;
+  } catch (err) {
+    const isAbort = err instanceof DOMException && err.name === "AbortError";
+    return isAbort ? "upstream_error" : "upstream_error";
   } finally {
     clearTimeout(timer);
   }
