@@ -58,15 +58,18 @@ export const GetUserSettingsResponse = zod.object({
   cookTimeLimit: zod.number(),
   bioPreferred: zod.boolean(),
   profile: zod
-    .object({
-      id: zod.number(),
-      name: zod.string(),
-      description: zod.string(),
-      excludedIngredients: zod.array(zod.string()),
-      preferredCategories: zod.array(zod.string()),
-      mealStyle: zod.string(),
-      energyLabel: zod.string(),
-    })
+    .union([
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        description: zod.string(),
+        excludedIngredients: zod.array(zod.string()),
+        preferredCategories: zod.array(zod.string()),
+        mealStyle: zod.string(),
+        energyLabel: zod.string(),
+      }),
+      zod.null(),
+    ])
     .optional(),
 });
 
@@ -89,15 +92,18 @@ export const CreateOrUpdateUserSettingsResponse = zod.object({
   cookTimeLimit: zod.number(),
   bioPreferred: zod.boolean(),
   profile: zod
-    .object({
-      id: zod.number(),
-      name: zod.string(),
-      description: zod.string(),
-      excludedIngredients: zod.array(zod.string()),
-      preferredCategories: zod.array(zod.string()),
-      mealStyle: zod.string(),
-      energyLabel: zod.string(),
-    })
+    .union([
+      zod.object({
+        id: zod.number(),
+        name: zod.string(),
+        description: zod.string(),
+        excludedIngredients: zod.array(zod.string()),
+        preferredCategories: zod.array(zod.string()),
+        mealStyle: zod.string(),
+        energyLabel: zod.string(),
+      }),
+      zod.null(),
+    ])
     .optional(),
 });
 

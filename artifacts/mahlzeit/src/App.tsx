@@ -102,13 +102,39 @@ function useHasUserSettings() {
   });
 }
 
+function AuthErrorFallback() {
+  const { signOut } = useClerk();
+  return (
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4 bg-background text-foreground px-6 text-center">
+      <p className="text-lg font-semibold">Verbindungsfehler</p>
+      <p className="text-sm text-muted-foreground">Die Einstellungen konnten nicht geladen werden. Bitte versuche es erneut.</p>
+      <div className="flex gap-3">
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium"
+        >
+          Erneut versuchen
+        </button>
+        <button
+          onClick={() => signOut()}
+          className="px-4 py-2 rounded-md border text-sm font-medium"
+        >
+          Abmelden
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function HomeRedirect() {
-  const { data: hasSettings, isPending } = useHasUserSettings();
+  const { data: hasSettings, isPending, isError } = useHasUserSettings();
 
   return (
     <>
       <Show when="signed-in">
-        {isPending || hasSettings === undefined ? (
+        {isError ? (
+          <AuthErrorFallback />
+        ) : isPending || hasSettings === undefined ? (
           <div className="min-h-[100dvh] flex items-center justify-center bg-background">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
@@ -135,7 +161,9 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 }
 
 function OnboardingGuard({ children }: { children: React.ReactNode }) {
-  const { data: hasSettings, isPending } = useHasUserSettings();
+  const { data: hasSettings, isPending, isError } = useHasUserSettings();
+
+  if (isError) return <AuthErrorFallback />;
 
   if (isPending || hasSettings === undefined) {
     return (

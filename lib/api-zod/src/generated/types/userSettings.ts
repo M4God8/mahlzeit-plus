@@ -15,5 +15,5 @@ export interface UserSettings {
   budgetLevel: string;
   cookTimeLimit: number;
   bioPreferred: boolean;
-  profile?: NutritionProfile;
+  profile?: NutritionProfile | null;
 }

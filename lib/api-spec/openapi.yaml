@@ -377,7 +377,9 @@ components:
         bioPreferred:
           type: boolean
         profile:
-          $ref: "#/components/schemas/NutritionProfile"
+          oneOf:
+            - $ref: "#/components/schemas/NutritionProfile"
+            - type: "null"
       required:
         - userId
         - householdSize
