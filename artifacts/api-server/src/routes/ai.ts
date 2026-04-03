@@ -39,6 +39,7 @@ interface LearnedPrefs {
   avgPreferredPrepTime: number | null;
   preferredMealComplexity: string;
   frequentlyReplacedRecipeIds: number[];
+  frequentlyReplacedRecipeTitles: string[];
 }
 
 interface UserContext {
@@ -59,13 +60,24 @@ async function getUserContext(userId: string): Promise<UserContext> {
     db.select().from(userLearnedPreferencesTable).where(eq(userLearnedPreferencesTable.userId, userId)),
   ]);
 
-  const learnedPrefs: LearnedPrefs | null = learnedRow
-    ? {
-        avgPreferredPrepTime: learnedRow.avgPreferredPrepTime,
-        preferredMealComplexity: learnedRow.preferredMealComplexity,
-        frequentlyReplacedRecipeIds: learnedRow.frequentlyReplacedRecipeIds,
-      }
-    : null;
+  let learnedPrefs: LearnedPrefs | null = null;
+  if (learnedRow) {
+    const ids = learnedRow.frequentlyReplacedRecipeIds;
+    let frequentlyReplacedRecipeTitles: string[] = [];
+    if (ids.length > 0) {
+      const recipeRows = await db
+        .select({ id: recipesTable.id, title: recipesTable.title })
+        .from(recipesTable)
+        .where(inArray(recipesTable.id, ids));
+      frequentlyReplacedRecipeTitles = recipeRows.map((r) => r.title);
+    }
+    learnedPrefs = {
+      avgPreferredPrepTime: learnedRow.avgPreferredPrepTime,
+      preferredMealComplexity: learnedRow.preferredMealComplexity,
+      frequentlyReplacedRecipeIds: ids,
+      frequentlyReplacedRecipeTitles,
+    };
+  }
 
   if (!settings) {
     return {
@@ -133,7 +145,12 @@ function buildContextBlock(ctx: UserContext): string {
     };
     lines.push(`Mahlzeitkomplexität-Präferenz: ${complexityMap[ctx.learnedPrefs.preferredMealComplexity] ?? "ausgewogen"}`);
     if (ctx.learnedPrefs.frequentlyReplacedRecipeIds.length > 0) {
-      lines.push(`Häufig abgelehnte Rezepte (IDs, BITTE VERMEIDEN): ${ctx.learnedPrefs.frequentlyReplacedRecipeIds.join(", ")}`);
+      const titles = ctx.learnedPrefs.frequentlyReplacedRecipeTitles;
+      const recipeList =
+        titles.length > 0
+          ? titles.join(", ")
+          : ctx.learnedPrefs.frequentlyReplacedRecipeIds.map((id) => `ID ${id}`).join(", ");
+      lines.push(`Häufig abgelehnte Rezepte (BITTE VERMEIDEN): ${recipeList}`);
     }
   } else {
     lines.push("\n--- Gelerntes Nutzerprofil ({{learned_preferences}}) ---");
