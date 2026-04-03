@@ -544,6 +544,9 @@ router.put("/meal-plans/:id/days/:dayId/entries/:entryId", requireAuth, async (r
     const [plan] = await db.select().from(mealPlansTable).where(and(eq(mealPlansTable.id, planId), eq(mealPlansTable.userId, userId)));
     if (!plan) { res.status(403).json({ error: "Zugriff verweigert" }); return; }
 
+    const [day] = await db.select().from(mealPlanDaysTable).where(and(eq(mealPlanDaysTable.id, dayId), eq(mealPlanDaysTable.mealPlanId, planId)));
+    if (!day) { res.status(404).json({ error: "Tag nicht gefunden" }); return; }
+
     const [entry] = await db.select().from(mealEntriesTable).where(and(eq(mealEntriesTable.id, entryId), eq(mealEntriesTable.mealPlanDayId, dayId)));
     if (!entry) { res.status(404).json({ error: "Eintrag nicht gefunden" }); return; }
 
@@ -599,6 +602,9 @@ router.delete("/meal-plans/:id/days/:dayId/entries/:entryId", requireAuth, async
 
     const [plan] = await db.select().from(mealPlansTable).where(and(eq(mealPlansTable.id, planId), eq(mealPlansTable.userId, userId)));
     if (!plan) { res.status(403).json({ error: "Zugriff verweigert" }); return; }
+
+    const [day] = await db.select().from(mealPlanDaysTable).where(and(eq(mealPlanDaysTable.id, dayId), eq(mealPlanDaysTable.mealPlanId, planId)));
+    if (!day) { res.status(404).json({ error: "Tag nicht gefunden" }); return; }
 
     const [entry] = await db.select().from(mealEntriesTable).where(and(eq(mealEntriesTable.id, entryId), eq(mealEntriesTable.mealPlanDayId, dayId)));
     if (!entry) { res.status(404).json({ error: "Eintrag nicht gefunden" }); return; }
