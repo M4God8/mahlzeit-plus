@@ -168,6 +168,7 @@ export interface MealEntryInput {
 }
 
 export interface TodayMealEntry {
+  id: number;
   mealType: string;
   /** @nullable */
   recipeName?: string | null;
@@ -282,6 +283,8 @@ export interface AiSubstitution {
   original: string;
   substitute: string;
   ratio: string;
+  reasoning: string;
+  tasteImpact: string;
   notes?: string;
 }
 

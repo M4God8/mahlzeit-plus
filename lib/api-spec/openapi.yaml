@@ -1220,6 +1220,8 @@ components:
     TodayMealEntry:
       type: object
       properties:
+        id:
+          type: integer
         mealType:
           type: string
         recipeName:
@@ -1235,6 +1237,7 @@ components:
         energyType:
           type: ["string", "null"]
       required:
+        - id
         - mealType
 
     TodaySummary:
@@ -1463,12 +1466,18 @@ components:
           type: string
         ratio:
           type: string
+        reasoning:
+          type: string
+        tasteImpact:
+          type: string
         notes:
           type: string
       required:
         - original
         - substitute
         - ratio
+        - reasoning
+        - tasteImpact
 
     AiSubstituteOutput:
       type: object

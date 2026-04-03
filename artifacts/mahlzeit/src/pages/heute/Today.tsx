@@ -43,8 +43,8 @@ export default function Today() {
   const feedbackMutation = useAiSubmitFeedback({
     mutation: {
       onSuccess: (_, variables) => {
-        const { rating, recipeId, mealEntryId } = variables.data;
-        const key = recipeId ? `recipe-${recipeId}` : `entry-${mealEntryId}`;
+        const { rating, mealEntryId } = variables.data;
+        const key = `entry-${mealEntryId}`;
         setFeedbackGiven((prev) => ({ ...prev, [key]: rating }));
         toast({
           title: rating === "thumbs_up" ? "👍 Danke!" : rating === "thumbs_down" ? "👎 Schade! Wir merken uns das." : "😐 Feedback gespeichert.",
@@ -54,8 +54,8 @@ export default function Today() {
     },
   });
 
-  const handleFeedback = (rating: "thumbs_up" | "neutral" | "thumbs_down", recipeId?: number | null) => {
-    feedbackMutation.mutate({ data: { rating, recipeId: recipeId ?? undefined } });
+  const handleFeedback = (rating: "thumbs_up" | "neutral" | "thumbs_down", mealEntryId: number, recipeId?: number | null) => {
+    feedbackMutation.mutate({ data: { rating, mealEntryId, recipeId: recipeId ?? undefined } });
   };
 
   const handleGenerateList = () => {
@@ -162,8 +162,8 @@ export default function Today() {
                           )}
                         </div>
                       </div>
-                      {meal.recipeId && (() => {
-                        const feedbackKey = `recipe-${meal.recipeId}`;
+                      {(() => {
+                        const feedbackKey = `entry-${meal.id}`;
                         const given = feedbackGiven[feedbackKey];
                         return (
                           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30">
@@ -172,7 +172,7 @@ export default function Today() {
                               variant="ghost"
                               size="sm"
                               className={`h-7 w-7 p-0 rounded-full transition-all ${given === "thumbs_up" ? "text-emerald-500 bg-emerald-500/10" : "text-muted-foreground hover:text-emerald-500"}`}
-                              onClick={() => handleFeedback("thumbs_up", meal.recipeId)}
+                              onClick={() => handleFeedback("thumbs_up", meal.id, meal.recipeId)}
                               disabled={!!given || feedbackMutation.isPending}
                               data-testid={`btn-thumbsup-${meal.mealType}`}
                             >
@@ -182,7 +182,7 @@ export default function Today() {
                               variant="ghost"
                               size="sm"
                               className={`h-7 w-7 p-0 rounded-full transition-all ${given === "neutral" ? "text-amber-500 bg-amber-500/10" : "text-muted-foreground hover:text-amber-500"}`}
-                              onClick={() => handleFeedback("neutral", meal.recipeId)}
+                              onClick={() => handleFeedback("neutral", meal.id, meal.recipeId)}
                               disabled={!!given || feedbackMutation.isPending}
                               data-testid={`btn-neutral-${meal.mealType}`}
                             >
@@ -192,7 +192,7 @@ export default function Today() {
                               variant="ghost"
                               size="sm"
                               className={`h-7 w-7 p-0 rounded-full transition-all ${given === "thumbs_down" ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground hover:text-rose-500"}`}
-                              onClick={() => handleFeedback("thumbs_down", meal.recipeId)}
+                              onClick={() => handleFeedback("thumbs_down", meal.id, meal.recipeId)}
                               disabled={!!given || feedbackMutation.isPending}
                               data-testid={`btn-thumbsdown-${meal.mealType}`}
                             >

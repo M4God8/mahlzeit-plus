@@ -37,6 +37,9 @@ interface UserContext {
   budgetLevel: string;
   bioPreferred: boolean;
   profileNames: string[];
+  excludedIngredients: string[];
+  preferredCategories: string[];
+  mealStyles: string[];
 }
 
 async function getUserContext(userId: string): Promise<UserContext> {
@@ -46,16 +49,32 @@ async function getUserContext(userId: string): Promise<UserContext> {
     .where(eq(userSettingsTable.userId, userId));
 
   if (!settings) {
-    return { householdSize: 2, cookTimeLimit: 30, budgetLevel: "medium", bioPreferred: false, profileNames: [] };
+    return {
+      householdSize: 2,
+      cookTimeLimit: 30,
+      budgetLevel: "medium",
+      bioPreferred: false,
+      profileNames: [],
+      excludedIngredients: [],
+      preferredCategories: [],
+      mealStyles: [],
+    };
   }
 
   let profileNames: string[] = [];
+  let excludedIngredients: string[] = [];
+  let preferredCategories: string[] = [];
+  let mealStyles: string[] = [];
+
   if (settings.activeProfileIds.length > 0) {
     const profiles = await db
-      .select({ name: nutritionProfilesTable.name })
+      .select()
       .from(nutritionProfilesTable)
       .where(inArray(nutritionProfilesTable.id, settings.activeProfileIds));
     profileNames = profiles.map((p) => p.name);
+    excludedIngredients = [...new Set(profiles.flatMap((p) => p.excludedIngredients))];
+    preferredCategories = [...new Set(profiles.flatMap((p) => p.preferredCategories))];
+    mealStyles = [...new Set(profiles.map((p) => p.mealStyle))];
   }
 
   return {
@@ -64,6 +83,9 @@ async function getUserContext(userId: string): Promise<UserContext> {
     budgetLevel: settings.budgetLevel,
     bioPreferred: settings.bioPreferred,
     profileNames,
+    excludedIngredients,
+    preferredCategories,
+    mealStyles,
   };
 }
 
@@ -74,6 +96,9 @@ function buildContextBlock(ctx: UserContext): string {
   lines.push(`Budget: ${ctx.budgetLevel === "low" ? "sparsam" : ctx.budgetLevel === "high" ? "großzügig" : "mittel"}`);
   if (ctx.bioPreferred) lines.push("Bio-Produkte werden bevorzugt.");
   if (ctx.profileNames.length > 0) lines.push(`Ernährungsstil: ${ctx.profileNames.join(", ")}`);
+  if (ctx.mealStyles.length > 0) lines.push(`Mahlzeitenstil: ${ctx.mealStyles.join(", ")}`);
+  if (ctx.preferredCategories.length > 0) lines.push(`Bevorzugte Kategorien: ${ctx.preferredCategories.join(", ")}`);
+  if (ctx.excludedIngredients.length > 0) lines.push(`AUSGESCHLOSSENE ZUTATEN (NIEMALS verwenden): ${ctx.excludedIngredients.join(", ")}`);
   return lines.join("\n");
 }
 
@@ -315,6 +340,8 @@ ${buildContextBlock(ctx)}
 Für das Rezept "${recipe.title}" werden Alternativen gesucht für: ${body.ingredients.join(", ")}.
 ${body.reason ? `Grund: ${body.reason}` : ""}
 
+Beachte besonders die ausgeschlossenen Zutaten aus dem Nutzerprofil — diese dürfen NICHT als Ersatz vorgeschlagen werden.
+
 Antworte mit folgendem JSON:
 {
   "substitutions": [
@@ -322,7 +349,9 @@ Antworte mit folgendem JSON:
       "original": "Original-Zutat",
       "substitute": "Ersatz-Zutat",
       "ratio": "1:1",
-      "notes": "Hinweis zur Verwendung"
+      "reasoning": "Warum dieser Ersatz funktioniert (Textur, Funktion im Rezept)",
+      "tasteImpact": "Wie der Geschmack sich verändert (leichter, süßer, nussiger etc.)",
+      "notes": "Praktische Hinweise zur Verwendung"
     }
   ],
   "generalAdvice": "Allgemeiner Rat zum Ersetzen"

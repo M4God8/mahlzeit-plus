@@ -727,6 +727,7 @@ export const GetTodayMealsResponse = zod.object({
   planTitle: zod.string().nullish(),
   meals: zod.array(
     zod.object({
+      id: zod.number(),
       mealType: zod.string(),
       recipeName: zod.string().nullish(),
       cookTime: zod.number().nullish(),
@@ -951,6 +952,8 @@ export const AiSubstituteIngredientResponse = zod.object({
       original: zod.string(),
       substitute: zod.string(),
       ratio: zod.string(),
+      reasoning: zod.string(),
+      tasteImpact: zod.string(),
       notes: zod.string().optional(),
     }),
   ),

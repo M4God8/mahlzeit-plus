@@ -9,6 +9,7 @@ const router = Router();
 const GERMAN_DAYS = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 
 interface TodayMealEntry {
+  id: number;
   mealType: string;
   recipeName: string | null;
   cookTime: number | null;
@@ -90,6 +91,7 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
       dayName,
       planTitle: activePlan.title,
       meals: sortedEntries.map((e): TodayMealEntry => ({
+        id: e.id,
         mealType: e.mealType,
         recipeName: e.recipeTitle ?? null,
         cookTime: e.recipeCookTime ?? null,

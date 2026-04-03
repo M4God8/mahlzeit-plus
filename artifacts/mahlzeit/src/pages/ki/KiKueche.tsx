@@ -1,15 +1,23 @@
 import { useState } from "react";
-import { useAiGenerateRecipe, useAiGeneratePlan, useAiSaveRecipe, useAiSubmitFeedback } from "@workspace/api-client-react";
+import { useAiGenerateRecipe, useAiGeneratePlan, useAiSaveRecipe, useAiSubmitFeedback, useGetActiveMealPlan, useAddMealEntry } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Sparkles, ChefHat, CalendarDays, Save, Clock, Users } from "lucide-react";
+import { Loader2, Sparkles, ChefHat, CalendarDays, Save, Clock, Users, CalendarPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AiRecipeOutput, AiPlanOutput } from "@workspace/api-client-react";
 
 type Tab = "rezept" | "plan";
+
+const MEAL_TYPE_OPTIONS = [
+  { value: "breakfast", label: "Frühstück" },
+  { value: "lunch", label: "Mittagessen" },
+  { value: "dinner", label: "Abendessen" },
+  { value: "snack", label: "Snack" },
+];
 
 export default function KiKueche() {
   const [activeTab, setActiveTab] = useState<Tab>("rezept");
@@ -17,13 +25,22 @@ export default function KiKueche() {
   const [planPreferences, setPlanPreferences] = useState("");
   const [generatedRecipe, setGeneratedRecipe] = useState<AiRecipeOutput | null>(null);
   const [generatedPlan, setGeneratedPlan] = useState<AiPlanOutput | null>(null);
+  const [savedRecipeId, setSavedRecipeId] = useState<number | null>(null);
+  const [showPlanInsert, setShowPlanInsert] = useState(false);
+  const [insertDayId, setInsertDayId] = useState<number | null>(null);
+  const [insertMealType, setInsertMealType] = useState("lunch");
 
   const { toast } = useToast();
+
+  const activePlanQuery = useGetActiveMealPlan();
+  const addEntryMutation = useAddMealEntry();
 
   const generateRecipeMutation = useAiGenerateRecipe({
     mutation: {
       onSuccess: (data) => {
         setGeneratedRecipe(data);
+        setSavedRecipeId(null);
+        setShowPlanInsert(false);
         toast({ title: "Rezept generiert!", description: data.name });
       },
       onError: () => {
@@ -46,10 +63,9 @@ export default function KiKueche() {
 
   const saveRecipeMutation = useAiSaveRecipe({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (data) => {
         toast({ title: "Gespeichert!", description: "Das Rezept wurde in deiner Sammlung gespeichert." });
-        setGeneratedRecipe(null);
-        setRecipePrompt("");
+        setSavedRecipeId(data.id);
       },
       onError: () => {
         toast({ title: "Fehler", description: "Rezept konnte nicht gespeichert werden.", variant: "destructive" });
@@ -70,6 +86,25 @@ export default function KiKueche() {
   const handleSaveRecipe = () => {
     if (!generatedRecipe) return;
     saveRecipeMutation.mutate({ data: generatedRecipe });
+  };
+
+  const handleAddToActivePlan = () => {
+    if (!savedRecipeId || !insertDayId || !activePlanQuery.data) return;
+    addEntryMutation.mutate(
+      { id: activePlanQuery.data.id, dayId: insertDayId, data: { mealType: insertMealType, recipeId: savedRecipeId } },
+      {
+        onSuccess: () => {
+          toast({ title: "Zum Plan hinzugefügt!", description: "Das Rezept wurde deinem aktiven Plan hinzugefügt." });
+          setShowPlanInsert(false);
+          setGeneratedRecipe(null);
+          setSavedRecipeId(null);
+          setRecipePrompt("");
+        },
+        onError: () => {
+          toast({ title: "Fehler beim Hinzufügen", variant: "destructive" });
+        },
+      }
+    );
   };
 
   return (
@@ -145,6 +180,7 @@ export default function KiKueche() {
             </Card>
 
             {generatedRecipe && (
+              <>
               <Card className="border-primary/20 bg-primary/5 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between gap-2">
@@ -220,6 +256,75 @@ export default function KiKueche() {
                   </div>
                 </CardContent>
               </Card>
+
+              {savedRecipeId && (
+                <Card className="border-primary/20 bg-primary/5 animate-in fade-in duration-200">
+                  <CardContent className="pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <CalendarPlus className="w-4 h-4 text-primary" />
+                      <p className="text-sm font-semibold text-foreground">In aktiven Plan einfügen</p>
+                    </div>
+                    {!showPlanInsert ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => setShowPlanInsert(true)}
+                      >
+                        <CalendarPlus className="w-3 h-3 mr-1" />
+                        Plan-Tag auswählen
+                      </Button>
+                    ) : activePlanQuery.isLoading ? (
+                      <div className="flex justify-center py-2">
+                        <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                      </div>
+                    ) : !activePlanQuery.data ? (
+                      <p className="text-xs text-muted-foreground">Kein aktiver Plan vorhanden. Erstelle zuerst einen Plan.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <Select value={insertDayId?.toString() ?? ""} onValueChange={(v) => setInsertDayId(parseInt(v))}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Tag wählen…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {activePlanQuery.data.days.sort((a, b) => a.dayNumber - b.dayNumber).map((day) => (
+                              <SelectItem key={day.id} value={day.id.toString()} className="text-xs">
+                                Tag {day.dayNumber}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Select value={insertMealType} onValueChange={setInsertMealType}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MEAL_TYPE_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          onClick={handleAddToActivePlan}
+                          disabled={!insertDayId || addEntryMutation.isPending}
+                        >
+                          {addEntryMutation.isPending ? (
+                            <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                          ) : (
+                            <CalendarPlus className="w-3 h-3 mr-1" />
+                          )}
+                          Zum Plan hinzufügen
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+              </>
             )}
           </div>
         )}
