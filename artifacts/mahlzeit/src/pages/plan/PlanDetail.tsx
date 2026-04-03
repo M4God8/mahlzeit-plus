@@ -12,12 +12,14 @@ import {
   useDeleteMealPlan,
   useListRecipes,
   useGenerateShoppingList,
+  useAiGeneratePlan,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { MealPlanDetail, MealPlanDay, MealEntry, Recipe } from "@workspace/api-client-react";
+import type { MealPlanDetail, MealPlanDay, MealEntry, Recipe, AiPlanOutput } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +48,7 @@ import {
   ChefHat,
   X,
   ShoppingCart,
+  Sparkles,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -172,6 +175,22 @@ export default function PlanDetail() {
   const deleteEntry = useDeleteMealEntry();
   const deletePlan = useDeleteMealPlan();
   const generateList = useGenerateShoppingList();
+
+  const [aiPlanDialogOpen, setAiPlanDialogOpen] = useState(false);
+  const [aiPlanPreferences, setAiPlanPreferences] = useState("");
+  const [generatedAiPlan, setGeneratedAiPlan] = useState<AiPlanOutput | null>(null);
+
+  const aiGeneratePlanMutation = useAiGeneratePlan({
+    mutation: {
+      onSuccess: (data) => {
+        setGeneratedAiPlan(data);
+        toast({ title: "KI-Wochenplan generiert!", description: data.weekTitle });
+      },
+      onError: () => {
+        toast({ title: "Fehler", description: "Plan konnte nicht generiert werden.", variant: "destructive" });
+      },
+    },
+  });
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<{ dayId: number; mealType: MealTypeKey; entryId?: number } | null>(null);
@@ -364,6 +383,16 @@ export default function PlanDetail() {
               Einkaufsliste generieren
             </Button>
           )}
+
+          <Button
+            variant="outline"
+            className="rounded-full text-sm flex items-center gap-2 border-primary/30 text-primary hover:bg-primary/5"
+            onClick={() => { setGeneratedAiPlan(null); setAiPlanDialogOpen(true); }}
+            data-testid="btn-ai-plan-suggestions"
+          >
+            <Sparkles className="w-4 h-4" />
+            KI-Vorschläge
+          </Button>
         </div>
 
         <div className="space-y-4">
@@ -470,6 +499,63 @@ export default function PlanDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={aiPlanDialogOpen} onOpenChange={setAiPlanDialogOpen}>
+        <DialogContent className="rounded-2xl max-w-sm mx-auto max-h-[85dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 font-display">
+              <Sparkles className="w-4 h-4 text-primary" />
+              KI-Wochenplan-Vorschläge
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">Deine Wünsche</label>
+              <Textarea
+                placeholder="z.B. Viel Gemüse, wenig Fleisch, schnelle Zubereitung, saisonal..."
+                value={aiPlanPreferences}
+                onChange={(e) => setAiPlanPreferences(e.target.value)}
+                className="resize-none min-h-[80px] text-sm"
+              />
+            </div>
+            <Button
+              onClick={() => aiGeneratePlanMutation.mutate({ preferences: aiPlanPreferences })}
+              disabled={!aiPlanPreferences.trim() || aiGeneratePlanMutation.isPending}
+              className="w-full"
+              data-testid="btn-ai-generate-plan"
+            >
+              {aiGeneratePlanMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Generiere…</>
+              ) : (
+                <><Sparkles className="w-4 h-4 mr-2" />Vorschläge generieren</>
+              )}
+            </Button>
+
+            {generatedAiPlan && (
+              <div className="space-y-3 animate-in fade-in duration-200">
+                <p className="text-sm font-semibold text-foreground">{generatedAiPlan.weekTitle}</p>
+                {generatedAiPlan.notes && (
+                  <p className="text-xs text-muted-foreground bg-muted rounded-lg p-2">{generatedAiPlan.notes}</p>
+                )}
+                {generatedAiPlan.days.map((day, i) => (
+                  <div key={i} className="border border-border/50 rounded-xl p-3 space-y-2">
+                    <p className="text-xs font-bold text-foreground">{day.day}</p>
+                    {day.meals.map((meal, j) => (
+                      <div key={j} className="flex gap-2 items-start">
+                        <Badge variant="outline" className="text-xs shrink-0">{meal.mealType}</Badge>
+                        <div>
+                          <p className="text-xs font-medium text-foreground">{meal.suggestion}</p>
+                          <p className="text-xs text-muted-foreground">{meal.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -859,3 +859,129 @@ export const DeleteShoppingListItemParams = zod.object({
   id: zod.coerce.number(),
   itemId: zod.coerce.number(),
 });
+
+/**
+ * @summary Generate a recipe using AI
+ */
+export const AiGenerateRecipeBody = zod.object({
+  prompt: zod.string(),
+  tags: zod.array(zod.string()).optional(),
+  servings: zod.number().optional(),
+});
+
+export const AiGenerateRecipeResponse = zod.object({
+  name: zod.string(),
+  description: zod.string(),
+  instructions: zod.string(),
+  servings: zod.number(),
+  prepTime: zod.number().optional(),
+  cookTime: zod.number().optional(),
+  tags: zod.array(zod.string()).optional(),
+  ingredients: zod.array(
+    zod.object({
+      name: zod.string(),
+      amount: zod.string(),
+      unit: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Generate a weekly meal plan using AI
+ */
+export const AiGeneratePlanBody = zod.object({
+  preferences: zod.string(),
+  weeksCount: zod.number().optional(),
+});
+
+export const AiGeneratePlanResponse = zod.object({
+  weekTitle: zod.string(),
+  days: zod.array(
+    zod.object({
+      day: zod.string(),
+      meals: zod.array(
+        zod.object({
+          mealType: zod.string(),
+          suggestion: zod.string(),
+          description: zod.string(),
+        }),
+      ),
+    }),
+  ),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary Adjust an existing recipe using AI
+ */
+export const AiAdjustRecipeBody = zod.object({
+  recipeId: zod.number(),
+  adjustmentPrompt: zod.string(),
+});
+
+export const AiAdjustRecipeResponse = zod.object({
+  name: zod.string(),
+  description: zod.string(),
+  instructions: zod.string(),
+  servings: zod.number(),
+  prepTime: zod.number().optional(),
+  cookTime: zod.number().optional(),
+  tags: zod.array(zod.string()).optional(),
+  ingredients: zod.array(
+    zod.object({
+      name: zod.string(),
+      amount: zod.string(),
+      unit: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Suggest ingredient substitutions using AI
+ */
+export const AiSubstituteIngredientBody = zod.object({
+  recipeId: zod.number(),
+  ingredients: zod.array(zod.string()),
+  reason: zod.string().optional(),
+});
+
+export const AiSubstituteIngredientResponse = zod.object({
+  substitutions: zod.array(
+    zod.object({
+      original: zod.string(),
+      substitute: zod.string(),
+      ratio: zod.string(),
+      notes: zod.string().optional(),
+    }),
+  ),
+  generalAdvice: zod.string().optional(),
+});
+
+/**
+ * @summary Save an AI-generated recipe as a real recipe
+ */
+export const AiSaveRecipeBody = zod.object({
+  name: zod.string(),
+  description: zod.string(),
+  instructions: zod.string(),
+  servings: zod.number(),
+  prepTime: zod.number().optional(),
+  cookTime: zod.number().optional(),
+  tags: zod.array(zod.string()).optional(),
+  ingredients: zod.array(
+    zod.object({
+      name: zod.string(),
+      amount: zod.string(),
+      unit: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Submit meal feedback (thumbs up/down)
+ */
+export const AiSubmitFeedbackBody = zod.object({
+  mealEntryId: zod.number().optional(),
+  recipeId: zod.number().optional(),
+  rating: zod.enum(["thumbs_up", "thumbs_down"]),
+});

@@ -729,6 +729,120 @@ paths:
         "204":
           description: Deleted
 
+  /ai/generate-recipe:
+    post:
+      operationId: aiGenerateRecipe
+      tags: [ai]
+      summary: Generate a recipe using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiGenerateRecipeInput"
+      responses:
+        "200":
+          description: Generated recipe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRecipeOutput"
+
+  /ai/generate-plan:
+    post:
+      operationId: aiGeneratePlan
+      tags: [ai]
+      summary: Generate a weekly meal plan using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiGeneratePlanInput"
+      responses:
+        "200":
+          description: Generated meal plan suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiPlanOutput"
+
+  /ai/adjust-recipe:
+    post:
+      operationId: aiAdjustRecipe
+      tags: [ai]
+      summary: Adjust an existing recipe using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiAdjustRecipeInput"
+      responses:
+        "200":
+          description: Adjusted recipe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRecipeOutput"
+
+  /ai/substitute-ingredient:
+    post:
+      operationId: aiSubstituteIngredient
+      tags: [ai]
+      summary: Suggest ingredient substitutions using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiSubstituteInput"
+      responses:
+        "200":
+          description: Substitution suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiSubstituteOutput"
+
+  /ai/save-recipe:
+    post:
+      operationId: aiSaveRecipe
+      tags: [ai]
+      summary: Save an AI-generated recipe as a real recipe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiRecipeOutput"
+      responses:
+        "201":
+          description: Saved recipe
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Recipe"
+
+  /ai/feedback:
+    post:
+      operationId: aiSubmitFeedback
+      tags: [ai]
+      summary: Submit meal feedback (thumbs up/down)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiFeedbackInput"
+      responses:
+        "201":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealFeedback"
+
 components:
   schemas:
     HealthStatus:
@@ -1256,3 +1370,198 @@ components:
           type: string
       required:
         - name
+
+    AiIngredient:
+      type: object
+      properties:
+        name:
+          type: string
+        amount:
+          type: string
+        unit:
+          type: string
+      required:
+        - name
+        - amount
+        - unit
+
+    AiRecipeOutput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        instructions:
+          type: string
+        servings:
+          type: integer
+        prepTime:
+          type: integer
+        cookTime:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        ingredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiIngredient"
+      required:
+        - name
+        - description
+        - instructions
+        - servings
+        - ingredients
+
+    AiPlanDay:
+      type: object
+      properties:
+        day:
+          type: string
+        meals:
+          type: array
+          items:
+            type: object
+            properties:
+              mealType:
+                type: string
+              suggestion:
+                type: string
+              description:
+                type: string
+            required:
+              - mealType
+              - suggestion
+              - description
+      required:
+        - day
+        - meals
+
+    AiPlanOutput:
+      type: object
+      properties:
+        weekTitle:
+          type: string
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiPlanDay"
+        notes:
+          type: string
+      required:
+        - weekTitle
+        - days
+
+    AiSubstitution:
+      type: object
+      properties:
+        original:
+          type: string
+        substitute:
+          type: string
+        ratio:
+          type: string
+        notes:
+          type: string
+      required:
+        - original
+        - substitute
+        - ratio
+
+    AiSubstituteOutput:
+      type: object
+      properties:
+        substitutions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AiSubstitution"
+        generalAdvice:
+          type: string
+      required:
+        - substitutions
+
+    AiGenerateRecipeInput:
+      type: object
+      properties:
+        prompt:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        servings:
+          type: integer
+      required:
+        - prompt
+
+    AiGeneratePlanInput:
+      type: object
+      properties:
+        preferences:
+          type: string
+        weeksCount:
+          type: integer
+      required:
+        - preferences
+
+    AiAdjustRecipeInput:
+      type: object
+      properties:
+        recipeId:
+          type: integer
+        adjustmentPrompt:
+          type: string
+      required:
+        - recipeId
+        - adjustmentPrompt
+
+    AiSubstituteInput:
+      type: object
+      properties:
+        recipeId:
+          type: integer
+        ingredients:
+          type: array
+          items:
+            type: string
+        reason:
+          type: string
+      required:
+        - recipeId
+        - ingredients
+
+    AiFeedbackInput:
+      type: object
+      properties:
+        mealEntryId:
+          type: integer
+        recipeId:
+          type: integer
+        rating:
+          type: string
+          enum: [thumbs_up, thumbs_down]
+      required:
+        - rating
+
+    MealFeedback:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        mealEntryId:
+          type: ["integer", "null"]
+        recipeId:
+          type: ["integer", "null"]
+        rating:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - userId
+        - rating
+        - createdAt

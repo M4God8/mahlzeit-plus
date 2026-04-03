@@ -7,6 +7,7 @@ import recipesRouter from "./recipes";
 import mealPlansRouter from "./mealPlans";
 import todayRouter from "./today";
 import shoppingListsRouter from "./shoppingLists";
+import aiRouter from "./ai";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(recipesRouter);
 router.use(mealPlansRouter);
 router.use(todayRouter);
 router.use(shoppingListsRouter);
+router.use(aiRouter);
 
 export default router;

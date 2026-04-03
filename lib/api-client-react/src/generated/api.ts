@@ -18,6 +18,14 @@ import type {
 
 import type {
   AddMealPlanDayBody,
+  AiAdjustRecipeInput,
+  AiFeedbackInput,
+  AiGeneratePlanInput,
+  AiGenerateRecipeInput,
+  AiPlanOutput,
+  AiRecipeOutput,
+  AiSubstituteInput,
+  AiSubstituteOutput,
   CopyMealPlanBody,
   HealthStatus,
   Ingredient,
@@ -26,6 +34,7 @@ import type {
   ManualItemInput,
   MealEntry,
   MealEntryInput,
+  MealFeedback,
   MealPlan,
   MealPlanDay,
   MealPlanDetail,
@@ -2943,4 +2952,520 @@ export const useDeleteShoppingListItem = <
   TContext
 > => {
   return useMutation(getDeleteShoppingListItemMutationOptions(options));
+};
+
+/**
+ * @summary Generate a recipe using AI
+ */
+export const getAiGenerateRecipeUrl = () => {
+  return `/api/ai/generate-recipe`;
+};
+
+export const aiGenerateRecipe = async (
+  aiGenerateRecipeInput: AiGenerateRecipeInput,
+  options?: RequestInit,
+): Promise<AiRecipeOutput> => {
+  return customFetch<AiRecipeOutput>(getAiGenerateRecipeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(aiGenerateRecipeInput),
+  });
+};
+
+export const getAiGenerateRecipeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiGenerateRecipe>>,
+    TError,
+    { data: BodyType<AiGenerateRecipeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof aiGenerateRecipe>>,
+  TError,
+  { data: BodyType<AiGenerateRecipeInput> },
+  TContext
+> => {
+  const mutationKey = ["aiGenerateRecipe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof aiGenerateRecipe>>,
+    { data: BodyType<AiGenerateRecipeInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return aiGenerateRecipe(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AiGenerateRecipeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof aiGenerateRecipe>>
+>;
+export type AiGenerateRecipeMutationBody = BodyType<AiGenerateRecipeInput>;
+export type AiGenerateRecipeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Generate a recipe using AI
+ */
+export const useAiGenerateRecipe = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiGenerateRecipe>>,
+    TError,
+    { data: BodyType<AiGenerateRecipeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof aiGenerateRecipe>>,
+  TError,
+  { data: BodyType<AiGenerateRecipeInput> },
+  TContext
+> => {
+  return useMutation(getAiGenerateRecipeMutationOptions(options));
+};
+
+/**
+ * @summary Generate a weekly meal plan using AI
+ */
+export const getAiGeneratePlanUrl = () => {
+  return `/api/ai/generate-plan`;
+};
+
+export const aiGeneratePlan = async (
+  aiGeneratePlanInput: AiGeneratePlanInput,
+  options?: RequestInit,
+): Promise<AiPlanOutput> => {
+  return customFetch<AiPlanOutput>(getAiGeneratePlanUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(aiGeneratePlanInput),
+  });
+};
+
+export const getAiGeneratePlanMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiGeneratePlan>>,
+    TError,
+    { data: BodyType<AiGeneratePlanInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof aiGeneratePlan>>,
+  TError,
+  { data: BodyType<AiGeneratePlanInput> },
+  TContext
+> => {
+  const mutationKey = ["aiGeneratePlan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof aiGeneratePlan>>,
+    { data: BodyType<AiGeneratePlanInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return aiGeneratePlan(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AiGeneratePlanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof aiGeneratePlan>>
+>;
+export type AiGeneratePlanMutationBody = BodyType<AiGeneratePlanInput>;
+export type AiGeneratePlanMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Generate a weekly meal plan using AI
+ */
+export const useAiGeneratePlan = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiGeneratePlan>>,
+    TError,
+    { data: BodyType<AiGeneratePlanInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof aiGeneratePlan>>,
+  TError,
+  { data: BodyType<AiGeneratePlanInput> },
+  TContext
+> => {
+  return useMutation(getAiGeneratePlanMutationOptions(options));
+};
+
+/**
+ * @summary Adjust an existing recipe using AI
+ */
+export const getAiAdjustRecipeUrl = () => {
+  return `/api/ai/adjust-recipe`;
+};
+
+export const aiAdjustRecipe = async (
+  aiAdjustRecipeInput: AiAdjustRecipeInput,
+  options?: RequestInit,
+): Promise<AiRecipeOutput> => {
+  return customFetch<AiRecipeOutput>(getAiAdjustRecipeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(aiAdjustRecipeInput),
+  });
+};
+
+export const getAiAdjustRecipeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiAdjustRecipe>>,
+    TError,
+    { data: BodyType<AiAdjustRecipeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof aiAdjustRecipe>>,
+  TError,
+  { data: BodyType<AiAdjustRecipeInput> },
+  TContext
+> => {
+  const mutationKey = ["aiAdjustRecipe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof aiAdjustRecipe>>,
+    { data: BodyType<AiAdjustRecipeInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return aiAdjustRecipe(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AiAdjustRecipeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof aiAdjustRecipe>>
+>;
+export type AiAdjustRecipeMutationBody = BodyType<AiAdjustRecipeInput>;
+export type AiAdjustRecipeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Adjust an existing recipe using AI
+ */
+export const useAiAdjustRecipe = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiAdjustRecipe>>,
+    TError,
+    { data: BodyType<AiAdjustRecipeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof aiAdjustRecipe>>,
+  TError,
+  { data: BodyType<AiAdjustRecipeInput> },
+  TContext
+> => {
+  return useMutation(getAiAdjustRecipeMutationOptions(options));
+};
+
+/**
+ * @summary Suggest ingredient substitutions using AI
+ */
+export const getAiSubstituteIngredientUrl = () => {
+  return `/api/ai/substitute-ingredient`;
+};
+
+export const aiSubstituteIngredient = async (
+  aiSubstituteInput: AiSubstituteInput,
+  options?: RequestInit,
+): Promise<AiSubstituteOutput> => {
+  return customFetch<AiSubstituteOutput>(getAiSubstituteIngredientUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(aiSubstituteInput),
+  });
+};
+
+export const getAiSubstituteIngredientMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiSubstituteIngredient>>,
+    TError,
+    { data: BodyType<AiSubstituteInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof aiSubstituteIngredient>>,
+  TError,
+  { data: BodyType<AiSubstituteInput> },
+  TContext
+> => {
+  const mutationKey = ["aiSubstituteIngredient"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof aiSubstituteIngredient>>,
+    { data: BodyType<AiSubstituteInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return aiSubstituteIngredient(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AiSubstituteIngredientMutationResult = NonNullable<
+  Awaited<ReturnType<typeof aiSubstituteIngredient>>
+>;
+export type AiSubstituteIngredientMutationBody = BodyType<AiSubstituteInput>;
+export type AiSubstituteIngredientMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Suggest ingredient substitutions using AI
+ */
+export const useAiSubstituteIngredient = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiSubstituteIngredient>>,
+    TError,
+    { data: BodyType<AiSubstituteInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof aiSubstituteIngredient>>,
+  TError,
+  { data: BodyType<AiSubstituteInput> },
+  TContext
+> => {
+  return useMutation(getAiSubstituteIngredientMutationOptions(options));
+};
+
+/**
+ * @summary Save an AI-generated recipe as a real recipe
+ */
+export const getAiSaveRecipeUrl = () => {
+  return `/api/ai/save-recipe`;
+};
+
+export const aiSaveRecipe = async (
+  aiRecipeOutput: AiRecipeOutput,
+  options?: RequestInit,
+): Promise<Recipe> => {
+  return customFetch<Recipe>(getAiSaveRecipeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(aiRecipeOutput),
+  });
+};
+
+export const getAiSaveRecipeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiSaveRecipe>>,
+    TError,
+    { data: BodyType<AiRecipeOutput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof aiSaveRecipe>>,
+  TError,
+  { data: BodyType<AiRecipeOutput> },
+  TContext
+> => {
+  const mutationKey = ["aiSaveRecipe"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof aiSaveRecipe>>,
+    { data: BodyType<AiRecipeOutput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return aiSaveRecipe(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AiSaveRecipeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof aiSaveRecipe>>
+>;
+export type AiSaveRecipeMutationBody = BodyType<AiRecipeOutput>;
+export type AiSaveRecipeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save an AI-generated recipe as a real recipe
+ */
+export const useAiSaveRecipe = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiSaveRecipe>>,
+    TError,
+    { data: BodyType<AiRecipeOutput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof aiSaveRecipe>>,
+  TError,
+  { data: BodyType<AiRecipeOutput> },
+  TContext
+> => {
+  return useMutation(getAiSaveRecipeMutationOptions(options));
+};
+
+/**
+ * @summary Submit meal feedback (thumbs up/down)
+ */
+export const getAiSubmitFeedbackUrl = () => {
+  return `/api/ai/feedback`;
+};
+
+export const aiSubmitFeedback = async (
+  aiFeedbackInput: AiFeedbackInput,
+  options?: RequestInit,
+): Promise<MealFeedback> => {
+  return customFetch<MealFeedback>(getAiSubmitFeedbackUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(aiFeedbackInput),
+  });
+};
+
+export const getAiSubmitFeedbackMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiSubmitFeedback>>,
+    TError,
+    { data: BodyType<AiFeedbackInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof aiSubmitFeedback>>,
+  TError,
+  { data: BodyType<AiFeedbackInput> },
+  TContext
+> => {
+  const mutationKey = ["aiSubmitFeedback"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof aiSubmitFeedback>>,
+    { data: BodyType<AiFeedbackInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return aiSubmitFeedback(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AiSubmitFeedbackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof aiSubmitFeedback>>
+>;
+export type AiSubmitFeedbackMutationBody = BodyType<AiFeedbackInput>;
+export type AiSubmitFeedbackMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Submit meal feedback (thumbs up/down)
+ */
+export const useAiSubmitFeedback = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiSubmitFeedback>>,
+    TError,
+    { data: BodyType<AiFeedbackInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof aiSubmitFeedback>>,
+  TError,
+  { data: BodyType<AiFeedbackInput> },
+  TContext
+> => {
+  return useMutation(getAiSubmitFeedbackMutationOptions(options));
 };

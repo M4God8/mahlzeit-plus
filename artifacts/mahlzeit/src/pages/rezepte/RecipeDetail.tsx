@@ -1,10 +1,14 @@
+import { useState } from "react";
 import { Link, useRoute, useLocation } from "wouter";
-import { useGetRecipe, useDeleteRecipe } from "@workspace/api-client-react";
+import { useGetRecipe, useDeleteRecipe, useAiAdjustRecipe, useAiSubstituteIngredient } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Clock, Users, Flame, ChefHat, Trash2, Edit2, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ChevronLeft, Clock, Users, Flame, ChefHat, Trash2, Edit2, Loader2, Sparkles, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import type { AiRecipeOutput, AiSubstituteOutput } from "@workspace/api-client-react";
 
 export default function RecipeDetail() {
   const [, params] = useRoute("/rezepte/:id");
@@ -12,11 +16,53 @@ export default function RecipeDetail() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  const [showAiTools, setShowAiTools] = useState(false);
+  const [adjustPrompt, setAdjustPrompt] = useState("");
+  const [adjustedRecipe, setAdjustedRecipe] = useState<AiRecipeOutput | null>(null);
+  const [substituteResult, setSubstituteResult] = useState<AiSubstituteOutput | null>(null);
+
   const { data: recipe, isLoading } = useGetRecipe(id, {
     query: { enabled: !!id, queryKey: ["/api/recipes", id.toString()] }
   });
 
   const deleteRecipe = useDeleteRecipe();
+
+  const adjustMutation = useAiAdjustRecipe({
+    mutation: {
+      onSuccess: (data) => {
+        setAdjustedRecipe(data);
+        toast({ title: "Rezept angepasst!", description: data.name });
+      },
+      onError: () => {
+        toast({ title: "Fehler", description: "Rezept konnte nicht angepasst werden.", variant: "destructive" });
+      },
+    },
+  });
+
+  const substituteMutation = useAiSubstituteIngredient({
+    mutation: {
+      onSuccess: (data) => {
+        setSubstituteResult(data);
+        toast({ title: "Alternativen gefunden!" });
+      },
+      onError: () => {
+        toast({ title: "Fehler", description: "Keine Alternativen gefunden.", variant: "destructive" });
+      },
+    },
+  });
+
+  const handleAdjust = () => {
+    if (!adjustPrompt.trim()) return;
+    adjustMutation.mutate({ recipeId: id, adjustmentPrompt: adjustPrompt });
+  };
+
+  const handleSubstitute = () => {
+    if (!recipe?.ingredients?.length) return;
+    const ingredientNames = recipe.ingredients
+      .map((i) => i.customName || i.ingredientName || "")
+      .filter(Boolean);
+    substituteMutation.mutate({ recipeId: id, ingredients: ingredientNames });
+  };
 
   const handleDelete = () => {
     deleteRecipe.mutate({ id }, {
@@ -172,6 +218,121 @@ export default function RecipeDetail() {
             <div className="prose prose-stone dark:prose-invert max-w-none text-muted-foreground leading-relaxed whitespace-pre-wrap">
               {recipe.instructions}
             </div>
+          </section>
+
+          <section className="mt-8">
+            <button
+              onClick={() => setShowAiTools(!showAiTools)}
+              className="w-full flex items-center justify-between p-4 rounded-2xl bg-primary/5 border border-primary/10 hover:bg-primary/10 transition-colors"
+              data-testid="btn-toggle-ai-tools"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">KI-Werkzeuge</span>
+              </div>
+              {showAiTools ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </button>
+
+            {showAiTools && (
+              <div className="mt-3 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                <Card className="border-border/50">
+                  <CardHeader className="pb-3 pt-4">
+                    <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 text-primary" />
+                      Rezept anpassen
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0 space-y-3">
+                    <Textarea
+                      placeholder="z.B. Mache es veganer, weniger scharf, für 4 Portionen..."
+                      value={adjustPrompt}
+                      onChange={(e) => setAdjustPrompt(e.target.value)}
+                      className="resize-none min-h-[70px] text-sm"
+                    />
+                    <Button
+                      onClick={handleAdjust}
+                      disabled={!adjustPrompt.trim() || adjustMutation.isPending}
+                      size="sm"
+                      className="w-full"
+                    >
+                      {adjustMutation.isPending ? (
+                        <><Loader2 className="w-3 h-3 mr-2 animate-spin" />Anpassen…</>
+                      ) : (
+                        <><Sparkles className="w-3 h-3 mr-2" />Anpassen</>
+                      )}
+                    </Button>
+
+                    {adjustedRecipe && (
+                      <div className="mt-3 p-3 bg-primary/5 rounded-xl border border-primary/10 space-y-2 animate-in fade-in duration-200">
+                        <p className="text-xs font-semibold text-foreground">{adjustedRecipe.name}</p>
+                        <p className="text-xs text-muted-foreground">{adjustedRecipe.description}</p>
+                        <div className="space-y-1">
+                          {adjustedRecipe.ingredients.map((ing, i) => (
+                            <p key={i} className="text-xs text-muted-foreground">
+                              {ing.amount} {ing.unit} {ing.name}
+                            </p>
+                          ))}
+                        </div>
+                        <p className="text-xs text-foreground/80 whitespace-pre-line leading-relaxed">
+                          {adjustedRecipe.instructions}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {recipe.ingredients && recipe.ingredients.length > 0 && (
+                  <Card className="border-border/50">
+                    <CardHeader className="pb-3 pt-4">
+                      <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        Zutaten-Alternativen
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="pt-0 space-y-3">
+                      <p className="text-xs text-muted-foreground">
+                        Finde Alternativen für alle Zutaten dieses Rezepts.
+                      </p>
+                      <Button
+                        onClick={handleSubstitute}
+                        disabled={substituteMutation.isPending}
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        data-testid="btn-substitute"
+                      >
+                        {substituteMutation.isPending ? (
+                          <><Loader2 className="w-3 h-3 mr-2 animate-spin" />Suche Alternativen…</>
+                        ) : (
+                          <><RefreshCw className="w-3 h-3 mr-2" />Alternativen finden</>
+                        )}
+                      </Button>
+
+                      {substituteResult && (
+                        <div className="mt-3 space-y-2 animate-in fade-in duration-200">
+                          {substituteResult.substitutions.map((sub, i) => (
+                            <div key={i} className="p-3 bg-muted/30 rounded-xl">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs text-muted-foreground line-through">{sub.original}</span>
+                                <span className="text-xs text-muted-foreground">→</span>
+                                <span className="text-xs font-medium text-foreground">{sub.substitute}</span>
+                                <Badge variant="outline" className="text-xs ml-auto">{sub.ratio}</Badge>
+                              </div>
+                              {sub.notes && <p className="text-xs text-muted-foreground">{sub.notes}</p>}
+                            </div>
+                          ))}
+                          {substituteResult.generalAdvice && (
+                            <p className="text-xs text-muted-foreground bg-muted/20 rounded-lg p-3">
+                              {substituteResult.generalAdvice}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
           </section>
         </div>
       </main>

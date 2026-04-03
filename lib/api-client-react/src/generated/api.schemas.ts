@@ -244,6 +244,99 @@ export interface ManualItemInput {
   category?: string;
 }
 
+export interface AiIngredient {
+  name: string;
+  amount: string;
+  unit: string;
+}
+
+export interface AiRecipeOutput {
+  name: string;
+  description: string;
+  instructions: string;
+  servings: number;
+  prepTime?: number;
+  cookTime?: number;
+  tags?: string[];
+  ingredients: AiIngredient[];
+}
+
+export type AiPlanDayMealsItem = {
+  mealType: string;
+  suggestion: string;
+  description: string;
+};
+
+export interface AiPlanDay {
+  day: string;
+  meals: AiPlanDayMealsItem[];
+}
+
+export interface AiPlanOutput {
+  weekTitle: string;
+  days: AiPlanDay[];
+  notes?: string;
+}
+
+export interface AiSubstitution {
+  original: string;
+  substitute: string;
+  ratio: string;
+  notes?: string;
+}
+
+export interface AiSubstituteOutput {
+  substitutions: AiSubstitution[];
+  generalAdvice?: string;
+}
+
+export interface AiGenerateRecipeInput {
+  prompt: string;
+  tags?: string[];
+  servings?: number;
+}
+
+export interface AiGeneratePlanInput {
+  preferences: string;
+  weeksCount?: number;
+}
+
+export interface AiAdjustRecipeInput {
+  recipeId: number;
+  adjustmentPrompt: string;
+}
+
+export interface AiSubstituteInput {
+  recipeId: number;
+  ingredients: string[];
+  reason?: string;
+}
+
+export type AiFeedbackInputRating =
+  (typeof AiFeedbackInputRating)[keyof typeof AiFeedbackInputRating];
+
+export const AiFeedbackInputRating = {
+  thumbs_up: "thumbs_up",
+  thumbs_down: "thumbs_down",
+} as const;
+
+export interface AiFeedbackInput {
+  mealEntryId?: number;
+  recipeId?: number;
+  rating: AiFeedbackInputRating;
+}
+
+export interface MealFeedback {
+  id: number;
+  userId: string;
+  /** @nullable */
+  mealEntryId?: number | null;
+  /** @nullable */
+  recipeId?: number | null;
+  rating: string;
+  createdAt: string;
+}
+
 export type ListIngredientsParams = {
   category?: string;
   search?: string;

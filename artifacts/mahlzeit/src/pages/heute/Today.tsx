@@ -1,10 +1,11 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useGetTodayMeals, useGetActiveMealPlan, useGenerateShoppingList } from "@workspace/api-client-react";
+import { useGetTodayMeals, useGetActiveMealPlan, useGenerateShoppingList, useAiSubmitFeedback } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart } from "lucide-react";
+import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +38,24 @@ export default function Today() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const generateList = useGenerateShoppingList();
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<string, "thumbs_up" | "thumbs_down">>({});
+
+  const feedbackMutation = useAiSubmitFeedback({
+    mutation: {
+      onSuccess: (_, variables) => {
+        const key = variables.recipeId ? `recipe-${variables.recipeId}` : `entry-${variables.mealEntryId}`;
+        setFeedbackGiven((prev) => ({ ...prev, [key]: variables.rating }));
+        toast({
+          title: variables.rating === "thumbs_up" ? "👍 Danke für dein Feedback!" : "👎 Schade! Wir merken uns das.",
+          description: "Dein Feedback hilft uns, bessere Vorschläge zu machen.",
+        });
+      },
+    },
+  });
+
+  const handleFeedback = (rating: "thumbs_up" | "thumbs_down", recipeId?: number | null) => {
+    feedbackMutation.mutate({ rating, recipeId: recipeId ?? undefined });
+  };
 
   const handleGenerateList = () => {
     generateList.mutate(undefined, {
@@ -142,6 +161,35 @@ export default function Today() {
                           )}
                         </div>
                       </div>
+                      {meal.recipeId && (() => {
+                        const feedbackKey = `recipe-${meal.recipeId}`;
+                        const given = feedbackGiven[feedbackKey];
+                        return (
+                          <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30">
+                            <span className="text-xs text-muted-foreground">Hat's geschmeckt?</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`h-7 w-7 p-0 rounded-full transition-all ${given === "thumbs_up" ? "text-emerald-500 bg-emerald-500/10" : "text-muted-foreground hover:text-emerald-500"}`}
+                              onClick={() => handleFeedback("thumbs_up", meal.recipeId)}
+                              disabled={!!given || feedbackMutation.isPending}
+                              data-testid={`btn-thumbsup-${meal.mealType}`}
+                            >
+                              <ThumbsUp className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`h-7 w-7 p-0 rounded-full transition-all ${given === "thumbs_down" ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground hover:text-rose-500"}`}
+                              onClick={() => handleFeedback("thumbs_down", meal.recipeId)}
+                              disabled={!!given || feedbackMutation.isPending}
+                              data-testid={`btn-thumbsdown-${meal.mealType}`}
+                            >
+                              <ThumbsDown className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        );
+                      })()}
                     </>
                   ) : (
                     <div className="flex items-center justify-between">

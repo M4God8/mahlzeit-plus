@@ -45,6 +45,8 @@ Tabellen in `lib/db/src/schema/`:
 - `ingredients` — 60 Zutaten mit Kategorien und Bio-Empfehlung
 - `recipes` + `recipe_ingredients` — Rezepte mit Zutaten (10 Starterrezepte)
 - `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne
+- `ai_generations` — KI-Anfragen-Log (userId, type, input, output, model)
+- `meal_feedback` — Mahlzeit-Feedback (thumbs_up/thumbs_down)
 
 ### DB-Befehle
 ```bash
@@ -84,6 +86,12 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | PATCH | /api/meal-plans/:id/days/:dayId/entries/:entryId | Ja | Eintrag aktualisieren |
 | DELETE | /api/meal-plans/:id/days/:dayId/entries/:entryId | Ja | Eintrag löschen |
 | GET | /api/today | Ja | Heutige Mahlzeiten |
+| POST | /api/ai/generate-recipe | Ja | KI: Rezept generieren (Claude) |
+| POST | /api/ai/generate-plan | Ja | KI: Wochenplan generieren (Claude) |
+| POST | /api/ai/adjust-recipe | Ja | KI: Rezept anpassen (Claude) |
+| POST | /api/ai/substitute-ingredient | Ja | KI: Zutatens-Alternativen (Claude) |
+| POST | /api/ai/save-recipe | Ja | KI-Rezept in Rezeptbibliothek speichern |
+| POST | /api/ai/feedback | Ja | Mahlzeit-Feedback (thumbs_up/down) |
 
 ## Frontend-Seiten (wouter)
 
@@ -97,8 +105,9 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 - `/einkauf` — Einkaufsliste (protected, Phase 3)
 - `/rezepte` — Rezeptbibliothek (protected)
 - `/rezepte/neu` — Neues Rezept (protected)
-- `/rezepte/:id` — Rezeptdetail mit Edit/Delete (protected)
+- `/rezepte/:id` — Rezeptdetail mit Edit/Delete + KI-Werkzeuge (Anpassen, Alternativen) (protected)
 - `/rezepte/:id/bearbeiten` — Rezept bearbeiten (protected)
+- `/ki` — KI-Küche: Rezeptgenerator + Wochenplan-Generator via Claude AI (protected)
 - `/einstellungen` — Einstellungen (protected)
 
 ## Umgebungsvariablen (Secrets)
@@ -121,12 +130,21 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | Bottom Navigation | 4 Tabs | 5 Tabs (+ Rezepte) | Design-Subagent, sinnvolle Ergänzung |
 | Heute-Seed | Nicht spezifiziert | Starter-Plan via POST /starter | Echte User-ID bekannt erst nach Login |
 
+## Umgebungsvariablen (Phase 4 KI)
+
+| Variable | Beschreibung |
+|----------|-------------|
+| AI_INTEGRATIONS_ANTHROPIC_BASE_URL | Replit AI Proxy URL für Anthropic |
+| AI_INTEGRATIONS_ANTHROPIC_API_KEY | Replit AI Proxy API Key |
+
+KI-Modell: `claude-sonnet-4-6`, max_tokens: 8192
+
 ## Projektphasen
 
 - **Phase 1** ✅ Fundament: Auth, Datenbankschema, Basis-UI, API-Gerüst
 - **Phase 2** ✅ Wochenplan-Builder: Plan-CRUD, Rezept-Zuweisung, Aktivierung, Kopieren, Tage tauschen, Loop, Kalenderansicht, RecipeEdit
-- **Phase 3** Einkaufsliste: Auto-Generierung aus Plan
-- **Phase 4** KI-Layer: Claude AI für Rezeptvorschläge
+- **Phase 3** ✅ Einkaufsliste: Auto-Generierung aus Plan, Kategorisierung, Mengen-Aggregation
+- **Phase 4** ✅ KI-Layer: Claude AI (Rezeptgenerator, Wochenplaner, Rezept-Anpassung, Zutaten-Alternativen, Feedback)
 - **Phase 5** Scanner: Barcode-Scanner für Zutaten
 - **Phase 6** Lern-System: Personalisierung (abhängig von Phase 4)
 

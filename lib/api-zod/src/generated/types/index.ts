@@ -7,6 +7,19 @@
  */
 
 export * from "./addMealPlanDayBody";
+export * from "./aiAdjustRecipeInput";
+export * from "./aiFeedbackInput";
+export * from "./aiFeedbackInputRating";
+export * from "./aiGeneratePlanInput";
+export * from "./aiGenerateRecipeInput";
+export * from "./aiIngredient";
+export * from "./aiPlanDay";
+export * from "./aiPlanDayMealsItem";
+export * from "./aiPlanOutput";
+export * from "./aiRecipeOutput";
+export * from "./aiSubstituteInput";
+export * from "./aiSubstituteOutput";
+export * from "./aiSubstitution";
 export * from "./copyMealPlanBody";
 export * from "./healthStatus";
 export * from "./ingredient";
@@ -15,6 +28,7 @@ export * from "./listRecipesParams";
 export * from "./manualItemInput";
 export * from "./mealEntry";
 export * from "./mealEntryInput";
+export * from "./mealFeedback";
 export * from "./mealPlan";
 export * from "./mealPlanDay";
 export * from "./mealPlanDetail";
