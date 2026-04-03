@@ -19,10 +19,13 @@ const router = Router();
 const INGREDIENT_CATEGORY_MAP: Record<string, string> = {
   "Gemüse": "Gemüse & Obst",
   "Obst": "Gemüse & Obst",
+  "Pilze": "Gemüse & Obst",
   "Fleisch": "Protein",
   "Fisch": "Protein",
+  "Fleisch & Fisch": "Protein",
   "Hülsenfrüchte": "Protein",
   "Eier": "Protein",
+  "Milch & Eier": "Milchprodukte",
   "Getreide": "Getreide & Brot",
   "Brot": "Getreide & Brot",
   "Pasta": "Getreide & Brot",
@@ -31,7 +34,10 @@ const INGREDIENT_CATEGORY_MAP: Record<string, string> = {
   "Käse": "Milchprodukte",
   "Gewürze": "Gewürze & Öle",
   "Öle": "Gewürze & Öle",
+  "Öle & Fette": "Gewürze & Öle",
   "Kräuter": "Gewürze & Öle",
+  "Nüsse & Saaten": "Sonstiges",
+  "Sonstiges": "Sonstiges",
 };
 
 function mapCategory(raw: string): string {
@@ -149,11 +155,12 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
           .where(inArray(mealEntriesTable.mealPlanDayId, dayIds))
       : [];
 
-    const recipeIds = [...new Set(
-      entries
-        .map((e) => e.recipeId)
-        .filter((id): id is number => id !== null)
-    )];
+    const recipeOccurrences = new Map<number, number>();
+    for (const entry of entries) {
+      if (entry.recipeId !== null) {
+        recipeOccurrences.set(entry.recipeId, (recipeOccurrences.get(entry.recipeId) ?? 0) + 1);
+      }
+    }
 
     type MergedItem = {
       name: string;
@@ -168,7 +175,7 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
 
     const mergedMap = new Map<string, MergedItem>();
 
-    for (const recipeId of recipeIds) {
+    for (const [recipeId, occurrenceCount] of recipeOccurrences) {
       const ingredients = await db
         .select({
           id: recipeIngredientsTable.id,
@@ -193,7 +200,8 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
 
         const parsed = tryParseAmount(ing.amount);
         const converted = parsed !== null ? convertToBase(parsed, ing.unit) : null;
-        const normalizedAmount = converted?.amount ?? parsed;
+        const singleAmount = converted?.amount ?? parsed;
+        const normalizedAmount = singleAmount !== null ? singleAmount * occurrenceCount : null;
         const normalizedUnit = converted?.unit ?? baseUnit;
 
         const existing = mergedMap.get(key);
