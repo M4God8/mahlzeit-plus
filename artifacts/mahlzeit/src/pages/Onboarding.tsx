@@ -153,9 +153,9 @@ export default function Onboarding() {
                           <div>
                             <h3 className="font-semibold text-lg">{profile.name}</h3>
                             <p className="text-sm text-muted-foreground mt-1">{profile.description}</p>
-                            <div className="inline-block mt-2 px-2 py-0.5 rounded text-xs font-medium bg-accent/20 text-accent-foreground">
+                            <span className="inline-block mt-2 rounded-full text-xs font-semibold" style={{ backgroundColor: '#C9A84C', color: '#FFFFFF', padding: '2px 10px', fontSize: '12px' }}>
                               {profile.energyLabel}
-                            </div>
+                            </span>
                           </div>
                         </CardContent>
                       </Card>
