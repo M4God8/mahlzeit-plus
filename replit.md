@@ -70,9 +70,19 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | PATCH | /api/recipes/:id | Ja | Rezept bearbeiten |
 | DELETE | /api/recipes/:id | Ja | Rezept löschen |
 | GET | /api/meal-plans | Ja | Mahlzeitenpläne des Nutzers |
-| POST | /api/meal-plans | Ja | Plan erstellen |
+| POST | /api/meal-plans | Ja | Plan erstellen (auto-creates day rows) |
 | POST | /api/meal-plans/starter | Ja | Starter-Plan erstellen/abrufen (idempotent) |
-| GET | /api/meal-plans/active | Ja | Aktiver Plan |
+| GET | /api/meal-plans/active | Ja | Aktiver Plan (mit days + entries) |
+| GET | /api/meal-plans/:id | Ja | Plan-Detail (mit days + entries) |
+| PATCH | /api/meal-plans/:id | Ja | Plan aktualisieren (title, repeatEnabled) |
+| DELETE | /api/meal-plans/:id | Ja | Plan löschen |
+| POST | /api/meal-plans/:id/activate | Ja | Plan aktivieren |
+| POST | /api/meal-plans/:id/copy | Ja | Plan kopieren (optionaler setActive) |
+| POST | /api/meal-plans/:id/swap-days | Ja | Zwei Tage eines Plans tauschen |
+| POST | /api/meal-plans/:id/days | Ja | Tag zu Plan hinzufügen |
+| POST | /api/meal-plans/:id/days/:dayId/entries | Ja | Mahlzeiteintrag hinzufügen |
+| PATCH | /api/meal-plans/:id/days/:dayId/entries/:entryId | Ja | Eintrag aktualisieren |
+| DELETE | /api/meal-plans/:id/days/:dayId/entries/:entryId | Ja | Eintrag löschen |
 | GET | /api/today | Ja | Heutige Mahlzeiten |
 
 ## Frontend-Seiten (wouter)
@@ -81,12 +91,14 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 - `/sign-in` — Clerk Sign-In
 - `/sign-up` — Clerk Sign-Up
 - `/onboarding` — 3-Schritt Onboarding (Willkommen → Profil → Einstellungen)
-- `/heute` — Heutige Mahlzeiten (protected)
-- `/plan` — Mahlzeitenpläne (protected)
+- `/heute` — Heutige Mahlzeiten mit "Alternative"-Button (protected)
+- `/plan` — Plan-Liste mit Liste/Kalender Tabs (protected)
+- `/plan/:id` — Plan-Detail: Wochengrid, Rezept-Zuweisung, Aktivieren, Kopieren, Tauschen (protected)
 - `/einkauf` — Einkaufsliste (protected, Phase 3)
 - `/rezepte` — Rezeptbibliothek (protected)
 - `/rezepte/neu` — Neues Rezept (protected)
-- `/rezepte/:id` — Rezeptdetail (protected)
+- `/rezepte/:id` — Rezeptdetail mit Edit/Delete (protected)
+- `/rezepte/:id/bearbeiten` — Rezept bearbeiten (protected)
 - `/einstellungen` — Einstellungen (protected)
 
 ## Umgebungsvariablen (Secrets)
@@ -112,7 +124,7 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 ## Projektphasen
 
 - **Phase 1** ✅ Fundament: Auth, Datenbankschema, Basis-UI, API-Gerüst
-- **Phase 2** Wochenplan-Builder: Drag&Drop, Mahlzeitenplanung
+- **Phase 2** ✅ Wochenplan-Builder: Plan-CRUD, Rezept-Zuweisung, Aktivierung, Kopieren, Tage tauschen, Loop, Kalenderansicht, RecipeEdit
 - **Phase 3** Einkaufsliste: Auto-Generierung aus Plan
 - **Phase 4** KI-Layer: Claude AI für Rezeptvorschläge
 - **Phase 5** Scanner: Barcode-Scanner für Zutaten

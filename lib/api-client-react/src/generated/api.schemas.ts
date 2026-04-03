@@ -151,6 +151,20 @@ export interface MealPlanInput {
   repeatEnabled: boolean;
 }
 
+export interface MealPlanUpdateInput {
+  title?: string;
+  cycleLengthDays?: number;
+  repeatEnabled?: boolean;
+}
+
+export interface MealEntryInput {
+  mealType: string;
+  /** @nullable */
+  recipeId?: number | null;
+  /** @nullable */
+  customNote?: string | null;
+}
+
 export interface TodayMealEntry {
   mealType: string;
   /** @nullable */
@@ -185,4 +199,17 @@ export type ListRecipesParams = {
   energyType?: string;
   search?: string;
   tags?: string;
+};
+
+export type CopyMealPlanBody = {
+  setActive?: boolean;
+};
+
+export type SwapMealPlanDaysBody = {
+  dayNumberA: number;
+  dayNumberB: number;
+};
+
+export type AddMealPlanDayBody = {
+  dayNumber: number;
 };

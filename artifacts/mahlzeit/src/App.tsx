@@ -11,10 +11,12 @@ import { Loader2 } from "lucide-react";
 import Home from "@/pages/Home";
 import Today from "@/pages/heute/Today";
 import Plan from "@/pages/plan/Plan";
+import PlanDetail from "@/pages/plan/PlanDetail";
 import Shopping from "@/pages/einkauf/Shopping";
 import Settings from "@/pages/einstellungen/Settings";
 import RecipeList from "@/pages/rezepte/RecipeList";
 import NewRecipe from "@/pages/rezepte/NewRecipe";
+import RecipeEdit from "@/pages/rezepte/RecipeEdit";
 import RecipeDetail from "@/pages/rezepte/RecipeDetail";
 import Onboarding from "@/pages/Onboarding";
 import NotFound from "@/pages/not-found";
@@ -221,9 +223,11 @@ function ClerkProviderWithRoutes() {
 
           <Route path="/heute" component={() => <ProtectedRoute component={Today} />} />
           <Route path="/plan" component={() => <ProtectedRoute component={Plan} />} />
+          <Route path="/plan/:id" component={() => <ProtectedRoute component={PlanDetail} />} />
           <Route path="/einkauf" component={() => <ProtectedRoute component={Shopping} />} />
           <Route path="/rezepte" component={() => <ProtectedRoute component={RecipeList} />} />
           <Route path="/rezepte/neu" component={() => <ProtectedRoute component={NewRecipe} />} />
+          <Route path="/rezepte/:id/bearbeiten" component={() => <ProtectedRoute component={RecipeEdit} />} />
           <Route path="/rezepte/:id" component={() => <ProtectedRoute component={RecipeDetail} />} />
           <Route path="/einstellungen" component={() => <ProtectedRoute component={Settings} />} />
 

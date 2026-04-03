@@ -6,20 +6,25 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./addMealPlanDayBody";
+export * from "./copyMealPlanBody";
 export * from "./healthStatus";
 export * from "./ingredient";
 export * from "./listIngredientsParams";
 export * from "./listRecipesParams";
 export * from "./mealEntry";
+export * from "./mealEntryInput";
 export * from "./mealPlan";
 export * from "./mealPlanDay";
 export * from "./mealPlanDetail";
 export * from "./mealPlanInput";
+export * from "./mealPlanUpdateInput";
 export * from "./nutritionProfile";
 export * from "./recipe";
 export * from "./recipeIngredient";
 export * from "./recipeInput";
 export * from "./recipeInputIngredientsItem";
+export * from "./swapMealPlanDaysBody";
 export * from "./todayMealEntry";
 export * from "./todaySummary";
 export * from "./userSettings";

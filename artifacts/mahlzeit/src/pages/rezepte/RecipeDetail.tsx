@@ -63,7 +63,7 @@ export default function RecipeDetail() {
           </Link>
           
           <div className="flex gap-2">
-            <Button variant="secondary" size="icon" className="rounded-full bg-background/50 backdrop-blur-md hover:bg-background/80" data-testid="btn-edit">
+            <Button variant="secondary" size="icon" className="rounded-full bg-background/50 backdrop-blur-md hover:bg-background/80" onClick={() => setLocation(`/rezepte/${id}/bearbeiten`)} data-testid="btn-edit">
               <Edit2 className="w-4 h-4" />
             </Button>
             

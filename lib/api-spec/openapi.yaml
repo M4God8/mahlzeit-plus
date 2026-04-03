@@ -308,6 +308,260 @@ paths:
         "404":
           description: No active plan
 
+  /meal-plans/{id}:
+    get:
+      operationId: getMealPlan
+      tags: [meal-plans]
+      summary: Get a meal plan by ID with all days and entries
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Meal plan detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlanDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateMealPlan
+      tags: [meal-plans]
+      summary: Update meal plan metadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealPlanUpdateInput"
+      responses:
+        "200":
+          description: Updated meal plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlan"
+    delete:
+      operationId: deleteMealPlan
+      tags: [meal-plans]
+      summary: Delete a meal plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /meal-plans/{id}/activate:
+    post:
+      operationId: activateMealPlan
+      tags: [meal-plans]
+      summary: Set a meal plan as the active plan (deactivates others)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Activated meal plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlan"
+
+  /meal-plans/{id}/copy:
+    post:
+      operationId: copyMealPlan
+      tags: [meal-plans]
+      summary: Copy a meal plan as a new instance (Wiederholung)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                setActive:
+                  type: boolean
+      responses:
+        "201":
+          description: Copied meal plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlanDetail"
+
+  /meal-plans/{id}/swap-days:
+    post:
+      operationId: swapMealPlanDays
+      tags: [meal-plans]
+      summary: Swap all entries between two days
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dayNumberA:
+                  type: integer
+                dayNumberB:
+                  type: integer
+              required:
+                - dayNumberA
+                - dayNumberB
+      responses:
+        "200":
+          description: Updated meal plan after swap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlanDetail"
+
+  /meal-plans/{id}/days:
+    post:
+      operationId: addMealPlanDay
+      tags: [meal-plans]
+      summary: Add a day to a meal plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dayNumber:
+                  type: integer
+              required:
+                - dayNumber
+      responses:
+        "201":
+          description: Created day
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlanDay"
+
+  /meal-plans/{id}/days/{dayId}/entries:
+    post:
+      operationId: addMealEntry
+      tags: [meal-plans]
+      summary: Add a meal entry to a plan day
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: dayId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealEntryInput"
+      responses:
+        "201":
+          description: Created entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealEntry"
+
+  /meal-plans/{id}/days/{dayId}/entries/{entryId}:
+    put:
+      operationId: updateMealEntry
+      tags: [meal-plans]
+      summary: Update (replace) a meal entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: dayId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MealEntryInput"
+      responses:
+        "200":
+          description: Updated entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealEntry"
+    delete:
+      operationId: deleteMealEntry
+      tags: [meal-plans]
+      summary: Delete a meal entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: dayId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   /today:
     get:
       operationId: getTodayMeals
@@ -664,6 +918,28 @@ components:
         - title
         - cycleLengthDays
         - repeatEnabled
+
+    MealPlanUpdateInput:
+      type: object
+      properties:
+        title:
+          type: string
+        cycleLengthDays:
+          type: integer
+        repeatEnabled:
+          type: boolean
+
+    MealEntryInput:
+      type: object
+      properties:
+        mealType:
+          type: string
+        recipeId:
+          type: ["integer", "null"]
+        customNote:
+          type: ["string", "null"]
+      required:
+        - mealType
 
     TodayMealEntry:
       type: object

@@ -434,6 +434,288 @@ export const GetActiveMealPlanResponse = zod.object({
 });
 
 /**
+ * @summary Get a meal plan by ID with all days and entries
+ */
+export const GetMealPlanParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetMealPlanResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  title: zod.string(),
+  cycleLengthDays: zod.number(),
+  repeatEnabled: zod.boolean(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+  days: zod.array(
+    zod.object({
+      id: zod.number(),
+      mealPlanId: zod.number(),
+      dayNumber: zod.number(),
+      entries: zod.array(
+        zod.object({
+          id: zod.number(),
+          mealPlanDayId: zod.number(),
+          mealType: zod.string(),
+          recipeId: zod.number().nullish(),
+          customNote: zod.string().nullish(),
+          timeSlot: zod.string().nullish(),
+          recipe: zod
+            .union([
+              zod.object({
+                id: zod.number(),
+                userId: zod.string().nullish(),
+                title: zod.string(),
+                description: zod.string().nullish(),
+                prepTime: zod.number(),
+                cookTime: zod.number(),
+                servings: zod.number(),
+                instructions: zod.string(),
+                tags: zod.array(zod.string()),
+                aiGenerated: zod.boolean(),
+                energyType: zod.string(),
+                isPublic: zod.boolean(),
+                createdAt: zod.string(),
+                ingredients: zod.array(
+                  zod.object({
+                    id: zod.number(),
+                    ingredientId: zod.number().nullish(),
+                    customName: zod.string().nullish(),
+                    amount: zod.number(),
+                    unit: zod.string(),
+                    optional: zod.boolean(),
+                    ingredientName: zod.string().nullish(),
+                  }),
+                ),
+              }),
+              zod.null(),
+            ])
+            .optional(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
+ * @summary Update meal plan metadata
+ */
+export const UpdateMealPlanParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateMealPlanBody = zod.object({
+  title: zod.string().optional(),
+  cycleLengthDays: zod.number().optional(),
+  repeatEnabled: zod.boolean().optional(),
+});
+
+export const UpdateMealPlanResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  title: zod.string(),
+  cycleLengthDays: zod.number(),
+  repeatEnabled: zod.boolean(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete a meal plan
+ */
+export const DeleteMealPlanParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Set a meal plan as the active plan (deactivates others)
+ */
+export const ActivateMealPlanParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ActivateMealPlanResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  title: zod.string(),
+  cycleLengthDays: zod.number(),
+  repeatEnabled: zod.boolean(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Copy a meal plan as a new instance (Wiederholung)
+ */
+export const CopyMealPlanParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CopyMealPlanBody = zod.object({
+  setActive: zod.boolean().optional(),
+});
+
+/**
+ * @summary Swap all entries between two days
+ */
+export const SwapMealPlanDaysParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SwapMealPlanDaysBody = zod.object({
+  dayNumberA: zod.number(),
+  dayNumberB: zod.number(),
+});
+
+export const SwapMealPlanDaysResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  title: zod.string(),
+  cycleLengthDays: zod.number(),
+  repeatEnabled: zod.boolean(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+  days: zod.array(
+    zod.object({
+      id: zod.number(),
+      mealPlanId: zod.number(),
+      dayNumber: zod.number(),
+      entries: zod.array(
+        zod.object({
+          id: zod.number(),
+          mealPlanDayId: zod.number(),
+          mealType: zod.string(),
+          recipeId: zod.number().nullish(),
+          customNote: zod.string().nullish(),
+          timeSlot: zod.string().nullish(),
+          recipe: zod
+            .union([
+              zod.object({
+                id: zod.number(),
+                userId: zod.string().nullish(),
+                title: zod.string(),
+                description: zod.string().nullish(),
+                prepTime: zod.number(),
+                cookTime: zod.number(),
+                servings: zod.number(),
+                instructions: zod.string(),
+                tags: zod.array(zod.string()),
+                aiGenerated: zod.boolean(),
+                energyType: zod.string(),
+                isPublic: zod.boolean(),
+                createdAt: zod.string(),
+                ingredients: zod.array(
+                  zod.object({
+                    id: zod.number(),
+                    ingredientId: zod.number().nullish(),
+                    customName: zod.string().nullish(),
+                    amount: zod.number(),
+                    unit: zod.string(),
+                    optional: zod.boolean(),
+                    ingredientName: zod.string().nullish(),
+                  }),
+                ),
+              }),
+              zod.null(),
+            ])
+            .optional(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
+ * @summary Add a day to a meal plan
+ */
+export const AddMealPlanDayParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AddMealPlanDayBody = zod.object({
+  dayNumber: zod.number(),
+});
+
+/**
+ * @summary Add a meal entry to a plan day
+ */
+export const AddMealEntryParams = zod.object({
+  id: zod.coerce.number(),
+  dayId: zod.coerce.number(),
+});
+
+export const AddMealEntryBody = zod.object({
+  mealType: zod.string(),
+  recipeId: zod.number().nullish(),
+  customNote: zod.string().nullish(),
+});
+
+/**
+ * @summary Update (replace) a meal entry
+ */
+export const UpdateMealEntryParams = zod.object({
+  id: zod.coerce.number(),
+  dayId: zod.coerce.number(),
+  entryId: zod.coerce.number(),
+});
+
+export const UpdateMealEntryBody = zod.object({
+  mealType: zod.string(),
+  recipeId: zod.number().nullish(),
+  customNote: zod.string().nullish(),
+});
+
+export const UpdateMealEntryResponse = zod.object({
+  id: zod.number(),
+  mealPlanDayId: zod.number(),
+  mealType: zod.string(),
+  recipeId: zod.number().nullish(),
+  customNote: zod.string().nullish(),
+  timeSlot: zod.string().nullish(),
+  recipe: zod
+    .union([
+      zod.object({
+        id: zod.number(),
+        userId: zod.string().nullish(),
+        title: zod.string(),
+        description: zod.string().nullish(),
+        prepTime: zod.number(),
+        cookTime: zod.number(),
+        servings: zod.number(),
+        instructions: zod.string(),
+        tags: zod.array(zod.string()),
+        aiGenerated: zod.boolean(),
+        energyType: zod.string(),
+        isPublic: zod.boolean(),
+        createdAt: zod.string(),
+        ingredients: zod.array(
+          zod.object({
+            id: zod.number(),
+            ingredientId: zod.number().nullish(),
+            customName: zod.string().nullish(),
+            amount: zod.number(),
+            unit: zod.string(),
+            optional: zod.boolean(),
+            ingredientName: zod.string().nullish(),
+          }),
+        ),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+});
+
+/**
+ * @summary Delete a meal entry
+ */
+export const DeleteMealEntryParams = zod.object({
+  id: zod.coerce.number(),
+  dayId: zod.coerce.number(),
+  entryId: zod.coerce.number(),
+});
+
+/**
  * @summary Get today's meals from the active plan
  */
 export const GetTodayMealsResponse = zod.object({
