@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -12,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   
   const [profileId, setProfileId] = useState<number | null>(null);
@@ -41,6 +43,8 @@ export default function Onboarding() {
       }
     }, {
       onSuccess: async () => {
+        queryClient.setQueryData(["user-settings-check"], true);
+
         let starterPlanCreated = false;
         try {
           const res = await fetch("/api/meal-plans/starter", {
