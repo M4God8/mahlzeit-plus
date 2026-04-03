@@ -1,0 +1,105 @@
+-- Benutzer (via Supabase Auth)
+users
+  id, email, name, created_at
+
+-- Ernährungsprofil (wählbar, 5 vordefinierte)
+nutrition_profiles
+  id, name, description,
+  excluded_ingredients TEXT[],    -- klar strukturiert, kein wildes JSON
+  preferred_categories TEXT[],
+  meal_style TEXT,                -- 'simple' | 'varied' | 'prep'
+  energy_label TEXT               -- 'leicht' | 'kraftvoll' | 'ruhig' | 'fokussiert'
+
+-- Nutzer-Einstellungen
+user_settings
+  user_id, profile_id, household_size (1-6),
+  budget_level (low/medium/high),
+  cook_time_limit (15/30/60 min),
+  bio_preferred BOOLEAN
+
+-- Zutaten (interne Kochzutaten — GETRENNT von Scan-Produkten!)
+ingredients
+  id, name, category, default_unit, bio_recommended, score_base
+
+-- Rezepte
+recipes
+  id, user_id, title, description,
+  prep_time, cook_time, servings,
+  instructions TEXT,
+  tags TEXT[],
+  ai_generated BOOLEAN,
+  energy_type TEXT,    -- 'leicht' | 'sättigend' | 'schnell' | 'warm'
+  is_public BOOLEAN,
+  created_at
+
+-- Rezept-Zutaten
+recipe_ingredients
+  id, recipe_id, ingredient_id, custom_name,
+  amount DECIMAL, unit TEXT, optional BOOLEAN
+
+-- Mahlzeitenpläne
+meal_plans
+  id, user_id, title,
+  cycle_length_days INT,    -- 7, 10 oder 14
+  repeat_enabled BOOLEAN,
+  active BOOLEAN,
+  created_at
+
+-- Tage im Plan
+meal_plan_days
+  id, meal_plan_id, day_number
+
+-- Mahlzeit-Einträge
+meal_entries
+  id, meal_plan_day_id,
+  meal_type TEXT,   -- 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  recipe_id,
+  custom_note TEXT,
+  time_slot TIME
+
+-- Einkaufslisten
+shopping_lists
+  id, user_id, week_start DATE, title TEXT,
+  generated_from_plan_id, status TEXT
+
+-- Einkaufslisten-Items
+shopping_list_items
+  id, list_id, ingredient_id, custom_name,
+  quantity DECIMAL, unit TEXT, category TEXT,
+  is_checked BOOLEAN, is_bio_preferred BOOLEAN
+
+-- Meal-Feedback (Lern-System)
+meal_feedback
+  id, user_id, recipe_id, date DATE,
+  rating INT (1-3),    -- 1=👎 2=😐 3=👍
+  replaced BOOLEAN,    -- wurde Gericht ersetzt?
+  notes TEXT
+
+-- ⚡ NEU: Lernprofil (aus Feedback aggregiert)
+user_learned_preferences
+  user_id,
+  avg_preferred_prep_time INT,
+  frequently_replaced_recipes TEXT[],
+  preferred_meal_complexity TEXT,   -- 'simple' | 'varied'
+  last_updated
+
+-- Gescannte Produkte (GETRENNT von ingredients!)
+scanned_products
+  id, barcode, name, brand,
+  ingredients_text TEXT,
+  nutriments_json JSONB,
+  naturalness_score INT (0-25),
+  nutrient_score INT (0-25),
+  profile_fit_score INT (0-25),
+  quality_score INT (0-25),
+  total_score INT (0-100),
+  cached_at
+
+-- KI-Generierungen (Log)
+ai_generations
+  id, user_id, type TEXT,
+  -- 'recipe_from_fridge' | 'plan_generate' | 'recipe_adjust' | 'ingredient_sub'
+  input_json JSONB,
+  output_json JSONB,
+  saved_as_recipe_id,
+  created_at
