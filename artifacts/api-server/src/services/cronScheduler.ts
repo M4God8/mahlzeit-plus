@@ -1,17 +1,26 @@
 import cron from "node-cron";
 import { db } from "@workspace/db";
-import { userLearnedPreferencesTable } from "@workspace/db";
+import { mealFeedbackTable } from "@workspace/db";
+import { gte } from "drizzle-orm";
 import { aggregateUserPreferences } from "./aggregateService";
 import { logger } from "../lib/logger";
+
+const WINDOW_WEEKS = 4;
 
 export function startCronJobs(): void {
   cron.schedule("0 3 * * 1", async () => {
     logger.info("Weekly learn aggregation job started");
 
     try {
-      const allRows = await db.select({ userId: userLearnedPreferencesTable.userId }).from(userLearnedPreferencesTable);
+      const since = new Date();
+      since.setDate(since.getDate() - WINDOW_WEEKS * 7);
 
-      const knownUsers: string[] = allRows.map((r) => r.userId);
+      const feedbackRows = await db
+        .selectDistinct({ userId: mealFeedbackTable.userId })
+        .from(mealFeedbackTable)
+        .where(gte(mealFeedbackTable.createdAt, since));
+
+      const knownUsers: string[] = feedbackRows.map((r) => r.userId);
 
       let succeeded = 0;
       let failed = 0;
