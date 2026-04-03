@@ -41,16 +41,23 @@ export default function Onboarding() {
       }
     }, {
       onSuccess: async () => {
+        let starterPlanCreated = false;
         try {
-          await fetch("/api/meal-plans/starter", {
+          const res = await fetch("/api/meal-plans/starter", {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
           });
+          starterPlanCreated = res.ok;
         } catch {
-          // Starter plan creation is best-effort; doesn't block onboarding
+          starterPlanCreated = false;
         }
-        toast({ title: "Willkommen!", description: "Dein Profil wurde erfolgreich eingerichtet." });
+        toast({
+          title: "Willkommen!",
+          description: starterPlanCreated
+            ? "Dein Profil wurde eingerichtet. Dein erster Plan wartet auf dich."
+            : "Dein Profil wurde gespeichert. Erstelle deinen ersten Mahlzeitenplan unter 'Plan'.",
+        });
         setLocation("/heute");
       },
       onError: () => {

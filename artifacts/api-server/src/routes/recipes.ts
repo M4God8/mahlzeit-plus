@@ -5,7 +5,7 @@ import {
   recipeIngredientsTable,
   ingredientsTable,
 } from "@workspace/db";
-import { eq, ilike, and, or, isNull } from "drizzle-orm";
+import { eq, ilike, and, or, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import type { Recipe } from "@workspace/db";
 
@@ -97,7 +97,7 @@ function toIngredientRow(recipeId: number, ing: IngredientInput) {
 router.get("/recipes", requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.userId!;
-    const { energyType, search } = req.query as { energyType?: string; search?: string };
+    const { energyType, search, tags } = req.query as { energyType?: string; search?: string; tags?: string };
 
     const conditions = [
       or(eq(recipesTable.isPublic, true), eq(recipesTable.userId, userId)),
@@ -108,6 +108,9 @@ router.get("/recipes", requireAuth, async (req, res): Promise<void> => {
     }
     if (search) {
       conditions.push(ilike(recipesTable.title, `%${search}%`));
+    }
+    if (tags) {
+      conditions.push(sql`array_to_string(${recipesTable.tags}, ',') ilike ${'%' + tags + '%'}`);
     }
 
     const recipes = await db.select().from(recipesTable).where(and(...conditions));

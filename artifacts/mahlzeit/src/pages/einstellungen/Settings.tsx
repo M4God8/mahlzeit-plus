@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser, useClerk } from "@clerk/react";
 import { useGetUserSettings, useListNutritionProfiles, useCreateOrUpdateUserSettings } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -23,15 +23,14 @@ export default function Settings() {
   const [householdSize, setHouseholdSize] = useState<number>(2);
   const [budgetLevel, setBudgetLevel] = useState<string>("medium");
   const [cookTimeLimit, setCookTimeLimit] = useState<number>(30);
-  const [initialized, setInitialized] = useState(false);
-
-  if (settings && !initialized) {
-    setProfileId(settings.profileId?.toString() || "");
-    setHouseholdSize(settings.householdSize);
-    setBudgetLevel(settings.budgetLevel);
-    setCookTimeLimit(settings.cookTimeLimit);
-    setInitialized(true);
-  }
+  useEffect(() => {
+    if (settings) {
+      setProfileId(settings.profileId?.toString() || "");
+      setHouseholdSize(settings.householdSize);
+      setBudgetLevel(settings.budgetLevel);
+      setCookTimeLimit(settings.cookTimeLimit);
+    }
+  }, [settings]);
 
   const handleSave = () => {
     updateSettings.mutate({
