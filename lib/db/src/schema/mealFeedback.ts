@@ -17,7 +17,7 @@ export const mealFeedbackTable = pgTable(
     index("meal_feedback_user_id_idx").on(t.userId),
     index("meal_feedback_meal_entry_id_idx").on(t.mealEntryId),
     index("meal_feedback_recipe_id_idx").on(t.recipeId),
-    check("meal_feedback_rating_check", sql`${t.rating} IN ('up', 'neutral', 'down')`),
+    check("meal_feedback_rating_check", sql`${t.rating} IN ('thumbs_up', 'neutral', 'thumbs_down')`),
   ]
 );
 
