@@ -4,44 +4,58 @@ import {
   recipesTable,
   userLearnedPreferencesTable,
 } from "@workspace/db";
-import { eq, and, gte, sql } from "drizzle-orm";
+import { eq, and, gte, ne } from "drizzle-orm";
+import type { UserLearnedPreferences } from "@workspace/db";
 
 const WINDOW_WEEKS = 4;
 const REPLACEMENT_THRESHOLD = 2;
 
-export interface AggregateResult {
-  avgPreferredPrepTime: number | null;
-  frequentlyReplacedRecipeIds: number[];
-  preferredMealComplexity: "simple" | "varied" | "mixed";
-  insightMessage: string | null;
+function median(values: number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? Math.round((sorted[mid - 1]! + sorted[mid]!) / 2)
+    : sorted[mid]!;
 }
 
-function buildInsightMessage(result: AggregateResult): string | null {
+function buildInsightMessage(
+  avgPreferredPrepTime: number | null,
+  preferredMealComplexity: string,
+  replacedCount: number
+): string | null {
   const messages: string[] = [];
 
-  if (result.avgPreferredPrepTime !== null) {
-    if (result.avgPreferredPrepTime <= 25) {
-      messages.push(`Du bevorzugst schnelle Mahlzeiten (Ø ${result.avgPreferredPrepTime} Min.) — soll ich den Plan vereinfachen?`);
-    } else if (result.avgPreferredPrepTime >= 45) {
-      messages.push(`Du kochst gerne aufwendig (Ø ${result.avgPreferredPrepTime} Min.) — soll ich mehr anspruchsvolle Rezepte vorschlagen?`);
+  if (avgPreferredPrepTime !== null) {
+    if (avgPreferredPrepTime <= 25) {
+      messages.push(
+        `Du bevorzugst schnelle Mahlzeiten (Ø ${avgPreferredPrepTime} Min.) — soll ich den Plan vereinfachen?`
+      );
+    } else if (avgPreferredPrepTime >= 45) {
+      messages.push(
+        `Du kochst gerne aufwendig (Ø ${avgPreferredPrepTime} Min.) — soll ich mehr anspruchsvolle Rezepte vorschlagen?`
+      );
     }
   }
 
-  if (result.frequentlyReplacedRecipeIds.length >= 2) {
-    messages.push(`${result.frequentlyReplacedRecipeIds.length} Rezepte werden häufig abgelehnt — ich berücksichtige das bei neuen Vorschlägen.`);
+  if (replacedCount >= 2) {
+    messages.push(
+      `${replacedCount} Rezepte werden häufig abgelehnt — ich berücksichtige das bei neuen Vorschlägen.`
+    );
   }
 
-  if (result.preferredMealComplexity === "simple") {
-    messages.push("Dein Essmuster: Du magst es einfach und schnell.");
-  } else if (result.preferredMealComplexity === "varied") {
-    messages.push("Dein Essmuster: Du genießt abwechslungsreiche und aufwendige Mahlzeiten.");
+  if (messages.length === 0) {
+    if (preferredMealComplexity === "simple") {
+      messages.push("Dein Essmuster: Du magst es einfach und schnell.");
+    } else if (preferredMealComplexity === "varied") {
+      messages.push("Dein Essmuster: Du genießt abwechslungsreiche und aufwendige Mahlzeiten.");
+    }
   }
 
-  if (messages.length === 0) return null;
-  return messages[0]!;
+  return messages.length > 0 ? messages[0]! : null;
 }
 
-export async function aggregateUserPreferences(userId: string): Promise<AggregateResult> {
+export async function aggregateUserPreferences(userId: string): Promise<UserLearnedPreferences> {
   const since = new Date();
   since.setDate(since.getDate() - WINDOW_WEEKS * 7);
 
@@ -61,19 +75,12 @@ export async function aggregateUserPreferences(userId: string): Promise<Aggregat
       )
     );
 
-  if (rows.length === 0) {
-    return {
-      avgPreferredPrepTime: null,
-      frequentlyReplacedRecipeIds: [],
-      preferredMealComplexity: "mixed",
-      insightMessage: null,
-    };
-  }
+  const likedRows = rows.filter(
+    (r) => r.rating === "thumbs_up" && r.prepTime !== null && r.cookTime !== null
+  );
 
-  const likedRows = rows.filter((r) => r.rating === "thumbs_up" && r.prepTime !== null && r.cookTime !== null);
-  const avgPreferredPrepTime = likedRows.length > 0
-    ? Math.round(likedRows.reduce((sum, r) => sum + (r.prepTime ?? 0) + (r.cookTime ?? 0), 0) / likedRows.length)
-    : null;
+  const prepTimesLiked = likedRows.map((r) => (r.prepTime ?? 0) + (r.cookTime ?? 0));
+  const avgPreferredPrepTime = median(prepTimesLiked);
 
   const dislikedCounts: Record<number, number> = {};
   for (const r of rows) {
@@ -85,31 +92,33 @@ export async function aggregateUserPreferences(userId: string): Promise<Aggregat
     .filter(([, count]) => count >= REPLACEMENT_THRESHOLD)
     .map(([id]) => Number(id));
 
+  const simpleCount = likedRows.filter((r) => (r.prepTime ?? 0) + (r.cookTime ?? 0) <= 25).length;
+  const complexCount = likedRows.filter((r) => (r.prepTime ?? 0) + (r.cookTime ?? 0) >= 45).length;
   let preferredMealComplexity: "simple" | "varied" | "mixed" = "mixed";
-  if (avgPreferredPrepTime !== null) {
-    if (avgPreferredPrepTime <= 25) {
+  if (likedRows.length > 0) {
+    const simpleRatio = simpleCount / likedRows.length;
+    const complexRatio = complexCount / likedRows.length;
+    if (simpleRatio > 0.5) {
       preferredMealComplexity = "simple";
-    } else if (avgPreferredPrepTime >= 45) {
+    } else if (complexRatio > 0.5) {
       preferredMealComplexity = "varied";
     }
   }
 
-  const result: AggregateResult = {
+  const insightMessage = buildInsightMessage(
     avgPreferredPrepTime,
-    frequentlyReplacedRecipeIds,
     preferredMealComplexity,
-    insightMessage: null,
-  };
-  result.insightMessage = buildInsightMessage(result);
+    frequentlyReplacedRecipeIds.length
+  );
 
-  await db
+  const [upserted] = await db
     .insert(userLearnedPreferencesTable)
     .values({
       userId,
       avgPreferredPrepTime,
       frequentlyReplacedRecipeIds,
       preferredMealComplexity,
-      insightMessage: result.insightMessage,
+      insightMessage,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -118,10 +127,11 @@ export async function aggregateUserPreferences(userId: string): Promise<Aggregat
         avgPreferredPrepTime,
         frequentlyReplacedRecipeIds,
         preferredMealComplexity,
-        insightMessage: result.insightMessage,
+        insightMessage,
         updatedAt: new Date(),
       },
-    });
+    })
+    .returning();
 
-  return result;
+  return upserted!;
 }
