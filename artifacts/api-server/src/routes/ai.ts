@@ -9,8 +9,11 @@ import {
   mealFeedbackTable,
   userSettingsTable,
   nutritionProfilesTable,
+  mealEntriesTable,
+  mealPlanDaysTable,
+  mealPlansTable,
 } from "@workspace/db";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
   AiGenerateRecipeBody,
@@ -426,6 +429,30 @@ router.post("/ai/save-recipe", requireAuth, async (req, res) => {
 router.post("/ai/feedback", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const body = AiSubmitFeedbackBody.parse(req.body);
+
+  if (body.mealEntryId != null) {
+    const [entry] = await db
+      .select({ id: mealEntriesTable.id })
+      .from(mealEntriesTable)
+      .innerJoin(mealPlanDaysTable, eq(mealEntriesTable.mealPlanDayId, mealPlanDaysTable.id))
+      .innerJoin(mealPlansTable, eq(mealPlanDaysTable.mealPlanId, mealPlansTable.id))
+      .where(and(eq(mealEntriesTable.id, body.mealEntryId), eq(mealPlansTable.userId, userId)));
+    if (!entry) {
+      res.status(403).json({ error: "Meal entry not found or access denied" });
+      return;
+    }
+  }
+
+  if (body.recipeId != null) {
+    const [recipe] = await db
+      .select({ id: recipesTable.id })
+      .from(recipesTable)
+      .where(and(eq(recipesTable.id, body.recipeId), eq(recipesTable.userId, userId)));
+    if (!recipe) {
+      res.status(403).json({ error: "Recipe not found or access denied" });
+      return;
+    }
+  }
 
   const [feedback] = await db
     .insert(mealFeedbackTable)
