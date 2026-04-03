@@ -47,11 +47,13 @@ Tabellen in `lib/db/src/schema/`:
 - `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne
 - `ai_generations` — KI-Anfragen-Log (userId, type, input, output, model, inputTokens, outputTokens, costEur)
 - `meal_feedback` — Mahlzeit-Feedback (thumbs_up/thumbs_down)
+- `user_settings` hat zusätzlich: role (user/admin), isPremium, premiumExpiresAt, isBlocked, createdAt
 
 ### DB-Befehle
 ```bash
 pnpm --filter @workspace/db run push         # Schema pushen
 npx tsx lib/db/src/seed.ts                  # Seed-Daten einspielen
+npx tsx lib/db/src/seed-admin.ts <clerk-id> # User zum Admin machen
 ```
 
 ## API-Endpunkte
@@ -92,13 +94,13 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | POST | /api/ai/substitute-ingredient | Ja | KI: Zutatens-Alternativen (Claude) |
 | POST | /api/ai/save-recipe | Ja | KI-Rezept in Rezeptbibliothek speichern |
 | POST | /api/ai/feedback | Ja | Mahlzeit-Feedback (thumbs_up/down) |
-| GET | /api/admin/role-check | Ja | User-Rolle prüfen (für Admin Guard) |
+| GET | /api/admin/me | Admin | Admin-Check |
 | GET | /api/admin/stats | Admin | Dashboard-Statistiken |
-| GET | /api/admin/users | Admin | User-Liste mit KI-Kosten |
+| GET | /api/admin/users | Admin | User-Liste mit Filtern (Plan, Profil, Zeitraum, KI-Nutzung) + Email von Clerk |
 | PATCH | /api/admin/users/:id/premium | Admin | Premium aktivieren/deaktivieren |
 | PATCH | /api/admin/users/:id/block | Admin | User sperren/entsperren |
-| GET | /api/admin/costs | Admin | KI-Kosten Übersicht (Filter: dateFrom, dateTo, userId, aiType) |
-| GET | /api/admin/health | Admin | System Health Check (DB, Claude, Open Food Facts) |
+| GET | /api/admin/costs | Admin | KI-Kosten Übersicht mit Filtern (dateFrom/dateTo, userId, aiType, groupBy=day/week/month) |
+| GET | /api/admin/health | Admin | System Health Check (DB, Claude API, Open Food Facts, Stripe placeholder) |
 
 ## Frontend-Seiten (wouter)
 
@@ -116,7 +118,7 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 - `/rezepte/:id/bearbeiten` — Rezept bearbeiten (protected)
 - `/ki` — KI-Küche: Rezeptgenerator + Wochenplan-Generator via Claude AI (protected)
 - `/einstellungen` — Einstellungen (protected)
-- `/admin` — Admin-Panel (nur für role=admin, sonst Redirect zu /heute)
+- `/admin` — Admin-Panel (nur role=admin, sonst Redirect)
 
 ## Umgebungsvariablen (Secrets)
 

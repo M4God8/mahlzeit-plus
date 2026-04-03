@@ -160,17 +160,26 @@ function buildContextBlock(ctx: UserContext): string {
   return lines.join("\n");
 }
 
+interface KiCallResult<T> {
+  data: T;
+  inputTokens: number;
+  outputTokens: number;
+}
+
 async function safeKiCall<T>(
   schema: z.ZodSchema<T>,
   prompt: string,
   systemPrompt: string,
-): Promise<T> {
+): Promise<KiCallResult<T>> {
   const response = await anthropic.messages.create({
     model: MODEL,
     max_tokens: MAX_TOKENS,
     system: systemPrompt,
     messages: [{ role: "user", content: prompt }],
   });
+
+  let totalInputTokens = response.usage?.input_tokens ?? 0;
+  let totalOutputTokens = response.usage?.output_tokens ?? 0;
 
   const text = response.content
     .filter((b) => b.type === "text")
@@ -185,7 +194,7 @@ async function safeKiCall<T>(
 
   try {
     const parsed = extractJson(text);
-    return schema.parse(parsed);
+    return { data: schema.parse(parsed), inputTokens: totalInputTokens, outputTokens: totalOutputTokens };
   } catch {
     const repairResponse = await anthropic.messages.create({
       model: MODEL,
@@ -201,6 +210,9 @@ async function safeKiCall<T>(
       ],
     });
 
+    totalInputTokens += repairResponse.usage?.input_tokens ?? 0;
+    totalOutputTokens += repairResponse.usage?.output_tokens ?? 0;
+
     const repairText = repairResponse.content
       .filter((b) => b.type === "text")
       .map((b) => (b as { type: "text"; text: string }).text)
@@ -208,7 +220,7 @@ async function safeKiCall<T>(
       .trim();
 
     const repairedParsed = JSON.parse(repairText);
-    return schema.parse(repairedParsed);
+    return { data: schema.parse(repairedParsed), inputTokens: totalInputTokens, outputTokens: totalOutputTokens };
   }
 }
 
@@ -242,17 +254,21 @@ Antworte mit folgendem JSON:
   ]
 }`;
 
-  const result = await safeKiCall(AiGenerateRecipeResponse, prompt, systemPrompt);
+  const { data, inputTokens, outputTokens } = await safeKiCall(AiGenerateRecipeResponse, prompt, systemPrompt);
+  const costEur = (inputTokens * 0.000003 + outputTokens * 0.000015).toFixed(6);
 
   await db.insert(aiGenerationsTable).values({
     userId,
     type: "generate-recipe",
     input: body.prompt,
-    output: result as Record<string, unknown>,
+    output: data as Record<string, unknown>,
     model: MODEL,
+    inputTokens,
+    outputTokens,
+    costEur,
   });
 
-  res.json(result);
+  res.json(data);
 });
 
 router.post("/ai/generate-plan", requireAuth, async (req, res) => {
@@ -286,17 +302,21 @@ Antworte mit folgendem JSON:
   "notes": "Allgemeine Hinweise zum Plan"
 }`;
 
-  const result = await safeKiCall(AiGeneratePlanResponse, prompt, systemPrompt);
+  const { data, inputTokens, outputTokens } = await safeKiCall(AiGeneratePlanResponse, prompt, systemPrompt);
+  const costEur = (inputTokens * 0.000003 + outputTokens * 0.000015).toFixed(6);
 
   await db.insert(aiGenerationsTable).values({
     userId,
     type: "generate-plan",
     input: body.preferences,
-    output: result as Record<string, unknown>,
+    output: data as Record<string, unknown>,
     model: MODEL,
+    inputTokens,
+    outputTokens,
+    costEur,
   });
 
-  res.json(result);
+  res.json(data);
 });
 
 router.post("/ai/adjust-recipe", requireAuth, async (req, res) => {
@@ -355,17 +375,21 @@ Antworte mit folgendem JSON:
   ]
 }`;
 
-  const result = await safeKiCall(AiAdjustRecipeResponse, prompt, systemPrompt);
+  const { data, inputTokens, outputTokens } = await safeKiCall(AiAdjustRecipeResponse, prompt, systemPrompt);
+  const costEur = (inputTokens * 0.000003 + outputTokens * 0.000015).toFixed(6);
 
   await db.insert(aiGenerationsTable).values({
     userId,
     type: "adjust-recipe",
     input: `${recipe.id}:${body.adjustmentPrompt}`,
-    output: result as Record<string, unknown>,
+    output: data as Record<string, unknown>,
     model: MODEL,
+    inputTokens,
+    outputTokens,
+    costEur,
   });
 
-  res.json(result);
+  res.json(data);
 });
 
 router.post("/ai/substitute-ingredient", requireAuth, async (req, res) => {
@@ -415,17 +439,21 @@ Antworte mit folgendem JSON:
   "generalAdvice": "Allgemeiner Rat zum Ersetzen"
 }`;
 
-  const result = await safeKiCall(AiSubstituteIngredientResponse, prompt, systemPrompt);
+  const { data, inputTokens, outputTokens } = await safeKiCall(AiSubstituteIngredientResponse, prompt, systemPrompt);
+  const costEur = (inputTokens * 0.000003 + outputTokens * 0.000015).toFixed(6);
 
   await db.insert(aiGenerationsTable).values({
     userId,
     type: "substitute-ingredient",
     input: body.ingredients.join(","),
-    output: result as Record<string, unknown>,
+    output: data as Record<string, unknown>,
     model: MODEL,
+    inputTokens,
+    outputTokens,
+    costEur,
   });
 
-  res.json(result);
+  res.json(data);
 });
 
 router.post("/ai/save-recipe", requireAuth, async (req, res) => {

@@ -1,7 +1,6 @@
 import { getAuth } from "@clerk/express";
 import type { Request, Response, NextFunction } from "express";
-import { db } from "@workspace/db";
-import { userSettingsTable } from "@workspace/db";
+import { db, userSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 export async function requireAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -11,10 +10,9 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
-  req.userId = userId;
 
   const [settings] = await db
-    .select({ role: userSettingsTable.role })
+    .select({ role: userSettingsTable.role, isBlocked: userSettingsTable.isBlocked })
     .from(userSettingsTable)
     .where(eq(userSettingsTable.userId, userId));
 
@@ -23,5 +21,11 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
     return;
   }
 
+  if (settings.isBlocked) {
+    res.status(403).json({ error: "Account gesperrt" });
+    return;
+  }
+
+  req.userId = userId;
   next();
 }

@@ -11,7 +11,7 @@ export const aiGenerationsTable = pgTable(
     model: text("model").notNull().default("claude-sonnet-4-6"),
     inputTokens: integer("input_tokens"),
     outputTokens: integer("output_tokens"),
-    costEur: numeric("cost_eur"),
+    costEur: numeric("cost_eur", { precision: 10, scale: 6 }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [

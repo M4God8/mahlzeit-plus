@@ -21,7 +21,7 @@ import RecipeDetail from "@/pages/rezepte/RecipeDetail";
 import Onboarding from "@/pages/Onboarding";
 import KiKueche from "@/pages/ki/KiKueche";
 import ScannerPage from "@/pages/scanner/Scanner";
-import AdminPanel from "@/pages/admin/AdminPanel";
+import AdminPage from "@/pages/admin/Admin";
 import NotFound from "@/pages/not-found";
 
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -185,32 +185,6 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function AdminGuard() {
-  const { data, isPending } = useQuery({
-    queryKey: ["admin-role-check"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/role-check", { credentials: "include" });
-      if (!res.ok) throw new Error(`${res.status}`);
-      return res.json() as Promise<{ role: string }>;
-    },
-    retry: false,
-  });
-
-  if (isPending) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (data?.role !== "admin") {
-    return <Redirect to="/heute" />;
-  }
-
-  return <AdminPanel />;
-}
-
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   return (
     <>
@@ -263,7 +237,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/einstellungen" component={() => <ProtectedRoute component={Settings} />} />
 
           <Route path="/admin">
-            <Show when="signed-in"><AdminGuard /></Show>
+            <Show when="signed-in"><AdminPage /></Show>
             <Show when="signed-out"><Redirect to="/" /></Show>
           </Route>
 
