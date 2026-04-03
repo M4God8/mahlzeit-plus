@@ -418,17 +418,42 @@ router.post("/ai/save-recipe", requireAuth, async (req, res) => {
     }
   }
 
-  const [fullRecipe] = await db
-    .select()
-    .from(recipesTable)
-    .where(eq(recipesTable.id, saved.id));
+  const [fullRecipe] = await db.select().from(recipesTable).where(eq(recipesTable.id, saved.id));
+  const ingredients = await db
+    .select({
+      id: recipeIngredientsTable.id,
+      ingredientId: recipeIngredientsTable.ingredientId,
+      customName: recipeIngredientsTable.customName,
+      amount: recipeIngredientsTable.amount,
+      unit: recipeIngredientsTable.unit,
+      optional: recipeIngredientsTable.optional,
+      ingredientName: ingredientsTable.name,
+    })
+    .from(recipeIngredientsTable)
+    .leftJoin(ingredientsTable, eq(recipeIngredientsTable.ingredientId, ingredientsTable.id))
+    .where(eq(recipeIngredientsTable.recipeId, saved.id));
 
-  res.status(201).json(fullRecipe);
+  res.status(201).json({
+    ...fullRecipe,
+    tags: fullRecipe!.tags ?? [],
+    createdAt: fullRecipe!.createdAt instanceof Date ? fullRecipe!.createdAt.toISOString() : fullRecipe!.createdAt,
+    ingredients: ingredients.map(ri => ({
+      id: ri.id,
+      ingredientId: ri.ingredientId,
+      customName: ri.customName,
+      amount: parseFloat(String(ri.amount)) || 0,
+      unit: ri.unit,
+      optional: ri.optional,
+      ingredientName: ri.ingredientName ?? null,
+    })),
+  });
 });
 
 router.post("/ai/feedback", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const body = AiSubmitFeedbackBody.parse(req.body);
+
+  let mealEntryOwnershipVerified = false;
 
   if (body.mealEntryId != null) {
     const [entry] = await db
@@ -441,9 +466,10 @@ router.post("/ai/feedback", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Meal entry not found or access denied" });
       return;
     }
+    mealEntryOwnershipVerified = true;
   }
 
-  if (body.recipeId != null) {
+  if (body.recipeId != null && !mealEntryOwnershipVerified) {
     const [recipe] = await db
       .select({ id: recipesTable.id })
       .from(recipesTable)
