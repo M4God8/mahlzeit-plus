@@ -8,9 +8,19 @@ const router = Router();
 
 const GERMAN_DAYS = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"];
 
+interface TodayMealEntry {
+  mealType: string;
+  recipeName: string | null;
+  cookTime: number | null;
+  prepTime: number | null;
+  customNote: string | null;
+  recipeId: number | null;
+  energyType: string | null;
+}
+
 router.get("/today", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = (req as any).userId as string;
+    const userId = req.userId!;
     const now = new Date();
     const dateStr = now.toISOString().split("T")[0];
     const dayName = GERMAN_DAYS[now.getDay()];
@@ -25,7 +35,7 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
         date: dateStr,
         dayName,
         planTitle: null,
-        meals: [],
+        meals: [] as TodayMealEntry[],
         hasPlan: false,
       });
       return;
@@ -51,7 +61,7 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
         date: dateStr,
         dayName,
         planTitle: activePlan.title,
-        meals: [],
+        meals: [] as TodayMealEntry[],
         hasPlan: true,
       });
       return;
@@ -79,14 +89,14 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
       date: dateStr,
       dayName,
       planTitle: activePlan.title,
-      meals: sortedEntries.map(e => ({
+      meals: sortedEntries.map((e): TodayMealEntry => ({
         mealType: e.mealType,
-        recipeName: e.recipeTitle,
-        cookTime: e.recipeCookTime,
-        prepTime: e.recipePrepTime,
+        recipeName: e.recipeTitle ?? null,
+        cookTime: e.recipeCookTime ?? null,
+        prepTime: e.recipePrepTime ?? null,
         customNote: e.customNote,
         recipeId: e.recipeId,
-        energyType: e.recipeEnergyType,
+        energyType: e.recipeEnergyType ?? null,
       })),
       hasPlan: true,
     });

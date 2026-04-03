@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
-import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { QueryClientProvider, useQueryClient, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Loader2 } from "lucide-react";
 
 import Home from "@/pages/Home";
 import Today from "@/pages/heute/Today";
@@ -82,11 +83,37 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
+function useHasUserSettings() {
+  const { isSignedIn, isLoaded } = useUser();
+  return useQuery({
+    queryKey: ["user-settings-check"],
+    enabled: isLoaded && isSignedIn === true,
+    queryFn: async () => {
+      const res = await fetch("/api/user-settings", { credentials: "include" });
+      if (res.status === 404) return false;
+      if (!res.ok) return true;
+      return true;
+    },
+    retry: false,
+    staleTime: 60_000,
+  });
+}
+
 function HomeRedirect() {
+  const { data: hasSettings, isPending } = useHasUserSettings();
+
   return (
     <>
       <Show when="signed-in">
-        <Redirect to="/heute" />
+        {isPending || hasSettings === undefined ? (
+          <div className="min-h-[100dvh] flex items-center justify-center bg-background">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : hasSettings ? (
+          <Redirect to="/heute" />
+        ) : (
+          <Redirect to="/onboarding" />
+        )}
       </Show>
       <Show when="signed-out">
         <Home />
@@ -104,13 +131,33 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType<any> }) {
+function OnboardingGuard({ children }: { children: React.ReactNode }) {
+  const { data: hasSettings, isPending } = useHasUserSettings();
+
+  if (isPending || hasSettings === undefined) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (hasSettings === false) {
+    return <Redirect to="/onboarding" />;
+  }
+
+  return <>{children}</>;
+}
+
+function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   return (
     <>
       <Show when="signed-in">
-        <AuthenticatedLayout>
-          <Component />
-        </AuthenticatedLayout>
+        <OnboardingGuard>
+          <AuthenticatedLayout>
+            <Component />
+          </AuthenticatedLayout>
+        </OnboardingGuard>
       </Show>
       <Show when="signed-out">
         <Redirect to="/" />

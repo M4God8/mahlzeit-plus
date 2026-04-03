@@ -5,21 +5,56 @@ import {
   mealPlanDaysTable,
   mealEntriesTable,
   recipesTable,
-  recipeIngredientsTable,
-  ingredientsTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import type { MealPlan } from "@workspace/db";
 
 const router = Router();
 
-async function getMealPlanWithDays(planId: number) {
+interface MealEntryRow {
+  id: number;
+  mealPlanDayId: number;
+  mealType: string;
+  recipeId: number | null;
+  customNote: string | null;
+  timeSlot: string | null;
+  recipe: {
+    id: number;
+    userId: string | null;
+    title: string;
+    description: string | null;
+    prepTime: number;
+    cookTime: number;
+    servings: number;
+    instructions: string;
+    tags: string[];
+    aiGenerated: boolean;
+    energyType: string;
+    isPublic: boolean;
+    createdAt: string;
+    ingredients: never[];
+  } | null;
+}
+
+interface MealPlanDayRow {
+  id: number;
+  mealPlanId: number;
+  dayNumber: number;
+  entries: MealEntryRow[];
+}
+
+interface MealPlanDetail extends MealPlan {
+  days: MealPlanDayRow[];
+}
+
+async function getMealPlanWithDays(planId: number): Promise<MealPlanDetail | null> {
   const [plan] = await db.select().from(mealPlansTable).where(eq(mealPlansTable.id, planId));
   if (!plan) return null;
 
   const days = await db.select().from(mealPlanDaysTable).where(eq(mealPlanDaysTable.mealPlanId, planId));
 
-  const daysWithEntries = await Promise.all(
+  const daysWithEntries: MealPlanDayRow[] = await Promise.all(
     days.map(async (day) => {
       const entries = await db
         .select({
@@ -50,7 +85,7 @@ async function getMealPlanWithDays(planId: number) {
         id: day.id,
         mealPlanId: day.mealPlanId,
         dayNumber: day.dayNumber,
-        entries: entries.map(e => ({
+        entries: entries.map((e): MealEntryRow => ({
           id: e.id,
           mealPlanDayId: e.mealPlanDayId,
           mealType: e.mealType,
@@ -62,15 +97,15 @@ async function getMealPlanWithDays(planId: number) {
             userId: e.recipeUserId,
             title: e.recipeTitle,
             description: e.recipeDescription,
-            prepTime: e.recipePrepTime,
-            cookTime: e.recipeCookTime,
-            servings: e.recipeServings,
+            prepTime: e.recipePrepTime!,
+            cookTime: e.recipeCookTime!,
+            servings: e.recipeServings!,
             instructions: e.recipeInstructions ?? "",
             tags: e.recipeTags ?? [],
-            aiGenerated: e.recipeAiGenerated,
-            energyType: e.recipeEnergyType,
-            isPublic: e.recipeIsPublic,
-            createdAt: e.recipeCreatedAt?.toISOString?.() ?? e.recipeCreatedAt,
+            aiGenerated: e.recipeAiGenerated!,
+            energyType: e.recipeEnergyType!,
+            isPublic: e.recipeIsPublic!,
+            createdAt: e.recipeCreatedAt instanceof Date ? e.recipeCreatedAt.toISOString() : String(e.recipeCreatedAt),
             ingredients: [],
           } : null,
         })),
@@ -79,40 +114,44 @@ async function getMealPlanWithDays(planId: number) {
   );
 
   return {
+    ...plan,
+    days: daysWithEntries.sort((a, b) => a.dayNumber - b.dayNumber),
+  };
+}
+
+function formatPlan(plan: MealPlan) {
+  return {
     id: plan.id,
     userId: plan.userId,
     title: plan.title,
     cycleLengthDays: plan.cycleLengthDays,
     repeatEnabled: plan.repeatEnabled,
     active: plan.active,
-    createdAt: plan.createdAt?.toISOString?.() ?? plan.createdAt,
-    days: daysWithEntries.sort((a, b) => a.dayNumber - b.dayNumber),
+    createdAt: plan.createdAt instanceof Date ? plan.createdAt.toISOString() : plan.createdAt,
   };
 }
 
 router.get("/meal-plans", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = (req as any).userId as string;
+    const userId = req.userId!;
     const plans = await db.select().from(mealPlansTable).where(eq(mealPlansTable.userId, userId));
-    res.json(plans.map(p => ({
-      id: p.id,
-      userId: p.userId,
-      title: p.title,
-      cycleLengthDays: p.cycleLengthDays,
-      repeatEnabled: p.repeatEnabled,
-      active: p.active,
-      createdAt: p.createdAt?.toISOString?.() ?? p.createdAt,
-    })));
+    res.json(plans.map(formatPlan));
   } catch (err) {
     req.log.error({ err }, "Failed to list meal plans");
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
+interface CreateMealPlanBody {
+  title: string;
+  cycleLengthDays?: number;
+  repeatEnabled?: boolean;
+}
+
 router.post("/meal-plans", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = (req as any).userId as string;
-    const { title, cycleLengthDays, repeatEnabled } = req.body;
+    const userId = req.userId!;
+    const { title, cycleLengthDays, repeatEnabled } = req.body as CreateMealPlanBody;
 
     const [plan] = await db
       .insert(mealPlansTable)
@@ -125,15 +164,7 @@ router.post("/meal-plans", requireAuth, async (req, res): Promise<void> => {
       })
       .returning();
 
-    res.status(201).json({
-      id: plan.id,
-      userId: plan.userId,
-      title: plan.title,
-      cycleLengthDays: plan.cycleLengthDays,
-      repeatEnabled: plan.repeatEnabled,
-      active: plan.active,
-      createdAt: plan.createdAt?.toISOString?.() ?? plan.createdAt,
-    });
+    res.status(201).json(formatPlan(plan));
   } catch (err) {
     req.log.error({ err }, "Failed to create meal plan");
     res.status(500).json({ error: "Internal server error" });
@@ -142,7 +173,7 @@ router.post("/meal-plans", requireAuth, async (req, res): Promise<void> => {
 
 router.get("/meal-plans/active", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = (req as any).userId as string;
+    const userId = req.userId!;
     const [plan] = await db
       .select()
       .from(mealPlansTable)

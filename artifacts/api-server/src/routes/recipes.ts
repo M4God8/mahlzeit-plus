@@ -5,12 +5,33 @@ import {
   recipeIngredientsTable,
   ingredientsTable,
 } from "@workspace/db";
-import { eq, or, ilike, and, isNull } from "drizzle-orm";
+import { eq, ilike, and, or, isNull } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import type { Recipe } from "@workspace/db";
 
 const router = Router();
 
-async function getRecipeWithIngredients(id: number) {
+interface IngredientInput {
+  ingredientId?: number | null;
+  customName?: string | null;
+  amount?: number | string;
+  unit?: string;
+  optional?: boolean;
+}
+
+type RecipeRow = Recipe & {
+  ingredients: {
+    id: number;
+    ingredientId: number | null;
+    customName: string | null;
+    amount: number;
+    unit: string;
+    optional: boolean;
+    ingredientName: string | null;
+  }[];
+};
+
+async function getRecipeWithIngredients(id: number): Promise<RecipeRow | null> {
   const [recipe] = await db.select().from(recipesTable).where(eq(recipesTable.id, id));
   if (!recipe) return null;
 
@@ -38,12 +59,12 @@ async function getRecipeWithIngredients(id: number) {
       amount: parseFloat(ri.amount) || 0,
       unit: ri.unit,
       optional: ri.optional,
-      ingredientName: ri.ingredientName,
+      ingredientName: ri.ingredientName ?? null,
     })),
   };
 }
 
-function formatRecipe(recipe: any) {
+function formatRecipe(recipe: RecipeRow) {
   return {
     id: recipe.id,
     userId: recipe.userId,
@@ -57,8 +78,19 @@ function formatRecipe(recipe: any) {
     aiGenerated: recipe.aiGenerated,
     energyType: recipe.energyType,
     isPublic: recipe.isPublic,
-    createdAt: recipe.createdAt?.toISOString?.() ?? recipe.createdAt,
-    ingredients: recipe.ingredients ?? [],
+    createdAt: recipe.createdAt instanceof Date ? recipe.createdAt.toISOString() : recipe.createdAt,
+    ingredients: recipe.ingredients,
+  };
+}
+
+function toIngredientRow(recipeId: number, ing: IngredientInput) {
+  return {
+    recipeId,
+    ingredientId: ing.ingredientId ?? null,
+    customName: ing.customName ?? null,
+    amount: String(ing.amount ?? 1),
+    unit: ing.unit ?? "g",
+    optional: ing.optional ?? false,
   };
 }
 
@@ -79,7 +111,7 @@ router.get("/recipes", async (req, res): Promise<void> => {
       : await db.select().from(recipesTable);
 
     const result = await Promise.all(recipes.map(r => getRecipeWithIngredients(r.id)));
-    res.json(result.filter(Boolean).map(formatRecipe));
+    res.json(result.filter((r): r is RecipeRow => r !== null).map(formatRecipe));
   } catch (err) {
     req.log.error({ err }, "Failed to list recipes");
     res.status(500).json({ error: "Internal server error" });
@@ -88,8 +120,9 @@ router.get("/recipes", async (req, res): Promise<void> => {
 
 router.post("/recipes", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = (req as any).userId as string;
-    const { title, description, prepTime, cookTime, servings, instructions, tags, energyType, isPublic, ingredients } = req.body;
+    const userId = req.userId!;
+    const { title, description, prepTime, cookTime, servings, instructions, tags, energyType, isPublic } = req.body;
+    const ingredients: IngredientInput[] = Array.isArray(req.body.ingredients) ? req.body.ingredients : [];
 
     const [recipe] = await db
       .insert(recipesTable)
@@ -107,21 +140,14 @@ router.post("/recipes", requireAuth, async (req, res): Promise<void> => {
       })
       .returning();
 
-    if (ingredients && Array.isArray(ingredients) && ingredients.length > 0) {
+    if (ingredients.length > 0) {
       await db.insert(recipeIngredientsTable).values(
-        ingredients.map((ing: any) => ({
-          recipeId: recipe.id,
-          ingredientId: ing.ingredientId ?? null,
-          customName: ing.customName ?? null,
-          amount: String(ing.amount ?? 1),
-          unit: ing.unit ?? "g",
-          optional: ing.optional ?? false,
-        }))
+        ingredients.map(ing => toIngredientRow(recipe.id, ing))
       );
     }
 
     const full = await getRecipeWithIngredients(recipe.id);
-    res.status(201).json(formatRecipe(full));
+    res.status(201).json(formatRecipe(full!));
   } catch (err) {
     req.log.error({ err }, "Failed to create recipe");
     res.status(500).json({ error: "Internal server error" });
@@ -145,8 +171,26 @@ router.get("/recipes/:id", async (req, res): Promise<void> => {
 
 router.patch("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
   try {
+    const userId = req.userId!;
     const id = parseInt(req.params.id);
-    const { title, description, prepTime, cookTime, servings, instructions, tags, energyType, isPublic, ingredients } = req.body;
+
+    const [existing] = await db
+      .select({ id: recipesTable.id, userId: recipesTable.userId })
+      .from(recipesTable)
+      .where(eq(recipesTable.id, id));
+
+    if (!existing) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    if (existing.userId !== userId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const { title, description, prepTime, cookTime, servings, instructions, tags, energyType, isPublic } = req.body;
+    const ingredients: IngredientInput[] | undefined = Array.isArray(req.body.ingredients) ? req.body.ingredients : undefined;
 
     await db
       .update(recipesTable)
@@ -163,18 +207,11 @@ router.patch("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
       })
       .where(eq(recipesTable.id, id));
 
-    if (ingredients && Array.isArray(ingredients)) {
+    if (ingredients !== undefined) {
       await db.delete(recipeIngredientsTable).where(eq(recipeIngredientsTable.recipeId, id));
       if (ingredients.length > 0) {
         await db.insert(recipeIngredientsTable).values(
-          ingredients.map((ing: any) => ({
-            recipeId: id,
-            ingredientId: ing.ingredientId ?? null,
-            customName: ing.customName ?? null,
-            amount: String(ing.amount ?? 1),
-            unit: ing.unit ?? "g",
-            optional: ing.optional ?? false,
-          }))
+          ingredients.map(ing => toIngredientRow(id, ing))
         );
       }
     }
@@ -193,7 +230,24 @@ router.patch("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
 
 router.delete("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
   try {
+    const userId = req.userId!;
     const id = parseInt(req.params.id);
+
+    const [existing] = await db
+      .select({ id: recipesTable.id, userId: recipesTable.userId })
+      .from(recipesTable)
+      .where(eq(recipesTable.id, id));
+
+    if (!existing) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+
+    if (existing.userId !== userId) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
     await db.delete(recipesTable).where(eq(recipesTable.id, id));
     res.status(204).send();
   } catch (err) {

@@ -8,7 +8,7 @@ const router = Router();
 
 router.get("/user-settings", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = (req as any).userId as string;
+    const userId = req.userId!;
     const [settings] = await db
       .select()
       .from(userSettingsTable)
@@ -50,10 +50,19 @@ router.get("/user-settings", requireAuth, async (req, res): Promise<void> => {
   }
 });
 
+interface UserSettingsBody {
+  profileId?: number | null;
+  householdSize?: number;
+  budgetLevel?: string;
+  cookTimeLimit?: number;
+  bioPreferred?: boolean;
+}
+
 router.post("/user-settings", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = (req as any).userId as string;
-    const { profileId, householdSize, budgetLevel, cookTimeLimit, bioPreferred } = req.body;
+    const userId = req.userId!;
+    const body = req.body as UserSettingsBody;
+    const { profileId, householdSize, budgetLevel, cookTimeLimit, bioPreferred } = body;
 
     await db
       .insert(userSettingsTable)
