@@ -8,7 +8,7 @@ import {
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { fetchProductFromOff } from "../services/offService";
-import { calculateScore } from "../services/scoreService";
+import { calculateScore, ScoreBreakdownSchema } from "../services/scoreService";
 
 const router = Router();
 
@@ -91,6 +91,59 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
     .returning();
 
   res.json(inserted);
+});
+
+router.get("/scanner/score/:barcode", requireAuth, async (req, res) => {
+  const userId = req.userId!;
+  const barcode = req.params["barcode"] as string;
+
+  if (!barcode || !/^\d{8,14}$/.test(barcode)) {
+    res.status(400).json({ error: "Ungültiger Barcode" });
+    return;
+  }
+
+  const [cached] = await db
+    .select()
+    .from(scannedProductsTable)
+    .where(
+      and(
+        eq(scannedProductsTable.barcode, barcode),
+        eq(scannedProductsTable.userId, userId)
+      )
+    )
+    .orderBy(desc(scannedProductsTable.scannedAt))
+    .limit(1);
+
+  if (cached) {
+    const score = ScoreBreakdownSchema.parse({
+      naturalness: cached.scoreNaturalness,
+      nutrientBalance: cached.scoreNutrientBalance,
+      profileFit: cached.scoreProfileFit,
+      qualityBonus: cached.scoreQualityBonus,
+      total: cached.totalScore,
+      profileFitExclusions: cached.profileFitExclusions,
+      label: cached.totalScore >= 80 ? "Sehr empfehlenswert"
+        : cached.totalScore >= 60 ? "Gut — gelegentlich"
+        : cached.totalScore >= 40 ? "Mit Bedacht"
+        : "Lieber vermeiden",
+      color: cached.totalScore >= 80 ? "green"
+        : cached.totalScore >= 60 ? "yellow"
+        : cached.totalScore >= 40 ? "orange"
+        : "red",
+    });
+    res.json(score);
+    return;
+  }
+
+  const product = await fetchProductFromOff(barcode);
+  if (!product) {
+    res.status(404).json({ error: "Produkt nicht gefunden" });
+    return;
+  }
+
+  const excludedIngredients = await getExcludedIngredients(userId);
+  const score = calculateScore(product, excludedIngredients);
+  res.json(score);
 });
 
 router.get("/scanner/history", requireAuth, async (req, res) => {

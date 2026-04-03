@@ -1018,6 +1018,30 @@ export const ScannerLookupResponse = zod.object({
 });
 
 /**
+ * @summary Get score breakdown for a barcode (uses cache or live lookup)
+ */
+export const GetScannerScoreParams = zod.object({
+  barcode: zod.coerce.string(),
+});
+
+export const GetScannerScoreResponse = zod.object({
+  naturalness: zod.number().describe("Zutatenklarheit (0–25)"),
+  nutrientBalance: zod.number().describe("Nährwert-Balance (0–25)"),
+  profileFit: zod.number().describe("Profil-Fit (0–25)"),
+  qualityBonus: zod.number().describe("Qualitätsbonus (0–25)"),
+  total: zod.number().describe("Gesamt-Score (0–100)"),
+  profileFitExclusions: zod
+    .array(zod.string())
+    .describe("Ausgeschlossene Zutaten gefunden im Produkt"),
+  label: zod
+    .string()
+    .describe(
+      "Lesbare Bewertung: Sehr empfehlenswert | Gut — gelegentlich | Mit Bedacht | Lieber vermeiden",
+    ),
+  color: zod.enum(["green", "yellow", "orange", "red"]),
+});
+
+/**
  * @summary List user's scan history (most recent first)
  */
 export const GetScanHistoryResponseItem = zod.object({

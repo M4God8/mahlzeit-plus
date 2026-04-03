@@ -341,6 +341,34 @@ export interface MealFeedback {
   createdAt: string;
 }
 
+export type ScoreBreakdownColor =
+  (typeof ScoreBreakdownColor)[keyof typeof ScoreBreakdownColor];
+
+export const ScoreBreakdownColor = {
+  green: "green",
+  yellow: "yellow",
+  orange: "orange",
+  red: "red",
+} as const;
+
+export interface ScoreBreakdown {
+  /** Zutatenklarheit (0–25) */
+  naturalness: number;
+  /** Nährwert-Balance (0–25) */
+  nutrientBalance: number;
+  /** Profil-Fit (0–25) */
+  profileFit: number;
+  /** Qualitätsbonus (0–25) */
+  qualityBonus: number;
+  /** Gesamt-Score (0–100) */
+  total: number;
+  /** Ausgeschlossene Zutaten gefunden im Produkt */
+  profileFitExclusions: string[];
+  /** Lesbare Bewertung: Sehr empfehlenswert | Gut — gelegentlich | Mit Bedacht | Lieber vermeiden */
+  label: string;
+  color: ScoreBreakdownColor;
+}
+
 /**
  * @nullable
  */

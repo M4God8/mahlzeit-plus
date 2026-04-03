@@ -868,6 +868,29 @@ paths:
         "400":
           description: Invalid barcode
 
+  /scanner/score/{barcode}:
+    get:
+      operationId: getScannerScore
+      tags: [scanner]
+      summary: Get score breakdown for a barcode (uses cache or live lookup)
+      parameters:
+        - name: barcode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Score breakdown for the product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoreBreakdown"
+        "404":
+          description: Product not found
+        "400":
+          description: Invalid barcode
+
   /scanner/history:
     get:
       operationId: getScanHistory
@@ -1614,6 +1637,45 @@ components:
         - userId
         - rating
         - createdAt
+
+    ScoreBreakdown:
+      type: object
+      properties:
+        naturalness:
+          type: integer
+          description: Zutatenklarheit (0–25)
+        nutrientBalance:
+          type: integer
+          description: Nährwert-Balance (0–25)
+        profileFit:
+          type: integer
+          description: Profil-Fit (0–25)
+        qualityBonus:
+          type: integer
+          description: Qualitätsbonus (0–25)
+        total:
+          type: integer
+          description: Gesamt-Score (0–100)
+        profileFitExclusions:
+          type: array
+          items:
+            type: string
+          description: Ausgeschlossene Zutaten gefunden im Produkt
+        label:
+          type: string
+          description: "Lesbare Bewertung: Sehr empfehlenswert | Gut — gelegentlich | Mit Bedacht | Lieber vermeiden"
+        color:
+          type: string
+          enum: [green, yellow, orange, red]
+      required:
+        - naturalness
+        - nutrientBalance
+        - profileFit
+        - qualityBonus
+        - total
+        - profileFitExclusions
+        - label
+        - color
 
     ScannedProduct:
       type: object

@@ -44,6 +44,7 @@ import type {
   Recipe,
   RecipeInput,
   ScannedProduct,
+  ScoreBreakdown,
   ShoppingList,
   ShoppingListItem,
   ShoppingListSummary,
@@ -3550,6 +3551,94 @@ export function useScannerLookup<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getScannerLookupQueryOptions(barcode, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get score breakdown for a barcode (uses cache or live lookup)
+ */
+export const getGetScannerScoreUrl = (barcode: string) => {
+  return `/api/scanner/score/${barcode}`;
+};
+
+export const getScannerScore = async (
+  barcode: string,
+  options?: RequestInit,
+): Promise<ScoreBreakdown> => {
+  return customFetch<ScoreBreakdown>(getGetScannerScoreUrl(barcode), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetScannerScoreQueryKey = (barcode: string) => {
+  return [`/api/scanner/score/${barcode}`] as const;
+};
+
+export const getGetScannerScoreQueryOptions = <
+  TData = Awaited<ReturnType<typeof getScannerScore>>,
+  TError = ErrorType<void>,
+>(
+  barcode: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getScannerScore>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetScannerScoreQueryKey(barcode);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getScannerScore>>> = ({
+    signal,
+  }) => getScannerScore(barcode, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!barcode,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getScannerScore>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetScannerScoreQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getScannerScore>>
+>;
+export type GetScannerScoreQueryError = ErrorType<void>;
+
+/**
+ * @summary Get score breakdown for a barcode (uses cache or live lookup)
+ */
+
+export function useGetScannerScore<
+  TData = Awaited<ReturnType<typeof getScannerScore>>,
+  TError = ErrorType<void>,
+>(
+  barcode: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getScannerScore>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetScannerScoreQueryOptions(barcode, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

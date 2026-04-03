@@ -1,13 +1,18 @@
+import { z } from "zod";
 import type { OffProduct, OffNutriments } from "./offService";
 
-export interface ScoreBreakdown {
-  naturalness: number;
-  nutrientBalance: number;
-  profileFit: number;
-  qualityBonus: number;
-  total: number;
-  profileFitExclusions: string[];
-}
+export const ScoreBreakdownSchema = z.object({
+  naturalness: z.number().int().min(0).max(25),
+  nutrientBalance: z.number().int().min(0).max(25),
+  profileFit: z.number().int().min(0).max(25),
+  qualityBonus: z.number().int().min(0).max(25),
+  total: z.number().int().min(0).max(100),
+  profileFitExclusions: z.array(z.string()),
+  label: z.string(),
+  color: z.enum(["green", "yellow", "orange", "red"]),
+});
+
+export type ScoreBreakdown = z.infer<typeof ScoreBreakdownSchema>;
 
 const E_NUMBER_RE = /\bE\s*\d{3,4}[a-z]?\b/gi;
 const ALARM_INGREDIENTS = [
@@ -101,6 +106,20 @@ function calcQualityBonus(labels: string[]): number {
   return Math.min(25, score);
 }
 
+export function scoreLabel(total: number): string {
+  if (total >= 80) return "Sehr empfehlenswert";
+  if (total >= 60) return "Gut — gelegentlich";
+  if (total >= 40) return "Mit Bedacht";
+  return "Lieber vermeiden";
+}
+
+export function scoreColor(total: number): "green" | "yellow" | "orange" | "red" {
+  if (total >= 80) return "green";
+  if (total >= 60) return "yellow";
+  if (total >= 40) return "orange";
+  return "red";
+}
+
 export function calculateScore(
   product: OffProduct,
   excludedIngredients: string[]
@@ -114,26 +133,16 @@ export function calculateScore(
   const qualityBonus = calcQualityBonus(product.labels);
   const total = naturalness + nutrientBalance + profileFit + qualityBonus;
 
-  return {
+  const raw = {
     naturalness,
     nutrientBalance,
     profileFit,
     qualityBonus,
     total,
     profileFitExclusions,
+    label: scoreLabel(total),
+    color: scoreColor(total),
   };
-}
 
-export function scoreLabel(total: number): string {
-  if (total >= 80) return "Sehr empfehlenswert";
-  if (total >= 60) return "Gut — gelegentlich";
-  if (total >= 40) return "Mit Bedacht";
-  return "Lieber vermeiden";
-}
-
-export function scoreColor(total: number): "green" | "yellow" | "orange" | "red" {
-  if (total >= 80) return "green";
-  if (total >= 60) return "yellow";
-  if (total >= 40) return "orange";
-  return "red";
+  return ScoreBreakdownSchema.parse(raw);
 }
