@@ -114,7 +114,7 @@ export interface MealEntry {
   customNote?: string | null;
   /** @nullable */
   timeSlot?: string | null;
-  recipe?: Recipe;
+  recipe?: Recipe | null;
 }
 
 export interface MealPlanDay {

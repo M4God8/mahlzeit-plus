@@ -567,7 +567,9 @@ components:
         timeSlot:
           type: ["string", "null"]
         recipe:
-          $ref: "#/components/schemas/Recipe"
+          oneOf:
+            - $ref: "#/components/schemas/Recipe"
+            - type: "null"
       required:
         - id
         - mealPlanDayId

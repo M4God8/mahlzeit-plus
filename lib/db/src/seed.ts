@@ -7,6 +7,7 @@ import {
   recipesTable,
   recipeIngredientsTable,
 } from "./schema";
+import { eq, and } from "drizzle-orm";
 
 const { Pool } = pg;
 
@@ -344,6 +345,17 @@ async function seed() {
 
   console.log("Seeding recipes...");
   for (const recipe of recipeData) {
+    const existing = await db
+      .select({ id: recipesTable.id })
+      .from(recipesTable)
+      .where(and(eq(recipesTable.title, recipe.title), eq(recipesTable.isPublic, true)))
+      .limit(1);
+
+    if (existing.length > 0) {
+      console.log(`  ~ ${recipe.title} (skipped, already exists)`);
+      continue;
+    }
+
     const [inserted] = await db
       .insert(recipesTable)
       .values({
