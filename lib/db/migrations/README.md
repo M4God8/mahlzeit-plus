@@ -13,9 +13,16 @@ This project uses two complementary approaches for schema management:
 Creates all 12 tables from scratch. Use only for **brand-new databases** with no existing schema.
 
 ### `0001_phase4_ai_tables.sql` — Phase 4 incremental (existing databases)
-Adds only `ai_generations` and `meal_feedback` tables (introduced in Phase 4 / KI layer).
-Uses `CREATE TABLE IF NOT EXISTS` so it is **safe to run on existing databases** that were
-provisioned via `drizzle-kit push`.
+Adds `ai_generations` and `meal_feedback` tables (introduced in Phase 4 / KI layer).
+Includes:
+- `CREATE TABLE IF NOT EXISTS` for both tables
+- Foreign keys: `meal_feedback.meal_entry_id → meal_entries.id` (ON DELETE SET NULL)
+- Foreign keys: `meal_feedback.recipe_id → recipes.id` (ON DELETE SET NULL)
+- Check constraint: `meal_feedback.rating IN ('thumbs_up', 'neutral', 'thumbs_down')`
+- Indexes on `user_id`, `type`, `created_at` (ai_generations) and `user_id`, `meal_entry_id`, `recipe_id` (meal_feedback)
+- FK additions use `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object` — idempotent and safe to re-run.
+
+**Important:** Do NOT apply `0001` after `0000` on a fresh database — the baseline already includes the AI tables.
 
 ## Deployment guide
 
