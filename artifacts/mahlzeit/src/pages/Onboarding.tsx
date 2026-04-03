@@ -40,7 +40,16 @@ export default function Onboarding() {
         bioPreferred: false
       }
     }, {
-      onSuccess: () => {
+      onSuccess: async () => {
+        try {
+          await fetch("/api/meal-plans/starter", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch {
+          // Starter plan creation is best-effort; doesn't block onboarding
+        }
         toast({ title: "Willkommen!", description: "Dein Profil wurde erfolgreich eingerichtet." });
         setLocation("/heute");
       },

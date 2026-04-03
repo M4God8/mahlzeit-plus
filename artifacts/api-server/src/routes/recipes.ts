@@ -94,10 +94,14 @@ function toIngredientRow(recipeId: number, ing: IngredientInput) {
   };
 }
 
-router.get("/recipes", async (req, res): Promise<void> => {
+router.get("/recipes", requireAuth, async (req, res): Promise<void> => {
   try {
+    const userId = req.userId!;
     const { energyType, search } = req.query as { energyType?: string; search?: string };
-    const conditions = [];
+
+    const conditions = [
+      or(eq(recipesTable.isPublic, true), eq(recipesTable.userId, userId)),
+    ];
 
     if (energyType) {
       conditions.push(eq(recipesTable.energyType, energyType));
@@ -106,9 +110,7 @@ router.get("/recipes", async (req, res): Promise<void> => {
       conditions.push(ilike(recipesTable.title, `%${search}%`));
     }
 
-    const recipes = conditions.length > 0
-      ? await db.select().from(recipesTable).where(and(...conditions))
-      : await db.select().from(recipesTable);
+    const recipes = await db.select().from(recipesTable).where(and(...conditions));
 
     const result = await Promise.all(recipes.map(r => getRecipeWithIngredients(r.id)));
     res.json(result.filter((r): r is RecipeRow => r !== null).map(formatRecipe));
@@ -154,12 +156,17 @@ router.post("/recipes", requireAuth, async (req, res): Promise<void> => {
   }
 });
 
-router.get("/recipes/:id", async (req, res): Promise<void> => {
+router.get("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
   try {
-    const id = parseInt(req.params.id);
+    const userId = req.userId!;
+    const id = parseInt(req.params["id"] as string);
     const recipe = await getRecipeWithIngredients(id);
     if (!recipe) {
       res.status(404).json({ error: "Not found" });
+      return;
+    }
+    if (!recipe.isPublic && recipe.userId !== userId) {
+      res.status(403).json({ error: "Forbidden" });
       return;
     }
     res.json(formatRecipe(recipe));
@@ -172,7 +179,7 @@ router.get("/recipes/:id", async (req, res): Promise<void> => {
 router.patch("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.userId!;
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params["id"] as string);
 
     const [existing] = await db
       .select({ id: recipesTable.id, userId: recipesTable.userId })
@@ -231,7 +238,7 @@ router.patch("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
 router.delete("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.userId!;
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params["id"] as string);
 
     const [existing] = await db
       .select({ id: recipesTable.id, userId: recipesTable.userId })

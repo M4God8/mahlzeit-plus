@@ -192,4 +192,60 @@ router.get("/meal-plans/active", requireAuth, async (req, res): Promise<void> =>
   }
 });
 
+router.post("/meal-plans/starter", requireAuth, async (req, res): Promise<void> => {
+  try {
+    const userId = req.userId!;
+
+    const existingActive = await db
+      .select({ id: mealPlansTable.id })
+      .from(mealPlansTable)
+      .where(and(eq(mealPlansTable.userId, userId), eq(mealPlansTable.active, true)));
+
+    if (existingActive.length > 0) {
+      const detail = await getMealPlanWithDays(existingActive[0].id);
+      res.json(detail);
+      return;
+    }
+
+    const publicRecipes = await db
+      .select({ id: recipesTable.id })
+      .from(recipesTable)
+      .where(eq(recipesTable.isPublic, true))
+      .limit(3);
+
+    const [plan] = await db
+      .insert(mealPlansTable)
+      .values({
+        userId,
+        title: "Mein erster Wochenplan",
+        cycleLengthDays: 7,
+        repeatEnabled: true,
+        active: true,
+      })
+      .returning();
+
+    const [day] = await db
+      .insert(mealPlanDaysTable)
+      .values({ mealPlanId: plan.id, dayNumber: 1 })
+      .returning();
+
+    const mealTypes = ["breakfast", "lunch", "dinner"] as const;
+    const entries = publicRecipes.slice(0, 3).map((recipe, i) => ({
+      mealPlanDayId: day.id,
+      mealType: mealTypes[i],
+      recipeId: recipe.id,
+    }));
+
+    if (entries.length > 0) {
+      await db.insert(mealEntriesTable).values(entries);
+    }
+
+    const detail = await getMealPlanWithDays(plan.id);
+    res.status(201).json(detail);
+  } catch (err) {
+    req.log.error({ err }, "Failed to create starter meal plan");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
