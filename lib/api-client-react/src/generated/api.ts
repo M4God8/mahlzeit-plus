@@ -1132,6 +1132,89 @@ export const useCreateMealPlan = <
 };
 
 /**
+ * Creates a 7-day meal plan with 3 sample entries (Frühstück, Mittagessen, Abendessen) from public recipes and sets it as active. If an active plan already exists, returns it without modification. Idempotent.
+
+ * @summary Create or return an active starter meal plan with sample entries
+ */
+export const getCreateStarterMealPlanUrl = () => {
+  return `/api/meal-plans/starter`;
+};
+
+export const createStarterMealPlan = async (
+  options?: RequestInit,
+): Promise<MealPlanDetail> => {
+  return customFetch<MealPlanDetail>(getCreateStarterMealPlanUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getCreateStarterMealPlanMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createStarterMealPlan>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createStarterMealPlan>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["createStarterMealPlan"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createStarterMealPlan>>,
+    void
+  > = () => {
+    return createStarterMealPlan(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateStarterMealPlanMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createStarterMealPlan>>
+>;
+
+export type CreateStarterMealPlanMutationError = ErrorType<void>;
+
+/**
+ * @summary Create or return an active starter meal plan with sample entries
+ */
+export const useCreateStarterMealPlan = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createStarterMealPlan>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createStarterMealPlan>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getCreateStarterMealPlanMutationOptions(options));
+};
+
+/**
  * @summary Get the active meal plan with all entries
  */
 export const getGetActiveMealPlanUrl = () => {

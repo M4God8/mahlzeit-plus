@@ -304,6 +304,66 @@ export const CreateMealPlanBody = zod.object({
 });
 
 /**
+ * Creates a 7-day meal plan with 3 sample entries (Frühstück, Mittagessen, Abendessen) from public recipes and sets it as active. If an active plan already exists, returns it without modification. Idempotent.
+
+ * @summary Create or return an active starter meal plan with sample entries
+ */
+export const CreateStarterMealPlanResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  title: zod.string(),
+  cycleLengthDays: zod.number(),
+  repeatEnabled: zod.boolean(),
+  active: zod.boolean(),
+  createdAt: zod.string(),
+  days: zod.array(
+    zod.object({
+      id: zod.number(),
+      mealPlanId: zod.number(),
+      dayNumber: zod.number(),
+      entries: zod.array(
+        zod.object({
+          id: zod.number(),
+          mealPlanDayId: zod.number(),
+          mealType: zod.string(),
+          recipeId: zod.number().nullish(),
+          customNote: zod.string().nullish(),
+          timeSlot: zod.string().nullish(),
+          recipe: zod
+            .object({
+              id: zod.number(),
+              userId: zod.string().nullish(),
+              title: zod.string(),
+              description: zod.string().nullish(),
+              prepTime: zod.number(),
+              cookTime: zod.number(),
+              servings: zod.number(),
+              instructions: zod.string(),
+              tags: zod.array(zod.string()),
+              aiGenerated: zod.boolean(),
+              energyType: zod.string(),
+              isPublic: zod.boolean(),
+              createdAt: zod.string(),
+              ingredients: zod.array(
+                zod.object({
+                  id: zod.number(),
+                  ingredientId: zod.number().nullish(),
+                  customName: zod.string().nullish(),
+                  amount: zod.number(),
+                  unit: zod.string(),
+                  optional: zod.boolean(),
+                  ingredientName: zod.string().nullish(),
+                }),
+              ),
+            })
+            .optional(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
  * @summary Get the active meal plan with all entries
  */
 export const GetActiveMealPlanResponse = zod.object({

@@ -64,13 +64,14 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | GET | /api/user-settings | Ja | Nutzereinstellungen |
 | POST | /api/user-settings | Ja | Einstellungen speichern |
 | GET | /api/ingredients | Nein | Zutaten (filter: category, search) |
-| GET | /api/recipes | Nein | Rezepte (filter: energyType, search) |
+| GET | /api/recipes | Ja | Rezepte: eigene + öffentliche (filter: energyType, search) |
 | POST | /api/recipes | Ja | Rezept erstellen |
-| GET | /api/recipes/:id | Nein | Einzelnes Rezept |
+| GET | /api/recipes/:id | Ja | Einzelnes Rezept (öffentliche oder eigene) |
 | PATCH | /api/recipes/:id | Ja | Rezept bearbeiten |
 | DELETE | /api/recipes/:id | Ja | Rezept löschen |
 | GET | /api/meal-plans | Ja | Mahlzeitenpläne des Nutzers |
 | POST | /api/meal-plans | Ja | Plan erstellen |
+| POST | /api/meal-plans/starter | Ja | Starter-Plan erstellen/abrufen (idempotent) |
 | GET | /api/meal-plans/active | Ja | Aktiver Plan |
 | GET | /api/today | Ja | Heutige Mahlzeiten |
 
@@ -97,6 +98,16 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | CLERK_PUBLISHABLE_KEY | Clerk Publishable Key (Server) |
 | VITE_CLERK_PUBLISHABLE_KEY | Clerk Publishable Key (Frontend) |
 | SESSION_SECRET | Express Session Secret |
+
+## Intentionale Abweichungen von der Originalspezifikation
+
+| Aspekt | Spec | Implementiert | Grund |
+|--------|------|---------------|-------|
+| Auth | Supabase Auth | Clerk | Replit-native Integration, Nutzer bestätigt |
+| Users-Tabelle | Separate `users` Tabelle | Keine (Clerk User-ID als FK) | Clerk verwaltet Nutzer zentral |
+| Bottom Navigation | 4 Tabs | 5 Tabs (+ Rezepte) | Design-Subagent, sinnvolle Ergänzung |
+| Ernährungsprofile | Namen nicht spezifiziert | Deutsche Profilnamen | Spec definiert nur Spalten, keine Werte |
+| Heute-Seed | Nicht spezifiziert | Starter-Plan via POST /starter | Echte User-ID bekannt erst nach Login |
 
 ## Projektphasen
 

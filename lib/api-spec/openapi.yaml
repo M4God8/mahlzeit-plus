@@ -268,6 +268,31 @@ paths:
               schema:
                 $ref: "#/components/schemas/MealPlan"
 
+  /meal-plans/starter:
+    post:
+      operationId: createStarterMealPlan
+      tags: [meal-plans]
+      summary: Create or return an active starter meal plan with sample entries
+      description: >
+        Creates a 7-day meal plan with 3 sample entries (Frühstück, Mittagessen, Abendessen)
+        from public recipes and sets it as active. If an active plan already exists,
+        returns it without modification. Idempotent.
+      responses:
+        "200":
+          description: Existing active meal plan returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlanDetail"
+        "201":
+          description: Starter meal plan created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealPlanDetail"
+        "401":
+          description: Unauthorized
+
   /meal-plans/active:
     get:
       operationId: getActiveMealPlan
