@@ -538,8 +538,48 @@ export interface ChatMessageInput {
   history?: ChatMessageInputHistoryItem[];
 }
 
+export type ChatSuggestedActionType =
+  (typeof ChatSuggestedActionType)[keyof typeof ChatSuggestedActionType];
+
+export const ChatSuggestedActionType = {
+  add_to_shopping_list: "add_to_shopping_list",
+  create_plan: "create_plan",
+  add_recipe: "add_recipe",
+} as const;
+
+export type ChatSuggestedActionData = { [key: string]: unknown };
+
+export interface ChatSuggestedAction {
+  type: ChatSuggestedActionType;
+  data: ChatSuggestedActionData;
+  confirmation_text: string;
+}
+
 export interface ChatMessageReply {
   reply: string;
+  suggested_action?: ChatSuggestedAction;
+}
+
+export type ChatConfirmActionInputActionType =
+  (typeof ChatConfirmActionInputActionType)[keyof typeof ChatConfirmActionInputActionType];
+
+export const ChatConfirmActionInputActionType = {
+  add_to_shopping_list: "add_to_shopping_list",
+  create_plan: "create_plan",
+  add_recipe: "add_recipe",
+} as const;
+
+export type ChatConfirmActionInputData = { [key: string]: unknown };
+
+export interface ChatConfirmActionInput {
+  action_type: ChatConfirmActionInputActionType;
+  data: ChatConfirmActionInputData;
+}
+
+export interface ChatConfirmActionResult {
+  success: boolean;
+  message: string;
+  planId?: number;
 }
 
 export interface CoachingProduct {

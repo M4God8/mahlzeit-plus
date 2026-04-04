@@ -1157,6 +1157,31 @@ paths:
         "401":
           description: Unauthorized
 
+  /chat/confirm-action:
+    post:
+      operationId: confirmChatAction
+      tags: [chat]
+      summary: Confirm and execute a suggested chat action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatConfirmActionInput"
+      responses:
+        "200":
+          description: Action result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatConfirmActionResult"
+        "400":
+          description: Invalid action request
+        "401":
+          description: Unauthorized
+        "404":
+          description: Required resource not found
+
   /admin/products:
     get:
       operationId: listCoachingProducts
@@ -2284,8 +2309,52 @@ components:
       properties:
         reply:
           type: string
+        suggested_action:
+          $ref: "#/components/schemas/ChatSuggestedAction"
       required:
         - reply
+
+    ChatSuggestedAction:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [add_to_shopping_list, create_plan, add_recipe]
+        data:
+          type: object
+          additionalProperties: true
+        confirmation_text:
+          type: string
+      required:
+        - type
+        - data
+        - confirmation_text
+
+    ChatConfirmActionInput:
+      type: object
+      properties:
+        action_type:
+          type: string
+          enum: [add_to_shopping_list, create_plan, add_recipe]
+        data:
+          type: object
+          additionalProperties: true
+      required:
+        - action_type
+        - data
+
+    ChatConfirmActionResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        planId:
+          type: integer
+      required:
+        - success
+        - message
 
     CoachingProduct:
       type: object

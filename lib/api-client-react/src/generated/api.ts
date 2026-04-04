@@ -26,6 +26,8 @@ import type {
   AiRecipeOutput,
   AiSubstituteInput,
   AiSubstituteOutput,
+  ChatConfirmActionInput,
+  ChatConfirmActionResult,
   ChatMessageInput,
   ChatMessageReply,
   CoachingProduct,
@@ -4707,6 +4709,92 @@ export const useSendChatMessage = <
   TContext
 > => {
   return useMutation(getSendChatMessageMutationOptions(options));
+};
+
+/**
+ * @summary Confirm and execute a suggested chat action
+ */
+export const getConfirmChatActionUrl = () => {
+  return `/api/chat/confirm-action`;
+};
+
+export const confirmChatAction = async (
+  chatConfirmActionInput: ChatConfirmActionInput,
+  options?: RequestInit,
+): Promise<ChatConfirmActionResult> => {
+  return customFetch<ChatConfirmActionResult>(getConfirmChatActionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chatConfirmActionInput),
+  });
+};
+
+export const getConfirmChatActionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmChatAction>>,
+    TError,
+    { data: BodyType<ChatConfirmActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmChatAction>>,
+  TError,
+  { data: BodyType<ChatConfirmActionInput> },
+  TContext
+> => {
+  const mutationKey = ["confirmChatAction"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmChatAction>>,
+    { data: BodyType<ChatConfirmActionInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return confirmChatAction(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmChatActionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmChatAction>>
+>;
+export type ConfirmChatActionMutationBody = BodyType<ChatConfirmActionInput>;
+export type ConfirmChatActionMutationError = ErrorType<void>;
+
+/**
+ * @summary Confirm and execute a suggested chat action
+ */
+export const useConfirmChatAction = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmChatAction>>,
+    TError,
+    { data: BodyType<ChatConfirmActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmChatAction>>,
+  TError,
+  { data: BodyType<ChatConfirmActionInput> },
+  TContext
+> => {
+  return useMutation(getConfirmChatActionMutationOptions(options));
 };
 
 /**

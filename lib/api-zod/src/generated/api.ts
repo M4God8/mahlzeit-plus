@@ -1388,6 +1388,27 @@ export const SendChatMessageBody = zod.object({
 
 export const SendChatMessageResponse = zod.object({
   reply: zod.string(),
+  suggested_action: zod
+    .object({
+      type: zod.enum(["add_to_shopping_list", "create_plan", "add_recipe"]),
+      data: zod.record(zod.string(), zod.unknown()),
+      confirmation_text: zod.string(),
+    })
+    .optional(),
+});
+
+/**
+ * @summary Confirm and execute a suggested chat action
+ */
+export const ConfirmChatActionBody = zod.object({
+  action_type: zod.enum(["add_to_shopping_list", "create_plan", "add_recipe"]),
+  data: zod.record(zod.string(), zod.unknown()),
+});
+
+export const ConfirmChatActionResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+  planId: zod.number().optional(),
 });
 
 /**

@@ -1,17 +1,21 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { MessageCircle, X, Send } from "lucide-react";
-import { useSendChatMessage } from "@workspace/api-client-react";
+import { MessageCircle, X, Send, Check, Loader2 } from "lucide-react";
+import { useSendChatMessage, useConfirmChatAction } from "@workspace/api-client-react";
+import type { ChatSuggestedAction } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  suggested_action?: ChatSuggestedAction | null;
+  actionConfirmed?: boolean;
+  actionResult?: string | null;
 }
 
 const QUICK_CHIPS = [
   { label: "Gesünder essen 🌿", message: "Ich möchte mich gesünder ernähren" },
   { label: "Stress & Ernährung 💆", message: "Wie beeinflusst Stress meine Ernährung?" },
-  { label: "Wasser aufwerten 💧", message: "Wie kann ich mein Wasser aufwerten?" },
+  { label: "Einkaufsliste ergänzen 🛒", message: "Kannst du etwas zu meiner Einkaufsliste hinzufügen?" },
 ];
 
 function TypingIndicator() {
@@ -26,15 +30,61 @@ function TypingIndicator() {
   );
 }
 
+function ActionButton({
+  action,
+  confirmed,
+  actionResult,
+  onConfirm,
+  isLoading,
+}: {
+  action: ChatSuggestedAction;
+  confirmed?: boolean;
+  actionResult?: string | null;
+  onConfirm: () => void;
+  isLoading: boolean;
+}) {
+  if (confirmed && actionResult) {
+    return (
+      <div className="mt-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-xs">
+        <Check className="w-3.5 h-3.5 shrink-0" />
+        <span>{actionResult}</span>
+      </div>
+    );
+  }
+
+  if (confirmed) {
+    return null;
+  }
+
+  return (
+    <button
+      onClick={onConfirm}
+      disabled={isLoading}
+      className="mt-2 flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-60"
+      style={{ backgroundColor: "#E07070" }}
+      data-testid="chat-action-button"
+    >
+      {isLoading ? (
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      ) : (
+        <Check className="w-3.5 h-3.5" />
+      )}
+      <span>{action.confirmation_text}</span>
+    </button>
+  );
+}
+
 export function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [confirmingIndex, setConfirmingIndex] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const sendMutation = useSendChatMessage();
+  const confirmMutation = useConfirmChatAction();
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -49,6 +99,43 @@ export function ChatWidget() {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  const handleConfirmAction = useCallback(
+    (messageIndex: number, action: ChatSuggestedAction) => {
+      setConfirmingIndex(messageIndex);
+      confirmMutation.mutate(
+        {
+          data: {
+            action_type: action.type,
+            data: action.data,
+          },
+        },
+        {
+          onSuccess: (result: { success: boolean; message: string; planId?: number }) => {
+            setMessages((prev) =>
+              prev.map((msg, i) =>
+                i === messageIndex
+                  ? { ...msg, actionConfirmed: true, actionResult: result.message }
+                  : msg
+              )
+            );
+            setConfirmingIndex(null);
+          },
+          onError: () => {
+            setMessages((prev) => [
+              ...prev,
+              {
+                role: "assistant",
+                content: "Die Aktion konnte leider nicht ausgeführt werden. Bitte versuche es erneut.",
+              },
+            ]);
+            setConfirmingIndex(null);
+          },
+        }
+      );
+    },
+    [confirmMutation]
+  );
 
   const sendMessage = useCallback(
     (text: string) => {
@@ -71,11 +158,15 @@ export function ChatWidget() {
           },
         },
         {
-          onSuccess: (data) => {
+          onSuccess: (data: { reply: string; suggested_action?: ChatSuggestedAction }) => {
             setIsTyping(false);
             setMessages((prev) => [
               ...prev,
-              { role: "assistant", content: data.reply },
+              {
+                role: "assistant",
+                content: data.reply,
+                suggested_action: data.suggested_action ?? null,
+              },
             ]);
           },
           onError: () => {
@@ -156,16 +247,28 @@ export function ChatWidget() {
             )}
 
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                  msg.role === "user"
-                    ? "ml-auto bg-primary text-primary-foreground rounded-br-sm"
-                    : "mr-auto bg-muted text-foreground rounded-bl-sm"
+              <div key={i}>
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                    msg.role === "user"
+                      ? "ml-auto bg-primary text-primary-foreground rounded-br-sm"
+                      : "mr-auto bg-muted text-foreground rounded-bl-sm"
+                  )}
+                >
+                  {msg.content}
+                </div>
+                {msg.role === "assistant" && msg.suggested_action && (
+                  <div className="max-w-[85%]">
+                    <ActionButton
+                      action={msg.suggested_action}
+                      confirmed={msg.actionConfirmed}
+                      actionResult={msg.actionResult}
+                      onConfirm={() => handleConfirmAction(i, msg.suggested_action!)}
+                      isLoading={confirmingIndex === i && confirmMutation.isPending}
+                    />
+                  </div>
                 )}
-              >
-                {msg.content}
               </div>
             ))}
 
