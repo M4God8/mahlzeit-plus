@@ -308,13 +308,28 @@ router.post(
         return;
       }
 
-      const imageContent = files.map((file) => ({
-        type: "image" as const,
-        source: {
-          type: "base64" as const,
-          media_type: file.mimetype as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
-          data: file.buffer.toString("base64"),
-        },
+      const imageContent = await Promise.all(files.map(async (file) => {
+        let buffer = file.buffer;
+        let mediaType = file.mimetype as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+        const MAX_SIZE = 4 * 1024 * 1024;
+
+        if (buffer.length > MAX_SIZE) {
+          const sharp = (await import("sharp")).default;
+          buffer = await sharp(buffer)
+            .resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true })
+            .jpeg({ quality: 80 })
+            .toBuffer();
+          mediaType = "image/jpeg";
+        }
+
+        return {
+          type: "image" as const,
+          source: {
+            type: "base64" as const,
+            media_type: mediaType,
+            data: buffer.toString("base64"),
+          },
+        };
       }));
 
       const systemPrompt = `Du bist ein Rezept-Erkennungs-Assistent. Du analysierst Screenshots von Rezepten (z.B. von TikTok, Instagram, Kochseiten) und extrahierst alle Rezeptdaten.
