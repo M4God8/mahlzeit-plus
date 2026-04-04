@@ -140,6 +140,7 @@ export const ListRecipesQueryParams = zod.object({
   energyType: zod.coerce.string().optional(),
   search: zod.coerce.string().optional(),
   tags: zod.coerce.string().optional(),
+  maxTime: zod.coerce.number().optional(),
 });
 
 export const ListRecipesResponseItem = zod.object({

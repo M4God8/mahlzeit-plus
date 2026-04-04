@@ -103,7 +103,7 @@ function toIngredientRow(recipeId: number, ing: IngredientInput) {
 router.get("/recipes", requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.userId!;
-    const { energyType, search, tags } = req.query as { energyType?: string; search?: string; tags?: string };
+    const { energyType, search, tags, maxTime } = req.query as { energyType?: string; search?: string; tags?: string; maxTime?: string };
 
     const conditions = [
       or(eq(recipesTable.isPublic, true), eq(recipesTable.userId, userId)),
@@ -117,6 +117,12 @@ router.get("/recipes", requireAuth, async (req, res): Promise<void> => {
     }
     if (tags) {
       conditions.push(sql`array_to_string(${recipesTable.tags}, ',') ilike ${'%' + tags + '%'}`);
+    }
+    if (maxTime) {
+      const maxMinutes = parseInt(maxTime, 10);
+      if (!isNaN(maxMinutes)) {
+        conditions.push(sql`(${recipesTable.prepTime} + ${recipesTable.cookTime}) <= ${maxMinutes}`);
+      }
     }
 
     const recipes = await db.select().from(recipesTable).where(and(...conditions));

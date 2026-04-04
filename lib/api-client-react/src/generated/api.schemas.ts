@@ -600,6 +600,10 @@ export type ListRecipesParams = {
   energyType?: string;
   search?: string;
   tags?: string;
+  /**
+   * Maximum total cook time (prepTime + cookTime) in minutes
+   */
+  maxTime?: number;
 };
 
 export type ImportRecipeScreenshotBody = {

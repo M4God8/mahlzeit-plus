@@ -166,6 +166,12 @@ paths:
           required: false
           schema:
             type: string
+        - name: maxTime
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Maximum total cook time (prepTime + cookTime) in minutes
       responses:
         "200":
           description: List of recipes

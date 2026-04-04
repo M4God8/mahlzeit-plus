@@ -1,24 +1,50 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import { useListRecipes } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, Clock, Plus, Book, Leaf, Camera } from "lucide-react";
+import { Loader2, Search, Clock, Plus, Book, Leaf, Camera, Timer } from "lucide-react";
 import ScreenshotImportModal from "./ScreenshotImportModal";
+
+const TIME_FILTERS = [
+  { label: "bis 15 Min", value: 15 },
+  { label: "bis 30 Min", value: 30 },
+  { label: "bis 60 Min", value: 60 },
+] as const;
 
 export default function RecipeList() {
   const [search, setSearch] = useState("");
   const [energyType, setEnergyType] = useState<string>("");
+  const [maxTime, setMaxTime] = useState<number | undefined>(undefined);
+  const [selectedTag, setSelectedTag] = useState<string>("");
   const [showImportModal, setShowImportModal] = useState(false);
+
+  const { data: allRecipes, isLoading: allLoading } = useListRecipes({});
 
   const { data: recipes, isLoading, refetch } = useListRecipes({ 
     search: search || undefined,
-    energyType: energyType || undefined
+    energyType: energyType || undefined,
+    maxTime: maxTime,
+    tags: selectedTag || undefined,
   });
 
+  const allTags = useMemo(() => {
+    if (!allRecipes) return [];
+    const tagSet = new Set<string>();
+    for (const r of allRecipes) {
+      if (r.tags) {
+        for (const t of r.tags) {
+          tagSet.add(t);
+        }
+      }
+    }
+    return Array.from(tagSet).sort();
+  }, [allRecipes]);
+
   const energyTypes = ["leicht", "sättigend", "schnell", "warm"];
+  const hasFilters = !!search || !!energyType || !!maxTime || !!selectedTag;
 
   return (
     <div className="flex flex-col min-h-[100dvh] pb-24 animate-in fade-in duration-500 bg-background text-foreground">
@@ -79,6 +105,42 @@ export default function RecipeList() {
             </Badge>
           ))}
         </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide mt-2">
+          <div className="flex items-center gap-1 text-muted-foreground mr-1 shrink-0">
+            <Timer className="w-3.5 h-3.5" />
+          </div>
+          {TIME_FILTERS.map(tf => (
+            <Badge
+              key={tf.value}
+              variant={maxTime === tf.value ? "default" : "outline"}
+              className={`cursor-pointer whitespace-nowrap rounded-full px-3 py-1 text-xs ${maxTime === tf.value ? "bg-primary text-primary-foreground hover:bg-primary/90 border-transparent" : "border-border/50"}`}
+              onClick={() => setMaxTime(maxTime === tf.value ? undefined : tf.value)}
+              data-testid={`badge-time-${tf.value}`}
+            >
+              {tf.label}
+            </Badge>
+          ))}
+        </div>
+
+        {allTags.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide mt-2">
+            <div className="flex items-center gap-1 text-muted-foreground mr-1 shrink-0">
+              <Leaf className="w-3.5 h-3.5" />
+            </div>
+            {allTags.map(tag => (
+              <Badge
+                key={tag}
+                variant={selectedTag === tag ? "default" : "outline"}
+                className={`cursor-pointer whitespace-nowrap rounded-full px-3 py-1 text-xs ${selectedTag === tag ? "bg-accent text-accent-foreground hover:bg-accent/90 border-transparent" : "border-border/50"}`}
+                onClick={() => setSelectedTag(selectedTag === tag ? "" : tag)}
+                data-testid={`badge-tag-${tag}`}
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
       </header>
 
       <main className="flex-1 px-4 py-6">
@@ -133,9 +195,9 @@ export default function RecipeList() {
             <Book className="w-12 h-12 text-muted-foreground/50 mb-4" />
             <h3 className="font-display text-xl font-semibold mb-2">Keine Rezepte gefunden</h3>
             <p className="text-muted-foreground mb-6">
-              {search || energyType ? "Versuche einen anderen Suchbegriff." : "Füge dein erstes Rezept hinzu."}
+              {hasFilters ? "Versuche andere Filter oder einen anderen Suchbegriff." : "Füge dein erstes Rezept hinzu."}
             </p>
-            {!(search || energyType) && (
+            {!hasFilters && (
               <Link href="/rezepte/neu">
                 <Button className="rounded-full">Rezept hinzufügen</Button>
               </Link>
