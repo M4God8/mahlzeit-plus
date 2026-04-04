@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   ShoppingBag,
   Sparkles,
@@ -199,13 +199,31 @@ export default function Shopping() {
             >
               <X className="w-5 h-5" />
             </button>
-            <h2 className="font-display text-2xl font-bold text-primary truncate flex-1">
-              {activeList.title}
-            </h2>
+            <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
+              <h2 className="font-display text-2xl font-bold text-primary whitespace-nowrap">
+                {(() => {
+                  const fromDate = new Date(activeList.weekFrom);
+                  const toDate = new Date(activeList.weekTo);
+                  if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+                    return activeList.title;
+                  }
+                  const thu = new Date(fromDate);
+                  thu.setDate(thu.getDate() + 3 - ((thu.getDay() + 6) % 7));
+                  const jan4 = new Date(thu.getFullYear(), 0, 4);
+                  const weekNum = 1 + Math.round(((thu.getTime() - jan4.getTime()) / 86400000 - 3 + ((jan4.getDay() + 6) % 7)) / 7);
+                  const months = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+                  const fromDay = fromDate.getDate();
+                  const toDay = toDate.getDate();
+                  const fromMonth = months[fromDate.getMonth()];
+                  const toMonth = months[toDate.getMonth()];
+                  const dateRange = fromMonth === toMonth
+                    ? `${fromDay}.–${toDay}. ${fromMonth}`
+                    : `${fromDay}. ${fromMonth} – ${toDay}. ${toMonth}`;
+                  return `KW ${weekNum} · ${dateRange}`;
+                })()}
+              </h2>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground ml-8">
-            {activeList.weekFrom} – {activeList.weekTo}
-          </p>
           {listCost && (
             <div className="mt-2 ml-8 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">
               <p className="text-sm font-semibold text-emerald-700">
@@ -215,7 +233,7 @@ export default function Shopping() {
           )}
           <div className="mt-3 ml-8">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-              <span>{checkedItems} von {totalItems} erledigt</span>
+              <span>{totalItems} Items · {checkedItems} erledigt</span>
               <span>{Math.round(progress)}%</span>
             </div>
             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
@@ -234,19 +252,59 @@ export default function Shopping() {
             const isCollapsed = collapsedCategories.has(cat);
             const catChecked = items.filter((i) => i.isChecked).length;
 
+            const previewItems = items.slice(0, 3);
+            const remaining = items.length - 3;
+
             return (
               <div key={cat} className="rounded-2xl overflow-hidden border border-border/30 bg-card">
-                <button
-                  onClick={() => toggleCategory(cat)}
-                  className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/5 transition-colors"
-                >
-                  <span className="text-xl">{CATEGORY_ICONS[cat]}</span>
-                  <span className="font-semibold text-sm flex-1 text-left">{cat}</span>
-                  <span className="text-xs text-muted-foreground">{catChecked}/{items.length}</span>
-                  {isCollapsed
-                    ? <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                    : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-                </button>
+                <div>
+                  <button
+                    onClick={() => toggleCategory(cat)}
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-accent/5 transition-colors"
+                  >
+                    <span className="text-xl">{CATEGORY_ICONS[cat]}</span>
+                    <span className="font-semibold text-sm flex-1 text-left">{cat}</span>
+                    <span className="text-xs text-muted-foreground">{catChecked}/{items.length}</span>
+                    {isCollapsed
+                      ? <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+
+                  {isCollapsed && (
+                    <div className="flex items-center gap-2 px-4 pb-3 -mt-1">
+                      <p className="text-xs text-muted-foreground flex-1 min-w-0 truncate">
+                        {previewItems.map((i) => (
+                          <span key={i.id} className={i.isChecked ? "text-muted-foreground/40 line-through" : ""}>
+                            {i.name}
+                          </span>
+                        )).reduce<React.ReactNode[]>((acc, el, idx) => {
+                          if (idx > 0) acc.push(<span key={`sep-${idx}`}> · </span>);
+                          acc.push(el);
+                          return acc;
+                        }, [])}
+                        {remaining > 0 && <span className="text-muted-foreground/60"> +{remaining} weitere</span>}
+                      </p>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {previewItems.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleMutation.mutate({ id: activeListId, itemId: item.id });
+                            }}
+                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                              item.isChecked
+                                ? "bg-primary/60 border-primary/60"
+                                : "border-border hover:border-primary"
+                            }`}
+                          >
+                            {item.isChecked && <Check className="w-3 h-3 text-white" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {!isCollapsed && (
                   <div className="border-t border-border/20">
