@@ -176,7 +176,7 @@ function HistoryItem({ product, onClick }: { product: ScannedProduct; onClick: (
   );
 }
 
-function BarcodeScanner({ onDetected }: { onDetected: (code: string) => void }) {
+function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   const { ref } = useZxing({
@@ -232,6 +232,27 @@ function BarcodeScanner({ onDetected }: { onDetected: (code: string) => void }) 
       </p>
     </div>
   );
+}
+
+function BarcodeScanner({ onDetected }: { onDetected: (code: string) => void }) {
+  const [cameraStarted, setCameraStarted] = useState(false);
+
+  if (!cameraStarted) {
+    return (
+      <div className="w-full aspect-square rounded-2xl bg-muted/30 flex flex-col items-center justify-center p-6 text-center border-2 border-dashed border-border">
+        <ScanBarcode className="w-16 h-16 text-primary/40 mb-4" />
+        <p className="text-sm text-muted-foreground mb-4">
+          Tippe um die Kamera zu aktivieren und einen Barcode zu scannen.
+        </p>
+        <Button onClick={() => setCameraStarted(true)} className="rounded-full px-6">
+          <ScanBarcode className="w-4 h-4 mr-2" />
+          Kamera starten
+        </Button>
+      </div>
+    );
+  }
+
+  return <ActiveScanner onDetected={onDetected} />;
 }
 
 export default function Scanner() {
