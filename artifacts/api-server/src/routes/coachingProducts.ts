@@ -38,7 +38,7 @@ router.get("/admin/products", requireAdmin, async (_req, res) => {
 
 router.get("/admin/products/:id", requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params["id"] as string);
     if (isNaN(id)) {
       res.status(400).json({ error: "Invalid ID" });
       return;
@@ -83,7 +83,7 @@ router.post("/admin/products", requireAdmin, async (req, res) => {
 
 router.patch("/admin/products/:id", requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params["id"] as string);
     if (isNaN(id)) {
       res.status(400).json({ error: "Invalid ID" });
       return;
@@ -113,7 +113,7 @@ router.patch("/admin/products/:id", requireAdmin, async (req, res) => {
 
 router.delete("/admin/products/:id", requireAdmin, async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params["id"] as string);
     if (isNaN(id)) {
       res.status(400).json({ error: "Invalid ID" });
       return;

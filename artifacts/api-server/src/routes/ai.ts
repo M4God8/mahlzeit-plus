@@ -648,7 +648,7 @@ router.post("/ai/feedback", requireAuth, async (req, res) => {
         .from(recipeIngredientsTable)
         .where(eq(recipeIngredientsTable.recipeId, body.recipeId));
 
-      const uniqueIngredientIds = [...new Set(recipeIngredients.map(ri => ri.ingredientId).filter(Boolean))];
+      const uniqueIngredientIds = [...new Set(recipeIngredients.map(ri => ri.ingredientId).filter((id): id is number => id !== null))];
       for (const ingredientId of uniqueIngredientIds) {
         const [existing] = await db
           .select()
