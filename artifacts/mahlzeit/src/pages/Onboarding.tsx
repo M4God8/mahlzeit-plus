@@ -9,12 +9,14 @@ import { Slider } from "@/components/ui/slider";
 import { useListNutritionProfiles, useCreateOrUpdateUserSettings } from "@workspace/api-client-react";
 import { ArrowRight, Check, ChevronLeft, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import IntroTour from "@/components/IntroTour";
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
+  const [showTour, setShowTour] = useState(false);
   
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [householdSize, setHouseholdSize] = useState(2);
@@ -74,13 +76,17 @@ export default function Onboarding() {
             ? "Dein Profil wurde eingerichtet. Dein erster Plan wartet auf dich."
             : "Dein Profil wurde gespeichert. Erstelle deinen ersten Mahlzeitenplan unter 'Plan'.",
         });
-        setLocation("/heute");
+        setShowTour(true);
       },
       onError: () => {
         toast({ title: "Fehler", description: "Profil konnte nicht gespeichert werden.", variant: "destructive" });
       }
     });
   };
+
+  if (showTour) {
+    return <IntroTour onComplete={() => setLocation("/plan")} />;
+  }
 
   return (
     <div className="min-h-[100dvh] flex flex-col bg-background text-foreground pt-12 pb-safe px-4">
