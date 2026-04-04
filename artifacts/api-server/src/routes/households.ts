@@ -99,6 +99,11 @@ router.post("/households/create-shared", requireAuth, async (req, res): Promise<
         .returning();
 
       await tx
+        .update(shoppingListsTable)
+        .set({ householdId: newHousehold!.id })
+        .where(eq(shoppingListsTable.userId, userId));
+
+      await tx
         .delete(householdMembersTable)
         .where(eq(householdMembersTable.userId, userId));
 
@@ -117,11 +122,6 @@ router.post("/households/create-shared", requireAuth, async (req, res): Promise<
         userId,
         role: "owner",
       });
-
-      await tx
-        .update(shoppingListsTable)
-        .set({ householdId: newHousehold!.id })
-        .where(eq(shoppingListsTable.userId, userId));
 
       const members = await tx
         .select()
@@ -197,6 +197,11 @@ router.post("/households/join", requireAuth, async (req, res): Promise<void> => 
       }
 
       await tx
+        .update(shoppingListsTable)
+        .set({ householdId: household.id })
+        .where(and(eq(shoppingListsTable.userId, userId), eq(shoppingListsTable.householdId, currentHouseholdId)));
+
+      await tx
         .delete(householdMembersTable)
         .where(eq(householdMembersTable.userId, userId));
 
@@ -215,11 +220,6 @@ router.post("/households/join", requireAuth, async (req, res): Promise<void> => 
         userId,
         role: "member",
       });
-
-      await tx
-        .update(shoppingListsTable)
-        .set({ householdId: household.id })
-        .where(and(eq(shoppingListsTable.userId, userId), eq(shoppingListsTable.householdId, currentHouseholdId)));
 
       const updatedMembers = await tx
         .select()
@@ -308,6 +308,19 @@ router.post("/households/leave", requireAuth, async (req, res): Promise<void> =>
     }
 
     const result = await db.transaction(async (tx) => {
+      const [soloHousehold] = await tx
+        .insert(householdsTable)
+        .values({
+          name: "Solo",
+          ownerId: userId,
+        })
+        .returning();
+
+      await tx
+        .update(shoppingListsTable)
+        .set({ householdId: soloHousehold!.id })
+        .where(and(eq(shoppingListsTable.userId, userId), eq(shoppingListsTable.householdId, householdId)));
+
       await tx
         .delete(householdMembersTable)
         .where(and(
@@ -336,24 +349,11 @@ router.post("/households/leave", requireAuth, async (req, res): Promise<void> =>
         }
       }
 
-      const [soloHousehold] = await tx
-        .insert(householdsTable)
-        .values({
-          name: "Solo",
-          ownerId: userId,
-        })
-        .returning();
-
       await tx.insert(householdMembersTable).values({
         householdId: soloHousehold!.id,
         userId,
         role: "owner",
       });
-
-      await tx
-        .update(shoppingListsTable)
-        .set({ householdId: soloHousehold!.id })
-        .where(and(eq(shoppingListsTable.userId, userId), eq(shoppingListsTable.householdId, householdId)));
 
       const soloMembers = await tx
         .select()
