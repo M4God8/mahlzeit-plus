@@ -120,7 +120,7 @@ export default function Today() {
           </button>
         )}
 
-        {!hasMeals ? (
+        {!hasPlan ? (
           <div className="flex flex-col items-center justify-center text-center py-20 px-6">
             <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
               <ChefHat className="w-10 h-10 text-primary" />
@@ -135,6 +135,23 @@ export default function Today() {
                 Ersten Plan erstellen
               </Button>
             </Link>
+          </div>
+        ) : !hasMeals ? (
+          <div className="flex flex-col items-center justify-center text-center py-16 px-4 bg-primary/5 rounded-3xl border border-primary/10">
+            <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center mb-4 shadow-sm">
+              <ChefHat className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="font-display text-xl font-semibold mb-2">Heute keine Mahlzeiten geplant</h3>
+            <p className="text-muted-foreground mb-6">
+              Dein Plan hat für heute keine Einträge. Du kannst Tage im Plan bearbeiten.
+            </p>
+            {activePlan && (
+              <Link href={`/plan/${activePlan.id}`} data-testid="link-edit-plan">
+                <Button className="rounded-full shadow-sm">
+                  Plan bearbeiten
+                </Button>
+              </Link>
+            )}
           </div>
         ) : (
           <>
