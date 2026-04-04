@@ -197,6 +197,10 @@ function BarcodeScanner({ onDetected }: { onDetected: (code: string) => void }) 
         }
       }
     },
+    constraints: {
+      video: { facingMode: "environment" },
+      audio: false,
+    },
     timeBetweenDecodingAttempts: 500,
   });
 
@@ -214,7 +218,7 @@ function BarcodeScanner({ onDetected }: { onDetected: (code: string) => void }) 
 
   return (
     <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
-      <video ref={ref} className="w-full h-full object-cover" />
+      <video ref={ref} className="w-full h-full object-cover" playsInline muted autoPlay />
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-56 h-56 border-2 border-white/70 rounded-xl">
           <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-xl" />
