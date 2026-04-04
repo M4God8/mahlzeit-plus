@@ -1,0 +1,182 @@
+score.ts FINAL — Komplette Neuerstellung
+
+Datei: artifacts/api-server/src/services/score.ts
+
+## TYPEN (zuerst definieren):
+
+interface SugarContext {
+  hasNaturalSugar: boolean    // Rohzucker, Kokos, Datteln
+  hasIndustrialSugar: boolean // Zucker, Glukose, Fruktosesirup
+  hasFruitSugar: boolean      // Frucht, Saft, Püree
+}
+
+interface ScoreBreakdown {
+  ingredients: { score: number; details: string[] }
+  nutrition:   { score: number; details: string[] }
+  processing:  { score: number; details: string[] }
+  profileFit:  { 
+    score: number
+    label: string
+    contextLabel?: string
+    warningFlags: string[]
+  }
+  total: {
+    score: number
+    label: string
+    summary: string  // kurzer Erklärungstext für UI
+  }
+}
+
+## HELPER FUNKTIONEN:
+
+// Hard cap — überall gleich anwenden
+cap(score, min=0, max=25): 
+  Math.min(max, Math.max(min, score))
+
+// Kakao-Prozent defensiv lesen
+getCacaoPercent(product):
+  1. product.product_name regex: 
+     /(\d+)\s*%.*kakao|kakao.*?(\d+)\s*%/i
+  2. product.ingredients_text regex:
+     /kakaomasse.*?(\d+)|kakaoanteil.*?(\d+)|
+      davon kakao.*?(\d+)/i
+  3. return null wenn nicht gefunden
+
+// Zucker-Kontext (nicht binär!)
+getSugarContext(ingredients_text): SugarContext
+  hasNaturalSugar: 
+    /rohrzucker|kokosblütenzucker|
+     dattelsirup|ahornsirup/i
+  hasIndustrialSugar:
+    /\bzucker\b|glukosesirup|fruktosesirup|
+     maissirup|maltodextrin/i
+  hasFruitSugar:
+    /fruchtsaft|fruchtpüree|apfelsaft|
+     fruchtzucker(?!sirup)/i
+
+// Fluorid-Check
+hasFluoride(ingredients_text):
+  /natriumfluorid|sodium fluoride|
+   fluoridiertes wasser/i
+
+## A) ZUTATENQUALITÄT (0-25):
+start = 25
+- product.additives_n * 3
+- has_artificial_flavor ? 2 : 0
+- has_preservatives ? 2 : 0
+- unclear_ingredients ? 1 : 0
++ product.labels includes 'bio' ? 2 : 0
++ product.labels includes 'fairtrade' ? 2 : 0
+return cap(score)
+
+## B) NÄHRWERTE (0-25):
+start = 25
+sugar = product.nutriments.sugars_100g ?? 0
+  > 30 → -12
+  > 15 → -7
+  > 5  → -3
+  else → 0
++ saturated_fat > 10 ? -4 : 0
++ protein > 10 ? +2 : 0
+return cap(score)
+
+## C) VERARBEITUNG (0-25):
+start = 25
+nova = product.nova_group
+  == 4 → -10  (ultra-processed)
+  == 3 → -5   (stark verarbeitet)
+  else → 0
++ /maltodextrin|sirup/i in ingredients ? -3 : 0
+return cap(score, 0, 25)
+
+## D) PROFIL-FIT (0-25):
+start = 25, penalty = 0
+sugar = product.nutriments.sugars_100g ?? 0
+sugarCtx = getSugarContext(ingredients_text)
+cacao = getCacaoPercent(product) ?? 0
+warningFlags = []
+
+// Fluorid immer prüfen
+if hasFluoride(ingredients_text):
+  warningFlags.push("⚠️ Enthält Fluorid")
+  // KEIN Score-Abzug — nur Flag
+
+// Zucker-Ausschluss im Profil
+if user_profile.avoid_sugar:
+  if sugar > 15:   penalty = 15
+  elif sugar > 5:  penalty = 5
+  else:            penalty = 0
+
+  // Typ-Modifikator
+  if sugarCtx.hasIndustrialSugar:
+    penalty *= 1.0   // volle Strafe
+  elif sugarCtx.hasNaturalSugar:
+    penalty *= 0.6   // reduziert
+  elif sugarCtx.hasFruitSugar:
+    penalty *= 0.3   // mild
+  // Mischfall: worst-case gewinnt
+
+  // Kontext-Override (abmildern, nie freisprechen)
+  if cacao > 70 and sugar < 15:
+    penalty *= 0.5
+    contextLabel = "Bewusstes Genussmittel"
+  elif sugarCtx.hasFruitSugar and 
+       not sugarCtx.hasIndustrialSugar:
+    penalty *= 0.4
+    contextLabel = "Natürlicher Fruchtzucker"
+
+profile_score = cap(25 - penalty)
+
+// Profile-Fit Label (KEINE verbotenen Wörter!)
+if profile_score >= 20:
+  label = "✅ Passt gut zu deinem Profil"
+elif profile_score >= 10:
+  label = "🟡 Mit Bedacht genießen"
+else:
+  label = "🔶 Für dein Profil nur 
+           eingeschränkt passend"
+
+## GESAMT-SCORE:
+total = (
+  ingredients * 0.30 +
+  nutrition   * 0.30 +
+  processing  * 0.20 +
+  profile     * 0.20
+)
+final = Math.round(total * 4)  // auf 100
+
+// Gesamt-Label (KEINE verbotenen Wörter!)
+85-100 → label="Sehr empfehlenswert"
+         summary="Natürlich, hochwertig und 
+                  passend für deinen Alltag"
+65-84  → label="Gut — gelegentlich"
+         summary="Solide Qualität mit kleinen 
+                  Einschränkungen"
+40-64  → label="Mit Bedacht genießen"
+         summary="Für den Alltag weniger 
+                  geeignet — gelegentlich okay"
+0-39   → label="Weniger passend für deinen Alltag"
+         summary="Viele Kompromisse bei Qualität 
+                  oder Inhaltsstoffen"
+
+## VERBOTENE WÖRTER (im gesamten score.ts):
+Nie verwenden:
+  "schlecht", "vermeiden", "passt nicht",
+  "gefährlich", "ungesund"
+
+Bevorzugt:
+  "Bewusstes Genussmittel"
+  "Mit Bedacht genießen"  
+  "Natürlich enthalten"
+  "Eingeschränkt passend"
+  "Weniger passend für deinen Alltag"
+
+## NACH DEM BUILD — TESTFÄLLE:
+1. REWE Bio Edelbitter 85% 
+   → erwartet: ~87, "Bewusstes Genussmittel"
+2. True Fruits Triple Purple
+   → erwartet: ~88, "Natürlicher Fruchtzucker"
+3. Coca Cola
+   → erwartet: <20, "Weniger passend"
+4. Bio Haferflocken
+   → erwartet: >85, "Sehr empfehlenswert"
