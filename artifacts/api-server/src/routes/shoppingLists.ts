@@ -10,6 +10,8 @@ import {
   mealEntriesTable,
   recipeIngredientsTable,
   ingredientsTable,
+  fridgeItemsTable,
+  spoilageDefaultsTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 import type { ShoppingList, ShoppingListItem, MealEntry } from "@workspace/db";
@@ -415,11 +417,64 @@ router.patch("/shopping-lists/:id/items/:itemId/toggle", requireAuth, async (req
       .where(and(eq(shoppingListItemsTable.id, itemId), eq(shoppingListItemsTable.shoppingListId, listId)));
     if (!item) { res.status(404).json({ error: "Eintrag nicht gefunden" }); return; }
 
+    const newChecked = !item.isChecked;
     const [updated] = await db
       .update(shoppingListItemsTable)
-      .set({ isChecked: !item.isChecked })
+      .set({ isChecked: newChecked })
       .where(eq(shoppingListItemsTable.id, itemId))
       .returning();
+
+    if (item.ingredientId) {
+      try {
+        const [spoilage] = await db
+          .select()
+          .from(spoilageDefaultsTable)
+          .where(eq(spoilageDefaultsTable.ingredientId, item.ingredientId));
+
+        if (spoilage && (spoilage.spoilageSpeed === "fast" || spoilage.spoilageSpeed === "medium")) {
+          if (newChecked) {
+            const bestBefore = new Date();
+            bestBefore.setDate(bestBefore.getDate() + spoilage.typicalDaysFresh);
+            const existing = await db
+              .select()
+              .from(fridgeItemsTable)
+              .where(and(
+                eq(fridgeItemsTable.userId, userId),
+                eq(fridgeItemsTable.ingredientId, item.ingredientId),
+                inArray(fridgeItemsTable.status, ["likely_available", "maybe_low"])
+              ));
+            if (existing.length === 0) {
+              await db.insert(fridgeItemsTable).values({
+                userId,
+                ingredientId: item.ingredientId,
+                status: "likely_available",
+                bestBeforeDate: bestBefore.toISOString().split("T")[0]!,
+                source: "shopping",
+              });
+            } else {
+              await db
+                .update(fridgeItemsTable)
+                .set({
+                  status: "likely_available",
+                  bestBeforeDate: bestBefore.toISOString().split("T")[0]!,
+                  lastSeenAt: new Date(),
+                })
+                .where(eq(fridgeItemsTable.id, existing[0]!.id));
+            }
+          } else {
+            await db
+              .delete(fridgeItemsTable)
+              .where(and(
+                eq(fridgeItemsTable.userId, userId),
+                eq(fridgeItemsTable.ingredientId, item.ingredientId),
+                eq(fridgeItemsTable.source, "shopping")
+              ));
+          }
+        }
+      } catch (fridgeErr) {
+        req.log.error({ fridgeErr }, "Failed to update fridge from shopping toggle");
+      }
+    }
 
     res.json(updated);
   } catch (err) {

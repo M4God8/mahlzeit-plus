@@ -34,6 +34,8 @@ tags:
     description: Bewusster Begleiter chat operations
   - name: coaching-products
     description: Coaching products admin CRUD
+  - name: fridge
+    description: Automatic fridge/pantry tracking
 
 paths:
   /healthz:
@@ -986,6 +988,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/TodayCost"
 
+  /fridge:
+    get:
+      operationId: getFridgeItems
+      tags: [fridge]
+      summary: Get current fridge items (likely_available and maybe_low)
+      responses:
+        "200":
+          description: List of fridge items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FridgeItem"
+
+  /fridge/{id}:
+    patch:
+      operationId: updateFridgeItem
+      tags: [fridge]
+      summary: Update fridge item status (e.g. "Hab ich noch" flow)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFridgeItemBody"
+      responses:
+        "200":
+          description: Updated fridge item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FridgeItemRaw"
+        "404":
+          description: Item not found
+
   /scanner/lookup/{barcode}:
     get:
       operationId: scannerLookup
@@ -1603,6 +1647,10 @@ components:
             $ref: "#/components/schemas/TodayMealEntry"
         hasPlan:
           type: boolean
+        expiringItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpiringFridgeItem"
       required:
         - date
         - dayName
@@ -2225,3 +2273,83 @@ components:
             type: string
         isActive:
           type: boolean
+
+    FridgeItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        ingredientId:
+          type: integer
+        status:
+          type: string
+        bestBeforeDate:
+          type: ["string", "null"]
+        lastSeenAt:
+          type: string
+        source:
+          type: string
+        ingredientName:
+          type: string
+        ingredientCategory:
+          type: string
+      required:
+        - id
+        - userId
+        - ingredientId
+        - status
+        - source
+        - ingredientName
+        - ingredientCategory
+
+    FridgeItemRaw:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        ingredientId:
+          type: integer
+        status:
+          type: string
+        bestBeforeDate:
+          type: ["string", "null"]
+        lastSeenAt:
+          type: string
+        source:
+          type: string
+      required:
+        - id
+        - userId
+        - ingredientId
+        - status
+        - source
+
+    UpdateFridgeItemBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [likely_available, maybe_low, likely_gone]
+      required:
+        - status
+
+    ExpiringFridgeItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        ingredientName:
+          type: string
+        bestBeforeDate:
+          type: string
+        ingredientId:
+          type: integer
+      required:
+        - id
+        - ingredientName
+        - bestBeforeDate
+        - ingredientId

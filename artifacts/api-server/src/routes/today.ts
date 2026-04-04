@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { mealPlansTable, mealPlanDaysTable, mealEntriesTable, recipesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { mealPlansTable, mealPlanDaysTable, mealEntriesTable, recipesTable, fridgeItemsTable, ingredientsTable } from "@workspace/db";
+import { eq, and, inArray, gte, lte } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 
 const router = Router();
@@ -33,12 +33,31 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
       .where(and(eq(mealPlansTable.userId, userId), eq(mealPlansTable.active, true)));
 
     if (!activePlan) {
+      const twoDaysFromNow2 = new Date();
+      twoDaysFromNow2.setDate(twoDaysFromNow2.getDate() + 2);
+      const earlyExpiring = await db
+        .select({
+          id: fridgeItemsTable.id,
+          ingredientName: ingredientsTable.name,
+          bestBeforeDate: fridgeItemsTable.bestBeforeDate,
+          ingredientId: fridgeItemsTable.ingredientId,
+        })
+        .from(fridgeItemsTable)
+        .innerJoin(ingredientsTable, eq(fridgeItemsTable.ingredientId, ingredientsTable.id))
+        .where(and(
+          eq(fridgeItemsTable.userId, userId),
+          inArray(fridgeItemsTable.status, ["likely_available", "maybe_low"]),
+          gte(fridgeItemsTable.bestBeforeDate, dateStr),
+          lte(fridgeItemsTable.bestBeforeDate, twoDaysFromNow2.toISOString().split("T")[0]!)
+        ));
+
       res.json({
         date: dateStr,
         dayName,
         planTitle: null,
         meals: [] as TodayMealEntry[],
         hasPlan: false,
+        expiringItems: earlyExpiring,
       });
       return;
     }
@@ -88,6 +107,27 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
     const mealOrder: Record<string, number> = { breakfast: 0, lunch: 1, dinner: 2, snack: 3 };
     const sortedEntries = entries.sort((a, b) => (mealOrder[a.mealType] ?? 99) - (mealOrder[b.mealType] ?? 99));
 
+    const twoDaysFromNow = new Date();
+    twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
+    const todayDate2 = now.toISOString().split("T")[0]!;
+    const twoStr = twoDaysFromNow.toISOString().split("T")[0]!;
+
+    const expiringRows = await db
+      .select({
+        id: fridgeItemsTable.id,
+        ingredientName: ingredientsTable.name,
+        bestBeforeDate: fridgeItemsTable.bestBeforeDate,
+        ingredientId: fridgeItemsTable.ingredientId,
+      })
+      .from(fridgeItemsTable)
+      .innerJoin(ingredientsTable, eq(fridgeItemsTable.ingredientId, ingredientsTable.id))
+      .where(and(
+        eq(fridgeItemsTable.userId, userId),
+        inArray(fridgeItemsTable.status, ["likely_available", "maybe_low"]),
+        gte(fridgeItemsTable.bestBeforeDate, todayDate2),
+        lte(fridgeItemsTable.bestBeforeDate, twoStr)
+      ));
+
     res.json({
       date: dateStr,
       dayName,
@@ -104,6 +144,7 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
         overrideCookTime: e.overrideCookTime,
       })),
       hasPlan: true,
+      expiringItems: expiringRows,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get today's meals");

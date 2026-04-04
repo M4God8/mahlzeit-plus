@@ -206,6 +206,13 @@ export interface TodayMealEntry {
   overrideCookTime?: number | null;
 }
 
+export interface ExpiringFridgeItem {
+  id: number;
+  ingredientName: string;
+  bestBeforeDate: string;
+  ingredientId: number;
+}
+
 export interface TodaySummary {
   date: string;
   dayName: string;
@@ -213,6 +220,7 @@ export interface TodaySummary {
   planTitle?: string | null;
   meals: TodayMealEntry[];
   hasPlan: boolean;
+  expiringItems?: ExpiringFridgeItem[];
 }
 
 export interface ShoppingListItem {
@@ -528,6 +536,43 @@ export interface CoachingProductUpdate {
   tags?: string[];
   triggerKeywords?: string[];
   isActive?: boolean;
+}
+
+export interface FridgeItem {
+  id: number;
+  userId: string;
+  ingredientId: number;
+  status: string;
+  /** @nullable */
+  bestBeforeDate?: string | null;
+  lastSeenAt?: string;
+  source: string;
+  ingredientName: string;
+  ingredientCategory: string;
+}
+
+export interface FridgeItemRaw {
+  id: number;
+  userId: string;
+  ingredientId: number;
+  status: string;
+  /** @nullable */
+  bestBeforeDate?: string | null;
+  lastSeenAt?: string;
+  source: string;
+}
+
+export type UpdateFridgeItemBodyStatus =
+  (typeof UpdateFridgeItemBodyStatus)[keyof typeof UpdateFridgeItemBodyStatus];
+
+export const UpdateFridgeItemBodyStatus = {
+  likely_available: "likely_available",
+  maybe_low: "maybe_low",
+  likely_gone: "likely_gone",
+} as const;
+
+export interface UpdateFridgeItemBody {
+  status: UpdateFridgeItemBodyStatus;
 }
 
 export type ListIngredientsParams = {

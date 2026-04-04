@@ -13,6 +13,8 @@ import {
   mealPlanDaysTable,
   mealPlansTable,
   userLearnedPreferencesTable,
+  fridgeItemsTable,
+  spoilageDefaultsTable,
 } from "@workspace/db";
 import { eq, inArray, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
@@ -48,6 +50,12 @@ const BUDGET_EURO_MAP: Record<string, number> = {
   high: 75,
 };
 
+interface FridgeContextItem {
+  name: string;
+  status: string;
+  bestBeforeDate: string | null;
+}
+
 interface UserContext {
   householdSize: number;
   cookTimeLimit: number;
@@ -59,13 +67,41 @@ interface UserContext {
   preferredCategories: string[];
   mealStyles: string[];
   learnedPrefs: LearnedPrefs | null;
+  fridgeItems: FridgeContextItem[];
+  expiringItems: FridgeContextItem[];
 }
 
 async function getUserContext(userId: string): Promise<UserContext> {
-  const [[settings], [learnedRow]] = await Promise.all([
+  const [[settings], [learnedRow], fridgeRows] = await Promise.all([
     db.select().from(userSettingsTable).where(eq(userSettingsTable.userId, userId)),
     db.select().from(userLearnedPreferencesTable).where(eq(userLearnedPreferencesTable.userId, userId)),
+    db.select({
+      name: ingredientsTable.name,
+      status: fridgeItemsTable.status,
+      bestBeforeDate: fridgeItemsTable.bestBeforeDate,
+    })
+      .from(fridgeItemsTable)
+      .innerJoin(ingredientsTable, eq(fridgeItemsTable.ingredientId, ingredientsTable.id))
+      .where(and(
+        eq(fridgeItemsTable.userId, userId),
+        inArray(fridgeItemsTable.status, ["likely_available", "maybe_low"])
+      )),
   ]);
+
+  const twoDaysFromNow = new Date();
+  twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
+  const todayStr = new Date().toISOString().split("T")[0]!;
+  const twoStr = twoDaysFromNow.toISOString().split("T")[0]!;
+
+  const fridgeItems: FridgeContextItem[] = fridgeRows.map(r => ({
+    name: r.name,
+    status: r.status,
+    bestBeforeDate: r.bestBeforeDate,
+  }));
+
+  const expiringItems = fridgeItems.filter(
+    (i) => i.bestBeforeDate && i.bestBeforeDate <= twoStr && i.bestBeforeDate >= todayStr
+  );
 
   let learnedPrefs: LearnedPrefs | null = null;
   if (learnedRow) {
@@ -98,6 +134,8 @@ async function getUserContext(userId: string): Promise<UserContext> {
       preferredCategories: [],
       mealStyles: [],
       learnedPrefs,
+      fridgeItems,
+      expiringItems,
     };
   }
 
@@ -128,6 +166,8 @@ async function getUserContext(userId: string): Promise<UserContext> {
     preferredCategories,
     mealStyles,
     learnedPrefs,
+    fridgeItems,
+    expiringItems,
   };
 }
 
@@ -165,6 +205,18 @@ function buildContextBlock(ctx: UserContext): string {
   } else {
     lines.push("\n--- Gelerntes Nutzerprofil ({{learned_preferences}}) ---");
     lines.push("Noch kein Lernprofil vorhanden — Standardpräferenzen anwenden.");
+  }
+
+  if (ctx.fridgeItems.length > 0) {
+    lines.push("\n--- Kühlschrank / Vorräte ({{fridge_inventory}}) ---");
+    const available = ctx.fridgeItems.filter(i => i.status === "likely_available").map(i => i.name);
+    const maybeLow = ctx.fridgeItems.filter(i => i.status === "maybe_low").map(i => i.name);
+    if (available.length > 0) lines.push(`Wahrscheinlich vorhanden: ${available.join(", ")}`);
+    if (maybeLow.length > 0) lines.push(`Vielleicht knapp: ${maybeLow.join(", ")}`);
+    if (ctx.expiringItems.length > 0) {
+      lines.push(`⚠️ BALD ABLAUFEND (PRIORISIERT VERWENDEN): ${ctx.expiringItems.map(i => `${i.name} (bis ${i.bestBeforeDate})`).join(", ")}`);
+    }
+    lines.push("Instruktion: Priorisiere ablaufende Zutaten in Rezeptvorschlägen. Vermeide Doppelkäufe — nutze vorhandene Zutaten.");
   }
 
   return lines.join("\n");
@@ -584,6 +636,36 @@ router.post("/ai/feedback", requireAuth, async (req, res) => {
       rating: body.rating,
     })
     .returning();
+
+  if (body.recipeId != null) {
+    try {
+      const recipeIngredients = await db
+        .select({ ingredientId: recipeIngredientsTable.ingredientId })
+        .from(recipeIngredientsTable)
+        .where(eq(recipeIngredientsTable.recipeId, body.recipeId));
+
+      const uniqueIngredientIds = [...new Set(recipeIngredients.map(ri => ri.ingredientId).filter(Boolean))];
+      for (const ingredientId of uniqueIngredientIds) {
+        const [existing] = await db
+          .select()
+          .from(fridgeItemsTable)
+          .where(and(
+            eq(fridgeItemsTable.userId, userId),
+            eq(fridgeItemsTable.ingredientId, ingredientId),
+            inArray(fridgeItemsTable.status, ["likely_available", "maybe_low"])
+          ));
+        if (existing) {
+          const newStatus = existing.status === "maybe_low" ? "likely_gone" : "maybe_low";
+          await db
+            .update(fridgeItemsTable)
+            .set({ status: newStatus, lastSeenAt: new Date() })
+            .where(eq(fridgeItemsTable.id, existing.id));
+        }
+      }
+    } catch (fridgeErr) {
+      req.log.error({ fridgeErr }, "Failed to update fridge from feedback");
+    }
+  }
 
   res.status(201).json(feedback);
 });

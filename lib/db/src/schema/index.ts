@@ -10,3 +10,4 @@ export * from "./scannedProducts";
 export * from "./userLearnedPreferences";
 export * from "./coachingProducts";
 export * from "./chatSessions";
+export * from "./fridge";

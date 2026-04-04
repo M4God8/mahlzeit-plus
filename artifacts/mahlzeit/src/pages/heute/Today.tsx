@@ -5,7 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart, ThumbsUp, ThumbsDown, Minus, Sparkles, X, Euro } from "lucide-react";
+import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart, ThumbsUp, ThumbsDown, Minus, Sparkles, X, Euro, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -129,6 +129,25 @@ export default function Today() {
               <X className="w-4 h-4" />
             </button>
           </div>
+        )}
+
+        {todaySummary?.expiringItems && todaySummary.expiringItems.length > 0 && (
+          <button
+            onClick={() => {
+              const names = todaySummary.expiringItems!.map((i) => i.ingredientName).join(", ");
+              setLocation(`/ki?context=${encodeURIComponent(`Rezept mit diesen bald ablaufenden Zutaten: ${names}`)}`);
+            }}
+            className="w-full flex items-start gap-3 bg-yellow-50 border border-yellow-200 rounded-2xl px-4 py-3 text-left hover:bg-yellow-100 transition-colors animate-in slide-in-from-top-2 duration-300"
+          >
+            <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm text-yellow-800 leading-snug">
+                <span className="font-semibold">🟡 Bald aufbrauchen: </span>
+                {todaySummary.expiringItems.map((i) => i.ingredientName).join(", ")}
+              </p>
+              <p className="text-xs text-yellow-600 mt-0.5">Tap für Rezeptvorschläge →</p>
+            </div>
+          </button>
         )}
 
         {!hasMeals ? (

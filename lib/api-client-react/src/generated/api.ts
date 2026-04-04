@@ -33,6 +33,8 @@ import type {
   CoachingProductUpdate,
   CopyMealPlanBody,
   CostEstimate,
+  FridgeItem,
+  FridgeItemRaw,
   GetRecipeCostParams,
   HealthStatus,
   ImportRecipeScreenshot400,
@@ -61,6 +63,7 @@ import type {
   SwapMealPlanDaysBody,
   TodayCost,
   TodaySummary,
+  UpdateFridgeItemBody,
   UserLearnedPreferences,
   UserSettings,
   UserSettingsInput,
@@ -4083,6 +4086,168 @@ export function useGetTodayCost<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get current fridge items (likely_available and maybe_low)
+ */
+export const getGetFridgeItemsUrl = () => {
+  return `/api/fridge`;
+};
+
+export const getFridgeItems = async (
+  options?: RequestInit,
+): Promise<FridgeItem[]> => {
+  return customFetch<FridgeItem[]>(getGetFridgeItemsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetFridgeItemsQueryKey = () => {
+  return [`/api/fridge`] as const;
+};
+
+export const getGetFridgeItemsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getFridgeItems>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getFridgeItems>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetFridgeItemsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getFridgeItems>>> = ({
+    signal,
+  }) => getFridgeItems({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getFridgeItems>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetFridgeItemsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getFridgeItems>>
+>;
+export type GetFridgeItemsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get current fridge items (likely_available and maybe_low)
+ */
+
+export function useGetFridgeItems<
+  TData = Awaited<ReturnType<typeof getFridgeItems>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getFridgeItems>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetFridgeItemsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update fridge item status (e.g. "Hab ich noch" flow)
+ */
+export const getUpdateFridgeItemUrl = (id: number) => {
+  return `/api/fridge/${id}`;
+};
+
+export const updateFridgeItem = async (
+  id: number,
+  updateFridgeItemBody: UpdateFridgeItemBody,
+  options?: RequestInit,
+): Promise<FridgeItemRaw> => {
+  return customFetch<FridgeItemRaw>(getUpdateFridgeItemUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateFridgeItemBody),
+  });
+};
+
+export const getUpdateFridgeItemMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateFridgeItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateFridgeItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateFridgeItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateFridgeItemBody> },
+  TContext
+> => {
+  const mutationKey = ["updateFridgeItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateFridgeItem>>,
+    { id: number; data: BodyType<UpdateFridgeItemBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateFridgeItem(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateFridgeItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateFridgeItem>>
+>;
+export type UpdateFridgeItemMutationBody = BodyType<UpdateFridgeItemBody>;
+export type UpdateFridgeItemMutationError = ErrorType<void>;
+
+/**
+ * @summary Update fridge item status (e.g. "Hab ich noch" flow)
+ */
+export const useUpdateFridgeItem = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateFridgeItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateFridgeItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateFridgeItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateFridgeItemBody> },
+  TContext
+> => {
+  return useMutation(getUpdateFridgeItemMutationOptions(options));
+};
 
 /**
  * @summary Look up a product by barcode (cached or live Open Food Facts)

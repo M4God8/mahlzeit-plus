@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Leaf,
   X,
+  PackageCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,9 +25,11 @@ import {
   useArchiveShoppingList,
   useDeleteShoppingList,
   useGetShoppingListCost,
+  useGetFridgeItems,
+  useUpdateFridgeItem,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getListShoppingListsQueryKey, getGetShoppingListQueryKey } from "@workspace/api-client-react";
+import { getListShoppingListsQueryKey, getGetShoppingListQueryKey, getGetFridgeItemsQueryKey } from "@workspace/api-client-react";
 import type { ShoppingListSummary } from "@workspace/api-client-react";
 
 const CATEGORIES = [
@@ -63,6 +66,21 @@ export default function Shopping() {
   const { data: listCost } = useGetShoppingListCost(activeListId ?? 0, {
     query: { enabled: activeListId !== null, queryKey: ["/api/costs/shopping-list", String(activeListId ?? 0)] }
   });
+  const { data: fridgeItems = [] } = useGetFridgeItems();
+
+  const fridgeAvailableIds = new Set(
+    fridgeItems
+      .filter((i) => i.status === "likely_available" || i.status === "maybe_low")
+      .map((i) => i.ingredientId)
+  );
+
+  const updateFridgeMutation = useUpdateFridgeItem({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetFridgeItemsQueryKey() });
+      },
+    },
+  });
 
   const generateMutation = useGenerateShoppingList({
     mutation: {
@@ -75,8 +93,9 @@ export default function Shopping() {
 
   const toggleMutation = useToggleShoppingListItem({
     mutation: {
-      onSuccess: (_, { id, itemId }) => {
+      onSuccess: (_, { id }) => {
         queryClient.invalidateQueries({ queryKey: getGetShoppingListQueryKey(id) });
+        queryClient.invalidateQueries({ queryKey: getGetFridgeItemsQueryKey() });
       },
     },
   });
@@ -258,6 +277,12 @@ export default function Shopping() {
                                 Bio
                               </span>
                             )}
+                            {!item.isChecked && item.ingredientId && fridgeAvailableIds.has(item.ingredientId) && (
+                              <span className="inline-flex items-center gap-0.5 text-xs text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full font-medium">
+                                <PackageCheck className="w-2.5 h-2.5" />
+                                vorhanden
+                              </span>
+                            )}
                           </div>
                           {(item.amount || item.unit) && (
                             <p className={`text-xs mt-0.5 ${item.isChecked ? "text-muted-foreground/50" : "text-muted-foreground"}`}>
@@ -265,6 +290,24 @@ export default function Shopping() {
                             </p>
                           )}
                         </div>
+
+                        {!item.isChecked && item.ingredientId && fridgeAvailableIds.has(item.ingredientId) && (
+                          <button
+                            onClick={() => {
+                              const fridgeItem = fridgeItems.find(
+                                (f) => f.ingredientId === item.ingredientId && (f.status === "likely_available" || f.status === "maybe_low")
+                              );
+                              if (fridgeItem) {
+                                updateFridgeMutation.mutate({ id: fridgeItem.id, data: { status: "likely_available" } });
+                                toggleMutation.mutate({ id: activeListId, itemId: item.id });
+                              }
+                            }}
+                            className="text-xs text-emerald-600 hover:text-emerald-700 font-medium whitespace-nowrap px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors"
+                            title="Hab ich noch — Kauf überspringen"
+                          >
+                            Hab ich
+                          </button>
+                        )}
 
                         {item.isManual && (
                           <button

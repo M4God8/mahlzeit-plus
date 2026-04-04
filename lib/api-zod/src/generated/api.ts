@@ -795,6 +795,16 @@ export const GetTodayMealsResponse = zod.object({
     }),
   ),
   hasPlan: zod.boolean(),
+  expiringItems: zod
+    .array(
+      zod.object({
+        id: zod.number(),
+        ingredientName: zod.string(),
+        bestBeforeDate: zod.string(),
+        ingredientId: zod.number(),
+      }),
+    )
+    .optional(),
 });
 
 /**
@@ -1154,6 +1164,43 @@ export const GetTodayCostResponse = zod.object({
       ]),
     }),
   ),
+});
+
+/**
+ * @summary Get current fridge items (likely_available and maybe_low)
+ */
+export const GetFridgeItemsResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  ingredientId: zod.number(),
+  status: zod.string(),
+  bestBeforeDate: zod.string().nullish(),
+  lastSeenAt: zod.string().optional(),
+  source: zod.string(),
+  ingredientName: zod.string(),
+  ingredientCategory: zod.string(),
+});
+export const GetFridgeItemsResponse = zod.array(GetFridgeItemsResponseItem);
+
+/**
+ * @summary Update fridge item status (e.g. "Hab ich noch" flow)
+ */
+export const UpdateFridgeItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateFridgeItemBody = zod.object({
+  status: zod.enum(["likely_available", "maybe_low", "likely_gone"]),
+});
+
+export const UpdateFridgeItemResponse = zod.object({
+  id: zod.number(),
+  userId: zod.string(),
+  ingredientId: zod.number(),
+  status: zod.string(),
+  bestBeforeDate: zod.string().nullish(),
+  lastSeenAt: zod.string().optional(),
+  source: zod.string(),
 });
 
 /**

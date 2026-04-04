@@ -6,6 +6,7 @@ import {
   ingredientsTable,
   recipesTable,
   recipeIngredientsTable,
+  spoilageDefaultsTable,
 } from "./schema";
 import { eq, and } from "drizzle-orm";
 
@@ -323,6 +324,69 @@ const recipeData = [
   },
 ];
 
+const spoilageDefaults: Record<string, { typicalDaysFresh: number; spoilageSpeed: string; trackByDefault: string }> = {
+  "Kartoffeln": { typicalDaysFresh: 14, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Möhren": { typicalDaysFresh: 10, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Zwiebeln": { typicalDaysFresh: 21, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Knoblauch": { typicalDaysFresh: 21, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Tomaten": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Paprika": { typicalDaysFresh: 7, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Zucchini": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Spinat": { typicalDaysFresh: 3, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Brokkoli": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Blumenkohl": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Süßkartoffeln": { typicalDaysFresh: 14, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Sellerie": { typicalDaysFresh: 10, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Porree": { typicalDaysFresh: 7, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Gurken": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Auberginen": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Champignons": { typicalDaysFresh: 4, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Steinpilze": { typicalDaysFresh: 3, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Kichererbsen": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Linsen (rot)": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Schwarze Bohnen": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Weiße Bohnen": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Tofu": { typicalDaysFresh: 7, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Edamame": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Quinoa": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Vollkornnudeln": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Basmatireis": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Naturreis": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Dinkelmehl": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Haferflocken": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Buchweizen": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Hühnerbrust": { typicalDaysFresh: 3, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Lachs": { typicalDaysFresh: 2, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Thunfisch (Dose)": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Eier": { typicalDaysFresh: 21, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Naturjoghurt": { typicalDaysFresh: 10, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Mozzarella": { typicalDaysFresh: 7, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Feta": { typicalDaysFresh: 14, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Olivenöl": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Kokosöl": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Butter": { typicalDaysFresh: 30, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Mandeln": { typicalDaysFresh: 180, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Walnüsse": { typicalDaysFresh: 180, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Chiasamen": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Kürbiskerne": { typicalDaysFresh: 180, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Erdnussbutter": { typicalDaysFresh: 180, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Zitrone": { typicalDaysFresh: 14, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Banane": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Äpfel": { typicalDaysFresh: 14, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Kokosmilch": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Gemüsebrühe": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Tomaten (Dose)": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Sojasoße": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Honig": { typicalDaysFresh: 730, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Ahornsirup": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Kurkuma": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Kreuzkümmel": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Paprikapulver": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Ingwer": { typicalDaysFresh: 14, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Zimt": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Salz": { typicalDaysFresh: 3650, spoilageSpeed: "slow", trackByDefault: "no" },
+};
+
 async function seed() {
   console.log("Seeding nutrition profiles...");
   const insertedProfiles = await db
@@ -415,6 +479,29 @@ async function seed() {
       await db.insert(recipeIngredientsTable).values(recipeIngredientValues);
     }
     console.log(`  + ${inserted.title}`);
+  }
+
+  console.log("Seeding spoilage defaults...");
+  const spoilageValues = Object.entries(spoilageDefaults)
+    .map(([name, data]) => {
+      const ingId = ingredientMap.get(name);
+      if (!ingId) return null;
+      return {
+        ingredientId: ingId,
+        typicalDaysFresh: data.typicalDaysFresh,
+        spoilageSpeed: data.spoilageSpeed,
+        trackByDefault: data.trackByDefault,
+      };
+    })
+    .filter((v): v is NonNullable<typeof v> => v !== null);
+
+  if (spoilageValues.length > 0) {
+    const insertedSpoilage = await db
+      .insert(spoilageDefaultsTable)
+      .values(spoilageValues)
+      .onConflictDoNothing()
+      .returning();
+    console.log(`Inserted ${insertedSpoilage.length} spoilage defaults`);
   }
 
   console.log("Seed complete!");

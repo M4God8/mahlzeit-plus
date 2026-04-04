@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { db } from "@workspace/db";
-import { mealFeedbackTable } from "@workspace/db";
-import { gte } from "drizzle-orm";
+import { mealFeedbackTable, fridgeItemsTable } from "@workspace/db";
+import { gte, lt, and, inArray } from "drizzle-orm";
 import { aggregateUserPreferences } from "./aggregateService";
 import { updatePricesFromOpenFoodFacts } from "./priceUpdateService";
 import { logger } from "../lib/logger";
@@ -53,5 +53,25 @@ export function startCronJobs(): void {
     }
   });
 
-  logger.info("Cron jobs registered (weekly learn aggregation: Mondays 03:00, price update: 1st & 15th 04:00)");
+  cron.schedule("0 6 * * *", async () => {
+    logger.info("Daily fridge expiration check started");
+
+    try {
+      const today = new Date().toISOString().split("T")[0]!;
+      const result = await db
+        .update(fridgeItemsTable)
+        .set({ status: "likely_gone" })
+        .where(and(
+          inArray(fridgeItemsTable.status, ["likely_available", "maybe_low"]),
+          lt(fridgeItemsTable.bestBeforeDate, today)
+        ))
+        .returning({ id: fridgeItemsTable.id });
+
+      logger.info({ expiredCount: result.length }, "Daily fridge expiration check completed");
+    } catch (err) {
+      logger.error({ err }, "Daily fridge expiration check failed");
+    }
+  });
+
+  logger.info("Cron jobs registered (weekly learn aggregation: Mondays 03:00, price update: 1st & 15th 04:00, daily fridge expiration: 06:00)");
 }

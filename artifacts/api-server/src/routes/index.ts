@@ -14,6 +14,7 @@ import adminRouter from "./admin";
 import costsRouter from "./costs";
 import chatRouter from "./chat";
 import coachingProductsRouter from "./coachingProducts";
+import fridgeRouter from "./fridge";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(adminRouter);
 router.use(costsRouter);
 router.use(chatRouter);
 router.use(coachingProductsRouter);
+router.use(fridgeRouter);
 
 export default router;

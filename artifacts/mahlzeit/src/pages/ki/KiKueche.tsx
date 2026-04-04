@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearch } from "wouter";
 import { useAiGenerateRecipe, useAiGeneratePlan, useAiSaveRecipe, useAiSubmitFeedback, useGetActiveMealPlan, useAddMealEntry } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,9 +21,22 @@ const MEAL_TYPE_OPTIONS = [
 ];
 
 export default function KiKueche() {
+  const searchString = useSearch();
   const [activeTab, setActiveTab] = useState<Tab>("rezept");
   const [recipePrompt, setRecipePrompt] = useState("");
   const [planPreferences, setPlanPreferences] = useState("");
+  const [contextLoaded, setContextLoaded] = useState(false);
+
+  useEffect(() => {
+    if (contextLoaded) return;
+    const params = new URLSearchParams(searchString);
+    const ctx = params.get("context");
+    if (ctx) {
+      setRecipePrompt(ctx);
+      setActiveTab("rezept");
+      setContextLoaded(true);
+    }
+  }, [searchString, contextLoaded]);
   const [generatedRecipe, setGeneratedRecipe] = useState<AiRecipeOutput | null>(null);
   const [generatedPlan, setGeneratedPlan] = useState<AiPlanOutput | null>(null);
   const [savedRecipeId, setSavedRecipeId] = useState<number | null>(null);

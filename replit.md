@@ -50,6 +50,8 @@ Tabellen in `lib/db/src/schema/`:
 - `user_settings` hat zusätzlich: role (user/admin), isPremium, premiumExpiresAt, isBlocked, createdAt
 - `coaching_products` — Coaching-Produkte (name, description, url, tags[], triggerKeywords[], isActive)
 - `chat_sessions` — Chat-Session-Tracking (userId, messageCount, totalTokens — kein Chat-Inhalt)
+- `spoilage_defaults` — Haltbarkeitsdaten pro Zutat (typicalDaysFresh, spoilageSpeed: fast/medium/slow, trackByDefault)
+- `fridge_items` — Automatisches Kühlschrank-Tracking (userId, ingredientId, status, bestBeforeDate, source)
 
 ### DB-Befehle
 ```bash
@@ -96,7 +98,9 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | POST | /api/ai/adjust-recipe | Ja | KI: Rezept anpassen (Claude) |
 | POST | /api/ai/substitute-ingredient | Ja | KI: Zutatens-Alternativen (Claude) |
 | POST | /api/ai/save-recipe | Ja | KI-Rezept in Rezeptbibliothek speichern |
-| POST | /api/ai/feedback | Ja | Mahlzeit-Feedback (thumbs_up/down) |
+| POST | /api/ai/feedback | Ja | Mahlzeit-Feedback (thumbs_up/down) + Kühlschrank-Update |
+| GET | /api/fridge | Ja | Kühlschrank-Items (likely_available/maybe_low) |
+| PATCH | /api/fridge/:id | Ja | Kühlschrank-Status ändern ("Hab ich noch"-Flow) |
 | GET | /api/admin/me | Admin | Admin-Check |
 | GET | /api/admin/stats | Admin | Dashboard-Statistiken |
 | GET | /api/admin/users | Admin | User-Liste mit Filtern (Plan, Profil, Zeitraum, KI-Nutzung) + Email von Clerk |
