@@ -5,8 +5,10 @@ import type { ScannedProduct } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, ScanBarcode, History, ChevronLeft, X, AlertCircle, CheckCircle2, XCircle, Info, Sparkles, ShoppingBasket } from "lucide-react";
+import { Loader2, ScanBarcode, History, ChevronLeft, X, AlertCircle, CheckCircle2, XCircle, Info, Sparkles, ShoppingBasket, ChefHat } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocation } from "wouter";
+import ScannerRecipeModal from "./ScannerRecipeModal";
 
 type Tab = "scan" | "history";
 
@@ -67,7 +69,7 @@ function ScoreBar({ value, max = 25 }: { value: number; max?: number }) {
   );
 }
 
-function ProductResult({ product, onReset }: { product: ScannedProduct; onReset: () => void }) {
+function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedProduct; onReset: () => void; onCreateRecipe?: () => void }) {
   const fitsProfile = product.profileFitExclusions.length === 0;
   const isCosmetic = product.productType === "cosmetic";
   const subScores = getSubScores(product.productType);
@@ -171,6 +173,17 @@ function ProductResult({ product, onReset }: { product: ScannedProduct; onReset:
           <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
           <p className="text-sm text-blue-700">{product.fluorideNote}</p>
         </div>
+      )}
+
+      {!isCosmetic && product.ingredients && onCreateRecipe && (
+        <Button
+          onClick={onCreateRecipe}
+          variant="outline"
+          className="w-full border-primary/30 text-primary hover:bg-primary/5"
+        >
+          <ChefHat className="w-4 h-4 mr-2" />
+          Selbst machen — KI-Rezept erstellen
+        </Button>
       )}
 
       {product.ingredients && (
@@ -304,6 +317,9 @@ export default function Scanner() {
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<ScannedProduct | null>(null);
   const [manualBarcode, setManualBarcode] = useState("");
   const manualInputRef = useRef<HTMLInputElement>(null);
+  const [recipeModalOpen, setRecipeModalOpen] = useState(false);
+  const [recipeModalProduct, setRecipeModalProduct] = useState<ScannedProduct | null>(null);
+  const [, setLocation] = useLocation();
 
   const {
     data: product,
@@ -342,12 +358,32 @@ export default function Scanner() {
     }
   };
 
+  const openRecipeModal = useCallback((p: ScannedProduct) => {
+    setRecipeModalProduct(p);
+    setRecipeModalOpen(true);
+  }, []);
+
   if (selectedHistoryItem) {
     return (
       <div className="min-h-[100dvh] bg-background">
         <div className="px-4 pt-12 pb-6">
-          <ProductResult product={selectedHistoryItem} onReset={() => setSelectedHistoryItem(null)} />
+          <ProductResult
+            product={selectedHistoryItem}
+            onReset={() => setSelectedHistoryItem(null)}
+            onCreateRecipe={() => openRecipeModal(selectedHistoryItem)}
+          />
         </div>
+        {recipeModalProduct && (
+          <ScannerRecipeModal
+            open={recipeModalOpen}
+            onOpenChange={setRecipeModalOpen}
+            productName={recipeModalProduct.productName ?? recipeModalProduct.brand ?? "Produkt"}
+            barcode={recipeModalProduct.barcode}
+            ingredients={recipeModalProduct.ingredients ?? ""}
+            onRecipeSaved={() => {}}
+            onGoToShoppingList={() => setLocation("/einkauf")}
+          />
+        )}
       </div>
     );
   }
@@ -379,7 +415,7 @@ export default function Scanner() {
         {tab === "scan" && (
           <div className="space-y-4">
             {product && isPaused ? (
-              <ProductResult product={product} onReset={reset} />
+              <ProductResult product={product} onReset={reset} onCreateRecipe={() => openRecipeModal(product)} />
             ) : isLookingUp ? (
               <div className="flex flex-col items-center gap-3 py-12">
                 <Loader2 className="w-10 h-10 animate-spin text-primary" />
@@ -466,6 +502,17 @@ export default function Scanner() {
           </div>
         )}
       </div>
+      {recipeModalProduct && (
+        <ScannerRecipeModal
+          open={recipeModalOpen}
+          onOpenChange={setRecipeModalOpen}
+          productName={recipeModalProduct.productName ?? recipeModalProduct.brand ?? "Produkt"}
+          barcode={recipeModalProduct.barcode}
+          ingredients={recipeModalProduct.ingredients ?? ""}
+          onRecipeSaved={() => {}}
+          onGoToShoppingList={() => setLocation("/einkauf")}
+        />
+      )}
     </div>
   );
 }

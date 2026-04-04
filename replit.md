@@ -43,7 +43,7 @@ Tabellen in `lib/db/src/schema/`:
 - `nutrition_profiles` — 5 Ernährungsprofile (Vollwertig, Pflanzenbasiert, Mediterran, Kraftvoll, Leicht)
 - `user_settings` — Benutzereinstellungen (activeProfileIds int[], Haushaltsgröße, Budget, Kochzeit, role, blocked, premiumUntil, createdAt)
 - `ingredients` — 60 Zutaten mit Kategorien, Bio-Empfehlung und Preisfelder (price_min, price_max, price_avg, price_unit, price_updated_at)
-- `recipes` + `recipe_ingredients` — Rezepte mit Zutaten (10 Starterrezepte), source TEXT (manual|screenshot|ai_generated|tiktok), source_note TEXT
+- `recipes` + `recipe_ingredients` — Rezepte mit Zutaten (10 Starterrezepte), source TEXT (manual|screenshot|ai_generated|tiktok|scanner_inspired), source_note TEXT
 - `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne (meal_entries hat `override_servings` nullable INTEGER für portionsweise Überschreibung)
 - `ai_generations` — KI-Anfragen-Log (userId, type, input, output, model, inputTokens, outputTokens, costEur)
 - `meal_feedback` — Mahlzeit-Feedback (thumbs_up/thumbs_down)
@@ -174,7 +174,7 @@ KI-Modell: `claude-sonnet-4-6`, max_tokens: 8192
 - **Phase 2** ✅ Wochenplan-Builder: Plan-CRUD, Rezept-Zuweisung, Aktivierung, Kopieren, Tage tauschen, Loop, Kalenderansicht, RecipeEdit
 - **Phase 3** ✅ Einkaufsliste: Auto-Generierung aus Plan, Kategorisierung, Mengen-Aggregation
 - **Phase 4** ✅ KI-Layer: Claude AI (Rezeptgenerator, Wochenplaner, Rezept-Anpassung, Zutaten-Alternativen, Feedback)
-- **Phase 5** ✅ Scanner: Barcode-Scanner für Zutaten (OFF + OBF Fallback, Kosmetik-Score)
+- **Phase 5** ✅ Scanner: Barcode-Scanner für Zutaten (OFF + OBF Fallback, Kosmetik-Score, KI-Rezept aus Produkt)
 - **Phase 6** ✅ Lern-System: Personalisierung (abhängig von Phase 4)
 - **Phase 7** ✅ Preislogik: Kostenschätzung, Soft-Budget-Logik in KI-Prompts, Auto-Update Cron (Open Food Facts)
 

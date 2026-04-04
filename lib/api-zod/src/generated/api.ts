@@ -1372,6 +1372,32 @@ export const GetScanHistoryResponseItem = zod.object({
 export const GetScanHistoryResponse = zod.array(GetScanHistoryResponseItem);
 
 /**
+ * @summary Generate an improved homemade recipe from a scanned product using AI
+ */
+export const CreateRecipeFromProductBody = zod.object({
+  barcode: zod.string(),
+  productName: zod.string(),
+  ingredients: zod.string(),
+});
+
+export const CreateRecipeFromProductResponse = zod.object({
+  name: zod.string(),
+  description: zod.string(),
+  instructions: zod.string(),
+  servings: zod.number(),
+  prepTime: zod.number().optional(),
+  cookTime: zod.number().optional(),
+  tags: zod.array(zod.string()).optional(),
+  ingredients: zod.array(
+    zod.object({
+      name: zod.string(),
+      amount: zod.string(),
+      unit: zod.string(),
+    }),
+  ),
+});
+
+/**
  * @summary Send a message to the Bewusster Begleiter chat
  */
 export const SendChatMessageBody = zod.object({

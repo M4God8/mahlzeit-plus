@@ -35,6 +35,9 @@ import type {
   CoachingProductUpdate,
   CopyMealPlanBody,
   CostEstimate,
+  CreateRecipeFromProduct400,
+  CreateRecipeFromProduct500,
+  CreateRecipeFromProductInput,
   FridgeItem,
   FridgeItemRaw,
   GetMonthlyReviewParams,
@@ -4624,6 +4627,95 @@ export function useGetScanHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Generate an improved homemade recipe from a scanned product using AI
+ */
+export const getCreateRecipeFromProductUrl = () => {
+  return `/api/scanner/create-recipe-from-product`;
+};
+
+export const createRecipeFromProduct = async (
+  createRecipeFromProductInput: CreateRecipeFromProductInput,
+  options?: RequestInit,
+): Promise<AiRecipeOutput> => {
+  return customFetch<AiRecipeOutput>(getCreateRecipeFromProductUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createRecipeFromProductInput),
+  });
+};
+
+export const getCreateRecipeFromProductMutationOptions = <
+  TError = ErrorType<CreateRecipeFromProduct400 | CreateRecipeFromProduct500>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRecipeFromProduct>>,
+    TError,
+    { data: BodyType<CreateRecipeFromProductInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createRecipeFromProduct>>,
+  TError,
+  { data: BodyType<CreateRecipeFromProductInput> },
+  TContext
+> => {
+  const mutationKey = ["createRecipeFromProduct"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createRecipeFromProduct>>,
+    { data: BodyType<CreateRecipeFromProductInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createRecipeFromProduct(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateRecipeFromProductMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createRecipeFromProduct>>
+>;
+export type CreateRecipeFromProductMutationBody =
+  BodyType<CreateRecipeFromProductInput>;
+export type CreateRecipeFromProductMutationError = ErrorType<
+  CreateRecipeFromProduct400 | CreateRecipeFromProduct500
+>;
+
+/**
+ * @summary Generate an improved homemade recipe from a scanned product using AI
+ */
+export const useCreateRecipeFromProduct = <
+  TError = ErrorType<CreateRecipeFromProduct400 | CreateRecipeFromProduct500>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRecipeFromProduct>>,
+    TError,
+    { data: BodyType<CreateRecipeFromProductInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createRecipeFromProduct>>,
+  TError,
+  { data: BodyType<CreateRecipeFromProductInput> },
+  TContext
+> => {
+  return useMutation(getCreateRecipeFromProductMutationOptions(options));
+};
 
 /**
  * @summary Send a message to the Bewusster Begleiter chat

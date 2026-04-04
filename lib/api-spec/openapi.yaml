@@ -1134,6 +1134,47 @@ paths:
                 items:
                   $ref: "#/components/schemas/ScannedProduct"
 
+  /scanner/create-recipe-from-product:
+    post:
+      operationId: createRecipeFromProduct
+      tags: [scanner]
+      summary: Generate an improved homemade recipe from a scanned product using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRecipeFromProductInput"
+      responses:
+        "200":
+          description: Generated recipe data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRecipeOutput"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+        "500":
+          description: AI generation failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+
   /chat/message:
     post:
       operationId: sendChatMessage
@@ -1881,6 +1922,20 @@ components:
         - name
         - amount
         - unit
+
+    CreateRecipeFromProductInput:
+      type: object
+      properties:
+        barcode:
+          type: string
+        productName:
+          type: string
+        ingredients:
+          type: string
+      required:
+        - barcode
+        - productName
+        - ingredients
 
     AiRecipeOutput:
       type: object

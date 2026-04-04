@@ -290,6 +290,12 @@ export interface AiIngredient {
   unit: string;
 }
 
+export interface CreateRecipeFromProductInput {
+  barcode: string;
+  productName: string;
+  ingredients: string;
+}
+
 export interface AiRecipeOutput {
   name: string;
   description: string;
@@ -745,6 +751,14 @@ export type AddMealPlanDayBody = {
 
 export type GetRecipeCostParams = {
   servings?: number;
+};
+
+export type CreateRecipeFromProduct400 = {
+  error: string;
+};
+
+export type CreateRecipeFromProduct500 = {
+  error: string;
 };
 
 export type GetMonthlyReviewParams = {
