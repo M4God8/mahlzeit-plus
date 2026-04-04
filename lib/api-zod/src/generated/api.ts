@@ -880,6 +880,7 @@ export const GetTodayMealsResponse = zod.object({
 export const ListShoppingListsResponseItem = zod.object({
   id: zod.number(),
   userId: zod.string(),
+  householdId: zod.number().nullish(),
   title: zod.string(),
   weekFrom: zod.string(),
   weekTo: zod.string(),
@@ -903,6 +904,7 @@ export const GetShoppingListParams = zod.object({
 export const GetShoppingListResponse = zod.object({
   id: zod.number(),
   userId: zod.string(),
+  householdId: zod.number().nullish(),
   title: zod.string(),
   weekFrom: zod.string(),
   weekTo: zod.string(),
@@ -921,6 +923,8 @@ export const GetShoppingListResponse = zod.object({
       bioRecommended: zod.boolean(),
       isManual: zod.boolean(),
       ingredientId: zod.number().nullish(),
+      createdBy: zod.string().nullish(),
+      completedBy: zod.string().nullish(),
     }),
   ),
 });
@@ -942,6 +946,7 @@ export const ArchiveShoppingListParams = zod.object({
 export const ArchiveShoppingListResponse = zod.object({
   id: zod.number(),
   userId: zod.string(),
+  householdId: zod.number().nullish(),
   title: zod.string(),
   weekFrom: zod.string(),
   weekTo: zod.string(),
@@ -985,6 +990,8 @@ export const ToggleShoppingListItemResponse = zod.object({
   bioRecommended: zod.boolean(),
   isManual: zod.boolean(),
   ingredientId: zod.number().nullish(),
+  createdBy: zod.string().nullish(),
+  completedBy: zod.string().nullish(),
 });
 
 /**
@@ -993,6 +1000,91 @@ export const ToggleShoppingListItemResponse = zod.object({
 export const DeleteShoppingListItemParams = zod.object({
   id: zod.coerce.number(),
   itemId: zod.coerce.number(),
+});
+
+/**
+ * @summary Get current user's household with members
+ */
+export const GetMyHouseholdResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  ownerId: zod.string(),
+  inviteCode: zod.string().nullish(),
+  inviteCodeExpiresAt: zod.string().nullish(),
+  maxMembers: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  members: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.string(),
+      role: zod.string(),
+      joinedAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a shared household (moves user from solo)
+ */
+export const CreateSharedHouseholdBody = zod.object({
+  name: zod.string(),
+});
+
+/**
+ * @summary Join a household via invite code
+ */
+export const JoinHouseholdBody = zod.object({
+  inviteCode: zod.string(),
+});
+
+export const JoinHouseholdResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  ownerId: zod.string(),
+  inviteCode: zod.string().nullish(),
+  inviteCodeExpiresAt: zod.string().nullish(),
+  maxMembers: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  members: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.string(),
+      role: zod.string(),
+      joinedAt: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Generate a new invite code (owner only)
+ */
+export const RegenerateHouseholdCodeResponse = zod.object({
+  inviteCode: zod.string().nullish(),
+  inviteCodeExpiresAt: zod.string().nullish(),
+});
+
+/**
+ * @summary Leave current household (creates new solo household)
+ */
+export const LeaveHouseholdResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  ownerId: zod.string(),
+  inviteCode: zod.string().nullish(),
+  inviteCodeExpiresAt: zod.string().nullish(),
+  maxMembers: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  members: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.string(),
+      role: zod.string(),
+      joinedAt: zod.string(),
+    }),
+  ),
 });
 
 /**

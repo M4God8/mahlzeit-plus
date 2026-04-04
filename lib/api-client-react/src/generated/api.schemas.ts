@@ -246,11 +246,17 @@ export interface ShoppingListItem {
   isManual: boolean;
   /** @nullable */
   ingredientId?: number | null;
+  /** @nullable */
+  createdBy?: string | null;
+  /** @nullable */
+  completedBy?: string | null;
 }
 
 export interface ShoppingList {
   id: number;
   userId: string;
+  /** @nullable */
+  householdId?: number | null;
   title: string;
   weekFrom: string;
   weekTo: string;
@@ -264,6 +270,8 @@ export interface ShoppingList {
 export interface ShoppingListSummary {
   id: number;
   userId: string;
+  /** @nullable */
+  householdId?: number | null;
   title: string;
   weekFrom: string;
   weekTo: string;
@@ -734,6 +742,42 @@ export interface MonthlyReview {
   foodWaste: MonthlyReviewFoodWaste;
   score: number;
   scoreBreakdown: MonthlyReviewScoreBreakdown;
+}
+
+export interface HouseholdMember {
+  id: number;
+  userId: string;
+  role: string;
+  joinedAt: string;
+}
+
+export interface HouseholdDetail {
+  id: number;
+  name: string;
+  ownerId: string;
+  /** @nullable */
+  inviteCode?: string | null;
+  /** @nullable */
+  inviteCodeExpiresAt?: string | null;
+  maxMembers: number;
+  createdAt: string;
+  updatedAt: string;
+  members: HouseholdMember[];
+}
+
+export interface CreateSharedHouseholdInput {
+  name: string;
+}
+
+export interface JoinHouseholdInput {
+  inviteCode: string;
+}
+
+export interface InviteCodeResponse {
+  /** @nullable */
+  inviteCode?: string | null;
+  /** @nullable */
+  inviteCodeExpiresAt?: string | null;
 }
 
 export type ListIngredientsParams = {

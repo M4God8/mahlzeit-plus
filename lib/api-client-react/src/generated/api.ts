@@ -38,14 +38,18 @@ import type {
   CreateRecipeFromProduct400,
   CreateRecipeFromProduct500,
   CreateRecipeFromProductInput,
+  CreateSharedHouseholdInput,
   FridgeItem,
   FridgeItemRaw,
   GetMonthlyReviewParams,
   GetRecipeCostParams,
   HealthStatus,
+  HouseholdDetail,
   ImportRecipeScreenshot400,
   ImportRecipeScreenshotBody,
   Ingredient,
+  InviteCodeResponse,
+  JoinHouseholdInput,
   ListIngredientsParams,
   ListRecipesParams,
   ManualItemInput,
@@ -3190,6 +3194,416 @@ export const useDeleteShoppingListItem = <
   TContext
 > => {
   return useMutation(getDeleteShoppingListItemMutationOptions(options));
+};
+
+/**
+ * @summary Get current user's household with members
+ */
+export const getGetMyHouseholdUrl = () => {
+  return `/api/households/me`;
+};
+
+export const getMyHousehold = async (
+  options?: RequestInit,
+): Promise<HouseholdDetail> => {
+  return customFetch<HouseholdDetail>(getGetMyHouseholdUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyHouseholdQueryKey = () => {
+  return [`/api/households/me`] as const;
+};
+
+export const getGetMyHouseholdQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyHousehold>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyHousehold>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyHouseholdQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyHousehold>>> = ({
+    signal,
+  }) => getMyHousehold({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyHousehold>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyHouseholdQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyHousehold>>
+>;
+export type GetMyHouseholdQueryError = ErrorType<void>;
+
+/**
+ * @summary Get current user's household with members
+ */
+
+export function useGetMyHousehold<
+  TData = Awaited<ReturnType<typeof getMyHousehold>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyHousehold>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyHouseholdQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a shared household (moves user from solo)
+ */
+export const getCreateSharedHouseholdUrl = () => {
+  return `/api/households/create-shared`;
+};
+
+export const createSharedHousehold = async (
+  createSharedHouseholdInput: CreateSharedHouseholdInput,
+  options?: RequestInit,
+): Promise<HouseholdDetail> => {
+  return customFetch<HouseholdDetail>(getCreateSharedHouseholdUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSharedHouseholdInput),
+  });
+};
+
+export const getCreateSharedHouseholdMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSharedHousehold>>,
+    TError,
+    { data: BodyType<CreateSharedHouseholdInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSharedHousehold>>,
+  TError,
+  { data: BodyType<CreateSharedHouseholdInput> },
+  TContext
+> => {
+  const mutationKey = ["createSharedHousehold"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSharedHousehold>>,
+    { data: BodyType<CreateSharedHouseholdInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createSharedHousehold(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSharedHouseholdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSharedHousehold>>
+>;
+export type CreateSharedHouseholdMutationBody =
+  BodyType<CreateSharedHouseholdInput>;
+export type CreateSharedHouseholdMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a shared household (moves user from solo)
+ */
+export const useCreateSharedHousehold = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSharedHousehold>>,
+    TError,
+    { data: BodyType<CreateSharedHouseholdInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSharedHousehold>>,
+  TError,
+  { data: BodyType<CreateSharedHouseholdInput> },
+  TContext
+> => {
+  return useMutation(getCreateSharedHouseholdMutationOptions(options));
+};
+
+/**
+ * @summary Join a household via invite code
+ */
+export const getJoinHouseholdUrl = () => {
+  return `/api/households/join`;
+};
+
+export const joinHousehold = async (
+  joinHouseholdInput: JoinHouseholdInput,
+  options?: RequestInit,
+): Promise<HouseholdDetail> => {
+  return customFetch<HouseholdDetail>(getJoinHouseholdUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(joinHouseholdInput),
+  });
+};
+
+export const getJoinHouseholdMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof joinHousehold>>,
+    TError,
+    { data: BodyType<JoinHouseholdInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof joinHousehold>>,
+  TError,
+  { data: BodyType<JoinHouseholdInput> },
+  TContext
+> => {
+  const mutationKey = ["joinHousehold"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof joinHousehold>>,
+    { data: BodyType<JoinHouseholdInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return joinHousehold(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type JoinHouseholdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof joinHousehold>>
+>;
+export type JoinHouseholdMutationBody = BodyType<JoinHouseholdInput>;
+export type JoinHouseholdMutationError = ErrorType<void>;
+
+/**
+ * @summary Join a household via invite code
+ */
+export const useJoinHousehold = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof joinHousehold>>,
+    TError,
+    { data: BodyType<JoinHouseholdInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof joinHousehold>>,
+  TError,
+  { data: BodyType<JoinHouseholdInput> },
+  TContext
+> => {
+  return useMutation(getJoinHouseholdMutationOptions(options));
+};
+
+/**
+ * @summary Generate a new invite code (owner only)
+ */
+export const getRegenerateHouseholdCodeUrl = () => {
+  return `/api/households/regenerate-code`;
+};
+
+export const regenerateHouseholdCode = async (
+  options?: RequestInit,
+): Promise<InviteCodeResponse> => {
+  return customFetch<InviteCodeResponse>(getRegenerateHouseholdCodeUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRegenerateHouseholdCodeMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof regenerateHouseholdCode>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof regenerateHouseholdCode>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["regenerateHouseholdCode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof regenerateHouseholdCode>>,
+    void
+  > = () => {
+    return regenerateHouseholdCode(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RegenerateHouseholdCodeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof regenerateHouseholdCode>>
+>;
+
+export type RegenerateHouseholdCodeMutationError = ErrorType<void>;
+
+/**
+ * @summary Generate a new invite code (owner only)
+ */
+export const useRegenerateHouseholdCode = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof regenerateHouseholdCode>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof regenerateHouseholdCode>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getRegenerateHouseholdCodeMutationOptions(options));
+};
+
+/**
+ * @summary Leave current household (creates new solo household)
+ */
+export const getLeaveHouseholdUrl = () => {
+  return `/api/households/leave`;
+};
+
+export const leaveHousehold = async (
+  options?: RequestInit,
+): Promise<HouseholdDetail> => {
+  return customFetch<HouseholdDetail>(getLeaveHouseholdUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getLeaveHouseholdMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof leaveHousehold>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof leaveHousehold>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["leaveHousehold"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof leaveHousehold>>,
+    void
+  > = () => {
+    return leaveHousehold(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LeaveHouseholdMutationResult = NonNullable<
+  Awaited<ReturnType<typeof leaveHousehold>>
+>;
+
+export type LeaveHouseholdMutationError = ErrorType<void>;
+
+/**
+ * @summary Leave current household (creates new solo household)
+ */
+export const useLeaveHousehold = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof leaveHousehold>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof leaveHousehold>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getLeaveHouseholdMutationOptions(options));
 };
 
 /**

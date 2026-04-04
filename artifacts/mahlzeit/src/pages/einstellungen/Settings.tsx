@@ -7,6 +7,12 @@ import {
   useGetLearnProfile,
   useResetLearnProfile,
   useTriggerLearnAggregate,
+  useGetMyHousehold,
+  useCreateSharedHousehold,
+  useJoinHousehold,
+  useRegenerateHouseholdCode,
+  useLeaveHousehold,
+  getGetMyHouseholdQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -15,7 +21,8 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Check, Loader2, LogOut, User as UserIcon, Brain, RotateCcw, RefreshCw, Clock, Utensils, TrendingUp, BarChart3, ChevronRight } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Check, Loader2, LogOut, User as UserIcon, Brain, RotateCcw, RefreshCw, Clock, Utensils, TrendingUp, BarChart3, ChevronRight, Home, Copy, UserPlus, DoorOpen, KeyRound, Users } from "lucide-react";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,6 +43,7 @@ export default function Settings() {
   const { data: learnProfile, isLoading: isLoadingLearn } = useGetLearnProfile({
     query: { queryKey: ["/api/learn/profile"], retry: false },
   });
+  const { data: household, isLoading: isLoadingHousehold } = useGetMyHousehold();
   const updateSettings = useCreateOrUpdateUserSettings();
   const resetLearn = useResetLearnProfile();
   const aggregate = useTriggerLearnAggregate();
@@ -44,6 +52,69 @@ export default function Settings() {
   const [householdSize, setHouseholdSize] = useState<number>(2);
   const [budgetLevel, setBudgetLevel] = useState<string>("medium");
   const [cookTimeLimit, setCookTimeLimit] = useState<number>(30);
+
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showJoinForm, setShowJoinForm] = useState(false);
+  const [newHouseholdName, setNewHouseholdName] = useState("");
+  const [joinCode, setJoinCode] = useState("");
+
+  const createSharedMutation = useCreateSharedHousehold({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMyHouseholdQueryKey() });
+        setShowCreateForm(false);
+        setNewHouseholdName("");
+        toast({ title: "Haushalt erstellt", description: "Dein geteilter Haushalt wurde erstellt." });
+      },
+      onError: (err: unknown) => {
+        const msg = err instanceof Error && "data" in err
+          ? (err as { data: Record<string, string> | null }).data?.error
+          : undefined;
+        toast({ title: "Fehler", description: msg || "Haushalt konnte nicht erstellt werden.", variant: "destructive" });
+      },
+    },
+  });
+
+  const joinMutation = useJoinHousehold({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMyHouseholdQueryKey() });
+        setShowJoinForm(false);
+        setJoinCode("");
+        toast({ title: "Beigetreten", description: "Du bist dem Haushalt beigetreten." });
+      },
+      onError: (err: unknown) => {
+        const msg = err instanceof Error && "data" in err
+          ? (err as { data: Record<string, string> | null }).data?.error
+          : undefined;
+        toast({ title: "Fehler", description: msg || "Beitreten fehlgeschlagen.", variant: "destructive" });
+      },
+    },
+  });
+
+  const regenerateCodeMutation = useRegenerateHouseholdCode({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMyHouseholdQueryKey() });
+        toast({ title: "Neuer Code", description: "Ein neuer Einladungscode wurde generiert." });
+      },
+      onError: () => {
+        toast({ title: "Fehler", description: "Code konnte nicht erneuert werden.", variant: "destructive" });
+      },
+    },
+  });
+
+  const leaveMutation = useLeaveHousehold({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetMyHouseholdQueryKey() });
+        toast({ title: "Verlassen", description: "Du hast den Haushalt verlassen." });
+      },
+      onError: () => {
+        toast({ title: "Fehler", description: "Verlassen fehlgeschlagen.", variant: "destructive" });
+      },
+    },
+  });
 
   useEffect(() => {
     if (settings) {
@@ -112,6 +183,16 @@ export default function Settings() {
     });
   };
 
+  const handleCopyCode = () => {
+    if (household?.inviteCode) {
+      navigator.clipboard.writeText(household.inviteCode);
+      toast({ title: "Kopiert", description: "Einladungscode wurde kopiert." });
+    }
+  };
+
+  const isSolo = household?.inviteCode === null || household?.inviteCode === undefined;
+  const isOwner = household?.ownerId === user?.id;
+
   return (
     <div className="flex flex-col min-h-[100dvh] pb-24 animate-in fade-in duration-500 bg-background text-foreground">
       <header className="px-6 pt-10 pb-6 sticky top-0 bg-background/80 backdrop-blur-md z-10">
@@ -133,6 +214,172 @@ export default function Settings() {
               <h3 className="font-display text-xl font-bold truncate">{user?.fullName || "Benutzer"}</h3>
               <p className="text-muted-foreground text-sm truncate">{user?.primaryEmailAddress?.emailAddress}</p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/50 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="font-display text-2xl flex items-center gap-2">
+              <Home className="w-5 h-5 text-primary" />
+              Haushalt
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {isSolo ? "Du planst aktuell alleine." : `Gemeinsamer Haushalt: ${household?.name}`}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isLoadingHousehold ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              </div>
+            ) : isSolo ? (
+              <div className="space-y-3">
+                {!showCreateForm && !showJoinForm && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 rounded-full"
+                      onClick={() => { setShowCreateForm(true); setShowJoinForm(false); }}
+                    >
+                      <Users className="w-3.5 h-3.5 mr-1.5" />
+                      Haushalt erstellen
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 rounded-full"
+                      onClick={() => { setShowJoinForm(true); setShowCreateForm(false); }}
+                    >
+                      <UserPlus className="w-3.5 h-3.5 mr-1.5" />
+                      Code eingeben
+                    </Button>
+                  </div>
+                )}
+
+                {showCreateForm && (
+                  <div className="space-y-3 p-3 rounded-xl bg-muted/50">
+                    <p className="text-sm font-semibold">Neuen Haushalt erstellen</p>
+                    <Input
+                      placeholder="Haushaltsname (z.B. Familie Müller)"
+                      value={newHouseholdName}
+                      onChange={(e) => setNewHouseholdName(e.target.value)}
+                      className="rounded-xl"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1 rounded-full"
+                        onClick={() => createSharedMutation.mutate({ data: { name: newHouseholdName } })}
+                        disabled={!newHouseholdName.trim() || createSharedMutation.isPending}
+                      >
+                        {createSharedMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                        Erstellen
+                      </Button>
+                      <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setShowCreateForm(false)}>
+                        Abbrechen
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {showJoinForm && (
+                  <div className="space-y-3 p-3 rounded-xl bg-muted/50">
+                    <p className="text-sm font-semibold">Haushalt beitreten</p>
+                    <Input
+                      placeholder="Einladungscode (z.B. SONNE47)"
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                      className="rounded-xl font-mono"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="flex-1 rounded-full"
+                        onClick={() => joinMutation.mutate({ data: { inviteCode: joinCode } })}
+                        disabled={!joinCode.trim() || joinMutation.isPending}
+                      >
+                        {joinMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                        Beitreten
+                      </Button>
+                      <Button variant="ghost" size="sm" className="rounded-full" onClick={() => setShowJoinForm(false)}>
+                        Abbrechen
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Mitglieder ({household?.members.length}/{household?.maxMembers})</p>
+                  <div className="grid gap-2">
+                    {household?.members.map((m) => (
+                      <div key={m.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <UserIcon className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium">
+                            {m.userId === user?.id ? "Du" : m.userId.slice(0, 12) + "…"}
+                          </span>
+                        </div>
+                        <Badge variant={m.role === "owner" ? "default" : "secondary"} className="text-xs">
+                          {m.role === "owner" ? "Besitzer" : "Mitglied"}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {isOwner && household?.inviteCode && (
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Einladungscode</p>
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-muted/50">
+                      <KeyRound className="w-4 h-4 text-primary shrink-0" />
+                      <span className="font-mono text-sm font-bold flex-1">{household.inviteCode}</span>
+                      <Button variant="ghost" size="sm" className="h-7 px-2" onClick={handleCopyCode}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                    {household.inviteCodeExpiresAt && (
+                      <p className="text-xs text-muted-foreground">
+                        Gültig bis: {new Date(household.inviteCodeExpiresAt).toLocaleDateString("de-DE")}
+                      </p>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-full w-full"
+                      onClick={() => regenerateCodeMutation.mutate()}
+                      disabled={regenerateCodeMutation.isPending}
+                    >
+                      {regenerateCodeMutation.isPending
+                        ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        : <RefreshCw className="w-3.5 h-3.5 mr-1.5" />}
+                      Neuen Code generieren
+                    </Button>
+                  </div>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    if (confirm("Haushalt wirklich verlassen? Du bekommst einen neuen Solo-Haushalt.")) {
+                      leaveMutation.mutate();
+                    }
+                  }}
+                  disabled={leaveMutation.isPending}
+                >
+                  {leaveMutation.isPending
+                    ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    : <DoorOpen className="w-3.5 h-3.5 mr-1.5" />}
+                  Haushalt verlassen
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

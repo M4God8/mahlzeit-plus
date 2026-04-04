@@ -53,6 +53,10 @@ Tabellen in `lib/db/src/schema/`:
 - `scanned_products` — Gescannte Produkte mit 4-Säulen-Score (scoreIngredients, scoreNutrition, scoreProcessing, scoreProfileFit, totalScore, contextLabel, warningFlags, summary)
 - `spoilage_defaults` — Haltbarkeitsdaten pro Zutat (typicalDaysFresh, spoilageSpeed: fast/medium/slow, trackByDefault)
 - `fridge_items` — Automatisches Kühlschrank-Tracking (userId, ingredientId, status, bestBeforeDate, source)
+- `households` — Haushalte (id, name, ownerId, inviteCode UNIQUE, inviteCodeExpiresAt, maxMembers DEFAULT 6, createdAt, updatedAt)
+- `household_members` — Haushaltsmitglieder (id, householdId FK, userId UNIQUE, role: owner|member, joinedAt)
+- `shopping_lists` hat zusätzlich: householdId (FK zu households, nullable für Migration)
+- `shopping_list_items` hat zusätzlich: createdBy, completedBy (userId des Erstellers/Abhakendem)
 
 ### DB-Befehle
 ```bash
@@ -114,6 +118,11 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | GET | /api/costs/shopping-list/:id | Ja | Wochenkosten für eine Einkaufsliste |
 | GET | /api/costs/today | Ja | Tageskosten für heutige Mahlzeiten |
 | GET | /api/review/monthly | Ja | Monats-Rückblick (?month=YYYY-MM, default: aktueller Monat) |
+| GET | /api/households/me | Ja | Aktueller Haushalt mit Mitgliedern |
+| POST | /api/households/create-shared | Ja | Geteilten Haushalt erstellen |
+| POST | /api/households/join | Ja | Haushalt per Einladungscode beitreten |
+| POST | /api/households/regenerate-code | Ja | Neuen Einladungscode generieren (Owner only) |
+| POST | /api/households/leave | Ja | Haushalt verlassen (neuer Solo-Haushalt) |
 | POST | /api/chat/message | Ja | Chat-Nachricht an Bewussten Begleiter (Platzhalter-Antwort) |
 | GET | /api/admin/products | Admin | Coaching-Produkte auflisten |
 | POST | /api/admin/products | Admin | Coaching-Produkt erstellen |
@@ -178,6 +187,7 @@ KI-Modell: `claude-sonnet-4-6`, max_tokens: 8192
 - **Phase 5** ✅ Scanner: Barcode-Scanner für Zutaten (OFF + OBF Fallback, Kosmetik-Score, KI-Rezept aus Produkt)
 - **Phase 6** ✅ Lern-System: Personalisierung (abhängig von Phase 4)
 - **Phase 7** ✅ Preislogik: Kostenschätzung, Soft-Budget-Logik in KI-Prompts, Auto-Update Cron (Open Food Facts)
+- **Household Phase 1** ✅ Haushalt-Sharing: DB (households + household_members), Solo-Household-Invariante, Invite-Code, Join/Leave, Einkaufsliste household-shared
 
 ## Wichtige Entwicklungshinweise
 

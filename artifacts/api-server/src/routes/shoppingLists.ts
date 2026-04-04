@@ -14,6 +14,7 @@ import {
   spoilageDefaultsTable,
   userSettingsTable,
   recipesTable,
+  householdMembersTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 import type { ShoppingList, ShoppingListItem, MealEntry } from "@workspace/db";
@@ -82,6 +83,7 @@ function formatSummary(list: ShoppingList, itemCount: number, checkedCount: numb
   return {
     id: list.id,
     userId: list.userId,
+    householdId: list.householdId,
     title: list.title,
     weekFrom: list.weekFrom,
     weekTo: list.weekTo,
@@ -97,6 +99,7 @@ function formatList(list: ShoppingList, items: ShoppingListItem[]) {
   return {
     id: list.id,
     userId: list.userId,
+    householdId: list.householdId,
     title: list.title,
     weekFrom: list.weekFrom,
     weekTo: list.weekTo,
@@ -109,11 +112,11 @@ function formatList(list: ShoppingList, items: ShoppingListItem[]) {
 
 router.get("/shopping-lists", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = req.userId!;
+    const householdId = req.householdId!;
     const lists = await db
       .select()
       .from(shoppingListsTable)
-      .where(eq(shoppingListsTable.userId, userId))
+      .where(eq(shoppingListsTable.householdId, householdId))
       .orderBy(desc(shoppingListsTable.createdAt));
 
     const summaries = await Promise.all(
@@ -273,9 +276,10 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
       .split("T")[0]!;
     const title = `${activePlan.title} — ${weekFrom}`;
 
+    const householdId = req.householdId!;
     const [newList] = await db
       .insert(shoppingListsTable)
-      .values({ userId, title, weekFrom, weekTo, mealPlanId: activePlan.id })
+      .values({ userId, title, weekFrom, weekTo, mealPlanId: activePlan.id, householdId })
       .returning();
 
     if (!newList) {
@@ -301,6 +305,7 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
         bioRecommended: item.bioRecommended,
         isManual: false as boolean,
         ingredientId: item.ingredientId,
+        createdBy: userId,
       };
     });
 
@@ -317,14 +322,14 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
 
 router.get("/shopping-lists/:id", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = req.userId!;
+    const householdId = req.householdId!;
     const listId = parseInt(req.params["id"] as string);
     if (isNaN(listId)) { res.status(400).json({ error: "Ungültige ID" }); return; }
 
     const [list] = await db
       .select()
       .from(shoppingListsTable)
-      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.userId, userId)));
+      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.householdId, householdId)));
     if (!list) { res.status(404).json({ error: "Liste nicht gefunden" }); return; }
 
     const items = await db
@@ -341,14 +346,14 @@ router.get("/shopping-lists/:id", requireAuth, async (req, res): Promise<void> =
 
 router.delete("/shopping-lists/:id", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = req.userId!;
+    const householdId = req.householdId!;
     const listId = parseInt(req.params["id"] as string);
     if (isNaN(listId)) { res.status(400).json({ error: "Ungültige ID" }); return; }
 
     const [list] = await db
       .select()
       .from(shoppingListsTable)
-      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.userId, userId)));
+      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.householdId, householdId)));
     if (!list) { res.status(404).json({ error: "Liste nicht gefunden" }); return; }
 
     await db.delete(shoppingListsTable).where(eq(shoppingListsTable.id, listId));
@@ -361,14 +366,14 @@ router.delete("/shopping-lists/:id", requireAuth, async (req, res): Promise<void
 
 router.post("/shopping-lists/:id/archive", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = req.userId!;
+    const householdId = req.householdId!;
     const listId = parseInt(req.params["id"] as string);
     if (isNaN(listId)) { res.status(400).json({ error: "Ungültige ID" }); return; }
 
     const [list] = await db
       .select()
       .from(shoppingListsTable)
-      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.userId, userId)));
+      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.householdId, householdId)));
     if (!list) { res.status(404).json({ error: "Liste nicht gefunden" }); return; }
 
     const [updated] = await db
@@ -399,6 +404,7 @@ const manualItemSchema = z.object({
 router.post("/shopping-lists/:id/items", requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.userId!;
+    const householdId = req.householdId!;
     const listId = parseInt(req.params["id"] as string);
     if (isNaN(listId)) { res.status(400).json({ error: "Ungültige ID" }); return; }
 
@@ -408,7 +414,7 @@ router.post("/shopping-lists/:id/items", requireAuth, async (req, res): Promise<
     const [list] = await db
       .select()
       .from(shoppingListsTable)
-      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.userId, userId)));
+      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.householdId, householdId)));
     if (!list) { res.status(404).json({ error: "Liste nicht gefunden" }); return; }
 
     const [item] = await db
@@ -423,6 +429,7 @@ router.post("/shopping-lists/:id/items", requireAuth, async (req, res): Promise<
         bioRecommended: false,
         isManual: true,
         ingredientId: null,
+        createdBy: userId,
       })
       .returning();
 
@@ -436,6 +443,7 @@ router.post("/shopping-lists/:id/items", requireAuth, async (req, res): Promise<
 router.patch("/shopping-lists/:id/items/:itemId/toggle", requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.userId!;
+    const householdId = req.householdId!;
     const listId = parseInt(req.params["id"] as string);
     const itemId = parseInt(req.params["itemId"] as string);
     if (isNaN(listId) || isNaN(itemId)) { res.status(400).json({ error: "Ungültige ID" }); return; }
@@ -443,7 +451,7 @@ router.patch("/shopping-lists/:id/items/:itemId/toggle", requireAuth, async (req
     const [list] = await db
       .select()
       .from(shoppingListsTable)
-      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.userId, userId)));
+      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.householdId, householdId)));
     if (!list) { res.status(403).json({ error: "Zugriff verweigert" }); return; }
 
     const [item] = await db
@@ -455,7 +463,7 @@ router.patch("/shopping-lists/:id/items/:itemId/toggle", requireAuth, async (req
     const newChecked = !item.isChecked;
     const [updated] = await db
       .update(shoppingListItemsTable)
-      .set({ isChecked: newChecked })
+      .set({ isChecked: newChecked, completedBy: newChecked ? userId : null })
       .where(eq(shoppingListItemsTable.id, itemId))
       .returning();
 
@@ -520,7 +528,7 @@ router.patch("/shopping-lists/:id/items/:itemId/toggle", requireAuth, async (req
 
 router.delete("/shopping-lists/:id/items/:itemId", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = req.userId!;
+    const householdId = req.householdId!;
     const listId = parseInt(req.params["id"] as string);
     const itemId = parseInt(req.params["itemId"] as string);
     if (isNaN(listId) || isNaN(itemId)) { res.status(400).json({ error: "Ungültige ID" }); return; }
@@ -528,7 +536,7 @@ router.delete("/shopping-lists/:id/items/:itemId", requireAuth, async (req, res)
     const [list] = await db
       .select()
       .from(shoppingListsTable)
-      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.userId, userId)));
+      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.householdId, householdId)));
     if (!list) { res.status(403).json({ error: "Zugriff verweigert" }); return; }
 
     const [item] = await db

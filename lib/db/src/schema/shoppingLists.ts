@@ -1,10 +1,12 @@
 import { pgTable, serial, text, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { mealPlansTable } from "./mealPlans";
 import { ingredientsTable } from "./ingredients";
+import { householdsTable } from "./households";
 
 export const shoppingListsTable = pgTable("shopping_lists", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull(),
+  householdId: integer("household_id").references(() => householdsTable.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   weekFrom: text("week_from").notNull(),
   weekTo: text("week_to").notNull(),
@@ -24,6 +26,8 @@ export const shoppingListItemsTable = pgTable("shopping_list_items", {
   bioRecommended: boolean("bio_recommended").notNull().default(false),
   isManual: boolean("is_manual").notNull().default(false),
   ingredientId: integer("ingredient_id").references(() => ingredientsTable.id, { onDelete: "set null" }),
+  createdBy: text("created_by"),
+  completedBy: text("completed_by"),
 });
 
 export type ShoppingList = typeof shoppingListsTable.$inferSelect;

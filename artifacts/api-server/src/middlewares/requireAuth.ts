@@ -2,6 +2,7 @@ import { getAuth } from "@clerk/express";
 import type { Request, Response, NextFunction } from "express";
 import { db, userSettingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { ensureSoloHousehold } from "../services/householdService";
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   const auth = getAuth(req);
@@ -15,9 +16,16 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   db.select({ isBlocked: userSettingsTable.isBlocked })
     .from(userSettingsTable)
     .where(eq(userSettingsTable.userId, userId))
-    .then(([settings]) => {
+    .then(async ([settings]) => {
       if (settings?.isBlocked) {
         res.status(403).json({ error: "Account gesperrt" });
+        return;
+      }
+      try {
+        req.householdId = await ensureSoloHousehold(userId);
+      } catch (err) {
+        req.log?.error?.({ err }, "Failed to ensure household");
+        res.status(503).json({ error: "Service unavailable" });
         return;
       }
       next();

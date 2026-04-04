@@ -202,14 +202,14 @@ router.get("/costs/recipe/:id", requireAuth, async (req, res): Promise<void> => 
 
 router.get("/costs/shopping-list/:id", requireAuth, async (req, res): Promise<void> => {
   try {
-    const userId = req.userId!;
+    const householdId = req.householdId!;
     const listId = parseInt(req.params["id"] as string);
     if (isNaN(listId)) { res.status(400).json({ error: "Ungültige ID" }); return; }
 
     const [list] = await db
       .select()
       .from(shoppingListsTable)
-      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.userId, userId)));
+      .where(and(eq(shoppingListsTable.id, listId), eq(shoppingListsTable.householdId, householdId)));
     if (!list) { res.status(404).json({ error: "Liste nicht gefunden" }); return; }
 
     const cost = await calculateWeekCostInternal(listId);

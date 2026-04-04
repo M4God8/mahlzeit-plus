@@ -27,6 +27,7 @@ import {
   useGetShoppingListCost,
   useGetFridgeItems,
   useUpdateFridgeItem,
+  useGetMyHousehold,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListShoppingListsQueryKey, getGetShoppingListQueryKey, getGetFridgeItemsQueryKey } from "@workspace/api-client-react";
@@ -67,6 +68,17 @@ export default function Shopping() {
     query: { enabled: activeListId !== null, queryKey: ["/api/costs/shopping-list", String(activeListId ?? 0)] }
   });
   const { data: fridgeItems = [] } = useGetFridgeItems();
+  const { data: household } = useGetMyHousehold();
+
+  const isSharedHousehold = household && household.inviteCode !== null;
+  const memberCount = household?.members?.length ?? 1;
+
+  const getMemberLabel = (userId: string | null | undefined): string | null => {
+    if (!userId || !isSharedHousehold || memberCount <= 1) return null;
+    const members = household?.members ?? [];
+    const idx = members.findIndex(m => m.userId === userId);
+    return idx >= 0 ? `Mitglied ${idx + 1}` : null;
+  };
 
   const fridgeAvailableIds = new Set(
     fridgeItems
@@ -345,6 +357,13 @@ export default function Shopping() {
                           {(item.amount || item.unit) && (
                             <p className={`text-xs mt-0.5 ${item.isChecked ? "text-muted-foreground/50" : "text-muted-foreground"}`}>
                               {[item.amount, item.unit].filter(Boolean).join(" ")}
+                            </p>
+                          )}
+                          {isSharedHousehold && (getMemberLabel(item.createdBy) || getMemberLabel(item.completedBy)) && (
+                            <p className="text-[10px] mt-0.5 text-muted-foreground/60">
+                              {getMemberLabel(item.createdBy) && `+ ${getMemberLabel(item.createdBy)}`}
+                              {getMemberLabel(item.createdBy) && getMemberLabel(item.completedBy) && " · "}
+                              {getMemberLabel(item.completedBy) && `✓ ${getMemberLabel(item.completedBy)}`}
                             </p>
                           )}
                         </div>

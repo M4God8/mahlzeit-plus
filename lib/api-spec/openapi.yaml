@@ -38,6 +38,8 @@ tags:
     description: Automatic fridge/pantry tracking
   - name: review
     description: Monthly review and insights
+  - name: households
+    description: Household sharing operations
 
 paths:
   /healthz:
@@ -821,6 +823,97 @@ paths:
       responses:
         "204":
           description: Deleted
+
+  /households/me:
+    get:
+      operationId: getMyHousehold
+      tags: [households]
+      summary: Get current user's household with members
+      responses:
+        "200":
+          description: Household detail with members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseholdDetail"
+        "404":
+          description: Not found
+
+  /households/create-shared:
+    post:
+      operationId: createSharedHousehold
+      tags: [households]
+      summary: Create a shared household (moves user from solo)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSharedHouseholdInput"
+      responses:
+        "201":
+          description: Created shared household
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseholdDetail"
+        "400":
+          description: Already in a shared household
+
+  /households/join:
+    post:
+      operationId: joinHousehold
+      tags: [households]
+      summary: Join a household via invite code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinHouseholdInput"
+      responses:
+        "200":
+          description: Joined household
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseholdDetail"
+        "404":
+          description: Invite code not found
+        "409":
+          description: Household full or already member
+        "410":
+          description: Invite code expired
+
+  /households/regenerate-code:
+    post:
+      operationId: regenerateHouseholdCode
+      tags: [households]
+      summary: Generate a new invite code (owner only)
+      responses:
+        "200":
+          description: New invite code
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteCodeResponse"
+        "403":
+          description: Not the owner
+
+  /households/leave:
+    post:
+      operationId: leaveHousehold
+      tags: [households]
+      summary: Leave current household (creates new solo household)
+      responses:
+        "200":
+          description: New solo household
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HouseholdDetail"
+        "400":
+          description: Already in solo household
 
   /ai/generate-recipe:
     post:
@@ -1819,6 +1912,10 @@ components:
           type: boolean
         ingredientId:
           type: ["integer", "null"]
+        createdBy:
+          type: ["string", "null"]
+        completedBy:
+          type: ["string", "null"]
       required:
         - id
         - shoppingListId
@@ -1835,6 +1932,8 @@ components:
           type: integer
         userId:
           type: string
+        householdId:
+          type: ["integer", "null"]
         title:
           type: string
         weekFrom:
@@ -1868,6 +1967,8 @@ components:
           type: integer
         userId:
           type: string
+        householdId:
+          type: ["integer", "null"]
         title:
           type: string
         weekFrom:
@@ -2702,3 +2803,76 @@ components:
               type: integer
           required: [regularity, variety, costEfficiency, wasteAvoidance]
       required: [month, mealDistribution, costs, nutritionBalance, foodWaste, score, scoreBreakdown]
+
+    HouseholdMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: string
+        role:
+          type: string
+        joinedAt:
+          type: string
+      required:
+        - id
+        - userId
+        - role
+        - joinedAt
+
+    HouseholdDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        ownerId:
+          type: string
+        inviteCode:
+          type: ["string", "null"]
+        inviteCodeExpiresAt:
+          type: ["string", "null"]
+        maxMembers:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/HouseholdMember"
+      required:
+        - id
+        - name
+        - ownerId
+        - maxMembers
+        - createdAt
+        - updatedAt
+        - members
+
+    CreateSharedHouseholdInput:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+
+    JoinHouseholdInput:
+      type: object
+      properties:
+        inviteCode:
+          type: string
+      required:
+        - inviteCode
+
+    InviteCodeResponse:
+      type: object
+      properties:
+        inviteCode:
+          type: ["string", "null"]
+        inviteCodeExpiresAt:
+          type: ["string", "null"]

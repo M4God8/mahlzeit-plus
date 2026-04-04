@@ -11,3 +11,4 @@ export * from "./userLearnedPreferences";
 export * from "./coachingProducts";
 export * from "./chatSessions";
 export * from "./fridge";
+export * from "./households";

@@ -16,6 +16,7 @@ import chatRouter from "./chat";
 import coachingProductsRouter from "./coachingProducts";
 import fridgeRouter from "./fridge";
 import reviewRouter from "./review";
+import householdsRouter from "./households";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(chatRouter);
 router.use(coachingProductsRouter);
 router.use(fridgeRouter);
 router.use(reviewRouter);
+router.use(householdsRouter);
 
 export default router;
