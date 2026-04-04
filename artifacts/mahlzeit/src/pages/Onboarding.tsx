@@ -195,17 +195,19 @@ export default function Onboarding() {
                 <div className="space-y-3 pt-4">
                   <Label className="text-base">Budget-Präferenz</Label>
                   <RadioGroup value={budgetLevel} onValueChange={setBudgetLevel} className="grid grid-cols-3 gap-2">
-                    {['low', 'medium', 'high'].map((level, i) => (
-                      <div key={level} className="relative">
-                        <RadioGroupItem value={level} id={`budget-${level}`} className="peer sr-only" data-testid={`radio-budget-${level}`} />
+                    {([
+                      { value: 'low', label: 'bis 50€', sub: 'pro Woche' },
+                      { value: 'medium', label: '50–100€', sub: 'pro Woche' },
+                      { value: 'high', label: '100€+', sub: 'pro Woche' },
+                    ] as const).map((opt) => (
+                      <div key={opt.value} className="relative">
+                        <RadioGroupItem value={opt.value} id={`budget-${opt.value}`} className="peer sr-only" data-testid={`radio-budget-${opt.value}`} />
                         <Label 
-                          htmlFor={`budget-${level}`} 
+                          htmlFor={`budget-${opt.value}`} 
                           className="flex flex-col items-center justify-center p-3 border rounded-md cursor-pointer peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5 hover:bg-muted"
                         >
-                          <span className="text-lg">{'€'.repeat(i + 1)}</span>
-                          <span className="text-xs text-muted-foreground mt-1">
-                            {level === 'low' ? 'Günstig' : level === 'medium' ? 'Mittel' : 'Premium'}
-                          </span>
+                          <span className="text-lg font-semibold">{opt.label}</span>
+                          <span className="text-xs text-muted-foreground mt-1">{opt.sub}</span>
                         </Label>
                       </div>
                     ))}

@@ -188,11 +188,15 @@ export default function Settings() {
               <div className="space-y-3">
                 <Label>Budget-Niveau</Label>
                 <RadioGroup value={budgetLevel} onValueChange={setBudgetLevel} className="flex gap-4">
-                  {['low', 'medium', 'high'].map(level => (
-                    <div key={level} className="flex items-center space-x-2">
-                      <RadioGroupItem value={level} id={`set-budget-${level}`} data-testid={`radio-set-budget-${level}`} />
-                      <Label htmlFor={`set-budget-${level}`} className="font-normal cursor-pointer">
-                        {level === 'low' ? 'Günstig' : level === 'medium' ? 'Mittel' : 'Premium'}
+                  {([
+                    { value: 'low', label: 'bis 50€ / Woche' },
+                    { value: 'medium', label: '50–100€ / Woche' },
+                    { value: 'high', label: '100€+ / Woche' },
+                  ] as const).map(opt => (
+                    <div key={opt.value} className="flex items-center space-x-2">
+                      <RadioGroupItem value={opt.value} id={`set-budget-${opt.value}`} data-testid={`radio-set-budget-${opt.value}`} />
+                      <Label htmlFor={`set-budget-${opt.value}`} className="font-normal cursor-pointer">
+                        {opt.label}
                       </Label>
                     </div>
                   ))}
