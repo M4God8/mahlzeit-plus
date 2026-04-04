@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Redirect } from "wouter";
 import { useUser, Show } from "@clerk/react";
-import { Loader2, Users, CreditCard, Activity, TrendingUp, AlertTriangle, ShieldCheck, ShieldOff, Ban, CheckCircle, XCircle, Clock, Package } from "lucide-react";
+import { Loader2, Users, CreditCard, Activity, TrendingUp, AlertTriangle, ShieldCheck, ShieldOff, Ban, CheckCircle, XCircle, Clock, Package, RefreshCw } from "lucide-react";
 import { ProductsPanel } from "./ProductsPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -607,6 +607,24 @@ function CostsPanel() {
 
 function HealthPanel() {
   const { data: health, isLoading, refetch } = useAdminHealth();
+  const { toast } = useToast();
+  const [restarting, setRestarting] = useState(false);
+
+  const handleRestart = async () => {
+    if (!confirm("Server wirklich neu starten? Alle laufenden Anfragen werden abgebrochen.")) return;
+    setRestarting(true);
+    try {
+      await fetch("/api/admin/restart", { method: "POST", credentials: "include" });
+      toast({ title: "Server wird neu gestartet…", description: "Bitte warte 10-15 Sekunden." });
+      setTimeout(() => {
+        refetch();
+        setRestarting(false);
+      }, 12000);
+    } catch {
+      toast({ title: "Fehler", description: "Neustart konnte nicht ausgelöst werden.", variant: "destructive" });
+      setRestarting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -641,9 +659,20 @@ function HealthPanel() {
             System: {health.status === "ok" ? "Gesund" : "Eingeschränkt"}
           </Badge>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          Aktualisieren
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Aktualisieren
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleRestart}
+            disabled={restarting}
+          >
+            {restarting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <RefreshCw className="w-4 h-4 mr-1" />}
+            Server neustarten
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3">

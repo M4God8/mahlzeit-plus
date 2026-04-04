@@ -418,4 +418,12 @@ router.get("/admin/me", requireAdmin, async (_req, res) => {
   res.json({ isAdmin: true });
 });
 
+router.post("/admin/restart", requireAdmin, async (req, res) => {
+  req.log.warn("Admin-initiated server restart requested");
+  res.json({ message: "Server wird neu gestartet…" });
+  setTimeout(() => {
+    process.exit(0);
+  }, 500);
+});
+
 export default router;

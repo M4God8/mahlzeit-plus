@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useImportRecipeScreenshot, useCreateRecipe } from "@workspace/api-client-react";
 import {
   Dialog,
@@ -28,6 +28,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import type { AiRecipeOutput, AiIngredient } from "@workspace/api-client-react";
 
+const CACHE_KEY = "mahlzeit_import_recipe_draft";
+
 interface ScreenshotImportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,39 +42,84 @@ function isUncertain(value: string | undefined | null): boolean {
   return value === "?" || value === "??" || value === "";
 }
 
+function loadCachedDraft(): { recipe: AiRecipeOutput; sourceNote: string } | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed?.recipe?.name) return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(recipe: AiRecipeOutput | null, sourceNote: string) {
+  if (!recipe) {
+    sessionStorage.removeItem(CACHE_KEY);
+    return;
+  }
+  sessionStorage.setItem(CACHE_KEY, JSON.stringify({ recipe, sourceNote }));
+}
+
+function clearDraft() {
+  sessionStorage.removeItem(CACHE_KEY);
+}
+
 export default function ScreenshotImportModal({
   open,
   onOpenChange,
   onRecipeSaved,
 }: ScreenshotImportModalProps) {
-  const [step, setStep] = useState<Step>("upload");
+  const cached = loadCachedDraft();
+  const [step, setStep] = useState<Step>(cached ? "preview" : "upload");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState("");
-  const [editableRecipe, setEditableRecipe] = useState<AiRecipeOutput | null>(null);
-  const [sourceNote, setSourceNote] = useState("");
+  const [editableRecipe, setEditableRecipe] = useState<AiRecipeOutput | null>(cached?.recipe ?? null);
+  const [sourceNote, setSourceNote] = useState(cached?.sourceNote ?? "");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   const { toast } = useToast();
 
   const importMutation = useImportRecipeScreenshot();
   const createRecipeMutation = useCreateRecipe();
 
+  useEffect(() => {
+    if (editableRecipe) {
+      saveDraft(editableRecipe, sourceNote);
+    }
+  }, [editableRecipe, sourceNote]);
+
   const resetState = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setStep("upload");
     setSelectedFiles([]);
     setPreviews([]);
     setErrorMessage("");
     setEditableRecipe(null);
     setSourceNote("");
+    clearDraft();
   }, []);
 
   const handleClose = useCallback(
     (isOpen: boolean) => {
-      if (!isOpen) resetState();
+      if (!isOpen && step === "loading") {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+          abortControllerRef.current = null;
+        }
+      }
+      if (!isOpen && step !== "preview") {
+        resetState();
+      }
       onOpenChange(isOpen);
     },
-    [onOpenChange, resetState]
+    [onOpenChange, resetState, step]
   );
 
   const handleFilesSelected = useCallback((files: FileList | null) => {
@@ -92,11 +139,22 @@ export default function ScreenshotImportModal({
     [previews]
   );
 
+  const handleCancel = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setStep("upload");
+    setErrorMessage("");
+  }, []);
+
   const handleAnalyze = useCallback(() => {
     if (selectedFiles.length === 0) return;
 
     setStep("loading");
     setErrorMessage("");
+
+    abortControllerRef.current = new AbortController();
 
     const formData = { images: selectedFiles as Blob[] };
 
@@ -104,10 +162,16 @@ export default function ScreenshotImportModal({
       { data: formData },
       {
         onSuccess: (data) => {
+          abortControllerRef.current = null;
           setEditableRecipe(data);
           setStep("preview");
         },
         onError: (err: unknown) => {
+          abortControllerRef.current = null;
+          if (err instanceof DOMException && err.name === "AbortError") {
+            setStep("upload");
+            return;
+          }
           let errorMsg = "Fehler beim Analysieren des Screenshots.";
           if (err && typeof err === "object" && "data" in err) {
             const data = (err as { data: { error?: string } | null }).data;
@@ -121,8 +185,14 @@ export default function ScreenshotImportModal({
   }, [selectedFiles, importMutation]);
 
   const handleRetry = useCallback(() => {
-    resetState();
-  }, [resetState]);
+    setStep("upload");
+    setEditableRecipe(null);
+    setSelectedFiles([]);
+    setPreviews([]);
+    setErrorMessage("");
+    setSourceNote("");
+    clearDraft();
+  }, []);
 
   const updateRecipeField = useCallback(
     <K extends keyof AiRecipeOutput>(field: K, value: AiRecipeOutput[K]) => {
@@ -191,6 +261,7 @@ export default function ScreenshotImportModal({
             title: "Rezept gespeichert!",
             description: "Das importierte Rezept wurde deiner Sammlung hinzugefügt.",
           });
+          clearDraft();
           handleClose(false);
           onRecipeSaved?.();
         },
@@ -204,6 +275,8 @@ export default function ScreenshotImportModal({
       }
     );
   }, [editableRecipe, sourceNote, createRecipeMutation, toast, handleClose, onRecipeSaved]);
+
+  const hasDraft = !!loadCachedDraft();
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -220,6 +293,24 @@ export default function ScreenshotImportModal({
 
         {step === "upload" && (
           <div className="space-y-4">
+            {hasDraft && !editableRecipe && (
+              <button
+                onClick={() => {
+                  const draft = loadCachedDraft();
+                  if (draft) {
+                    setEditableRecipe(draft.recipe);
+                    setSourceNote(draft.sourceNote);
+                    setStep("preview");
+                  }
+                }}
+                className="w-full p-3 rounded-lg border border-primary/30 bg-primary/5 text-sm text-left"
+              >
+                <span className="font-medium text-primary">Entwurf vorhanden</span>
+                <br />
+                <span className="text-muted-foreground">Dein letztes analysiertes Rezept ist noch da. Tippe hier, um es weiterzubearbeiten.</span>
+              </button>
+            )}
+
             <p className="text-sm text-muted-foreground">
               Lade einen Screenshot eines Rezepts hoch (z.B. von TikTok, Instagram oder
               einer Kochseite). Die KI analysiert das Bild und extrahiert alle
@@ -295,6 +386,15 @@ export default function ScreenshotImportModal({
               <br />
               Das kann einen Moment dauern.
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCancel}
+              className="mt-2"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Abbrechen
+            </Button>
           </div>
         )}
 
@@ -411,7 +511,7 @@ export default function ScreenshotImportModal({
                     className="w-full text-xs h-7"
                     onClick={addIngredient}
                   >
-                    <Plus className="w-3 h-3 mr-1" /> Zutat hinzufügen
+                    <Plus className="w-3 h-3 mr-1" /> Zutat hinzufugen
                   </Button>
                 </CardContent>
               </Card>
@@ -450,7 +550,7 @@ export default function ScreenshotImportModal({
                 ))}
               </div>
               <Input
-                placeholder="Neuen Tag eingeben und Enter drücken"
+                placeholder="Neuen Tag eingeben und Enter drucken"
                 className="text-xs h-8"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -496,7 +596,7 @@ export default function ScreenshotImportModal({
                 ) : (
                   <Save className="w-4 h-4 mr-2" />
                 )}
-                Übernehmen
+                Speichern
               </Button>
             </div>
           </div>
