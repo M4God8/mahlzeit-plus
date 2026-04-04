@@ -23,7 +23,7 @@ function useUrlFilterState() {
   const search = params.get("search") ?? "";
   const energyType = params.get("energyType") ?? "";
   const maxTime = params.get("maxTime") ? parseInt(params.get("maxTime")!, 10) : undefined;
-  const selectedTag = params.get("tag") ?? "";
+  const selectedTag = params.get("tags") ?? "";
 
   const setFilter = useCallback((key: string, value: string | undefined) => {
     const next = new URLSearchParams(searchString);
@@ -44,7 +44,7 @@ function useUrlFilterState() {
     setSearch: (v: string) => setFilter("search", v || undefined),
     setEnergyType: (v: string) => setFilter("energyType", v || undefined),
     setMaxTime: (v: number | undefined) => setFilter("maxTime", v?.toString()),
-    setSelectedTag: (v: string) => setFilter("tag", v || undefined),
+    setSelectedTag: (v: string) => setFilter("tags", v || undefined),
   };
 }
 
