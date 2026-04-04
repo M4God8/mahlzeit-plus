@@ -1,0 +1,124 @@
+#25 - Household Sharing FINAL v2
+
+## DB (ergänzt)
+households:
+  id, name, owner_id,
+  invite_code TEXT UNIQUE,
+  invite_code_expires_at TIMESTAMP,
+  max_members INT DEFAULT 6,
+  created_at, updated_at
+
+household_members:
+  id, household_id FK, user_id FK UNIQUE,
+  -- UNIQUE auf user_id: 1 User = 1 Household
+  role TEXT ('owner'|'member'),
+  joined_at
+
+shopping_list_items: + created_by, completed_by, completed_at
+fridge_items: + added_by, household_id
+meal_plans: + household_id
+
+## INVITE-CODE GENERATOR:
+const WORDS = ["SONNE","WIESE","APFEL","BIRKE",
+               "FLUSS","BERG","MOND","STERN",
+               "WIND","LICHT","GRUEN","BLAU"]
+
+function generateInviteCode():
+  word = random(WORDS)
+  number = random(10, 9999)
+  code = word + number
+  // retry bis UNIQUE, max 5 Versuche
+  return code
+
+Code läuft ab nach 7 Tagen.
+Owner kann jederzeit neuen Code generieren.
+
+## JOIN VALIDIERUNG (Reihenfolge wichtig!):
+1. invite_code existiert → 404 wenn nicht
+2. invite_code_expires_at > now() → 410 Gone
+3. household.member_count < 6 → 409 voll
+4. user nicht bereits in diesem Household
+   → 200 OK (idempotent! kein Fehler)
+5. user in anderem Household?
+   → wenn Solo-Household: automatisch verlassen
+   → wenn echtes Household: 409 + Meldung
+     "Verlasse erst deinen aktuellen Haushalt"
+
+Rate Limit: 5 Join-Versuche / Minute / IP
+
+## SOLO-HOUSEHOLD INVARIANTE:
+Jeder User hat IMMER genau 1 aktives Household.
+
+Beim Registrieren:
+  → Solo-Household automatisch erstellen
+
+Beim Join:
+  → altes Solo-Household auflösen
+  → neues Household betreten
+
+Beim Leave / Kicked:
+  → neues Solo-Household automatisch erstellen
+  → user merkt nichts von der Technik
+
+## OWNER-TRANSFER:
+Owner will gehen:
+  > 1 Mitglied:
+    → UI zeigt: "Wähle neuen Inhaber"
+    → PATCH /households/transfer-owner
+    → dann leave möglich
+  = 1 Person (nur Owner):
+    → Household auflösbar oder zu Solo
+
+Automatischer Fallback wenn Owner weg:
+  → ältestes Mitglied (joined_at ASC) wird Owner
+
+## KICKED-USER HANDLING:
+DELETE /households/members/:id
+  → Member wird entfernt
+  → nächster API Call des Users:
+     → 403 + { reason: 'removed_from_household' }
+  → Frontend: Toast "Du wurdest aus dem 
+    Haushalt entfernt" + redirect zu /einstellungen
+  → Auto-Solo-Household wird erstellt
+
+## AKTIVITÄTS-ANONYMISIERUNG:
+user_id bleibt intern erhalten (für Debug/Historie)
+Anzeige nach Leave/Kick:
+  "ehemaliges Mitglied" statt Name
+  Avatar → grauer Platzhalter
+
+## BACKEND ROUTEN:
+POST   /households/create
+POST   /households/join { invite_code }
+GET    /households/me
+POST   /households/regenerate-code
+PATCH  /households/transfer-owner { new_owner_id }
+DELETE /households/members/:id  (Owner only)
+POST   /households/leave
+
+Alle Routen: requireAuth + Zod-Validierung
+
+## FRONTEND
+
+Einstellungen → "Haushalt":
+Solo:
+  "Du bist alleine — lade jemanden ein"
+  [Haushalt erstellen]
+  [Code eingeben → beitreten]
+
+In Haushalt:
+  Mitglieder: Avatar + Name + Rolle
+  "Code: SONNE47 (läuft ab in 3 Tagen)"
+  [Kopieren] [Teilen] [Neuen Code]
+  [Haushalt verlassen]
+  Owner: [Mitglied entfernen]
+
+Heute-Screen: "👥 WG-Plan"
+Einkaufsliste: "✅ Martin" / "➕ Anna"
+
+## BUILD-REIHENFOLGE (MVP first):
+Phase 1: create + join + leave + shopping shared
+Phase 2: fridge + meal_plan shared
+Phase 3: kicked-notification + transfer-owner UI
+
+Dependencies: Auth (Phase 1 Mahlzeit+)
