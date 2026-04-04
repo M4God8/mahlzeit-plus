@@ -155,6 +155,8 @@ export const ListRecipesResponseItem = zod.object({
   aiGenerated: zod.boolean(),
   energyType: zod.string(),
   isPublic: zod.boolean(),
+  source: zod.string().nullish(),
+  sourceNote: zod.string().nullish(),
   createdAt: zod.string(),
   ingredients: zod.array(
     zod.object({
@@ -183,6 +185,8 @@ export const CreateRecipeBody = zod.object({
   tags: zod.array(zod.string()).optional(),
   energyType: zod.string(),
   isPublic: zod.boolean().optional(),
+  source: zod.string().optional(),
+  sourceNote: zod.string().optional(),
   ingredients: zod
     .array(
       zod.object({
@@ -216,6 +220,8 @@ export const GetRecipeResponse = zod.object({
   aiGenerated: zod.boolean(),
   energyType: zod.string(),
   isPublic: zod.boolean(),
+  source: zod.string().nullish(),
+  sourceNote: zod.string().nullish(),
   createdAt: zod.string(),
   ingredients: zod.array(
     zod.object({
@@ -247,6 +253,8 @@ export const UpdateRecipeBody = zod.object({
   tags: zod.array(zod.string()).optional(),
   energyType: zod.string(),
   isPublic: zod.boolean().optional(),
+  source: zod.string().optional(),
+  sourceNote: zod.string().optional(),
   ingredients: zod
     .array(
       zod.object({
@@ -273,6 +281,8 @@ export const UpdateRecipeResponse = zod.object({
   aiGenerated: zod.boolean(),
   energyType: zod.string(),
   isPublic: zod.boolean(),
+  source: zod.string().nullish(),
+  sourceNote: zod.string().nullish(),
   createdAt: zod.string(),
   ingredients: zod.array(
     zod.object({
@@ -292,6 +302,30 @@ export const UpdateRecipeResponse = zod.object({
  */
 export const DeleteRecipeParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * @summary Import a recipe from a screenshot using AI vision
+ */
+export const ImportRecipeScreenshotBody = zod.object({
+  images: zod.array(zod.any()),
+});
+
+export const ImportRecipeScreenshotResponse = zod.object({
+  name: zod.string(),
+  description: zod.string(),
+  instructions: zod.string(),
+  servings: zod.number(),
+  prepTime: zod.number().optional(),
+  cookTime: zod.number().optional(),
+  tags: zod.array(zod.string()).optional(),
+  ingredients: zod.array(
+    zod.object({
+      name: zod.string(),
+      amount: zod.string(),
+      unit: zod.string(),
+    }),
+  ),
 });
 
 /**
@@ -358,6 +392,8 @@ export const CreateStarterMealPlanResponse = zod.object({
                 aiGenerated: zod.boolean(),
                 energyType: zod.string(),
                 isPublic: zod.boolean(),
+                source: zod.string().nullish(),
+                sourceNote: zod.string().nullish(),
                 createdAt: zod.string(),
                 ingredients: zod.array(
                   zod.object({
@@ -419,6 +455,8 @@ export const GetActiveMealPlanResponse = zod.object({
                 aiGenerated: zod.boolean(),
                 energyType: zod.string(),
                 isPublic: zod.boolean(),
+                source: zod.string().nullish(),
+                sourceNote: zod.string().nullish(),
                 createdAt: zod.string(),
                 ingredients: zod.array(
                   zod.object({
@@ -484,6 +522,8 @@ export const GetMealPlanResponse = zod.object({
                 aiGenerated: zod.boolean(),
                 energyType: zod.string(),
                 isPublic: zod.boolean(),
+                source: zod.string().nullish(),
+                sourceNote: zod.string().nullish(),
                 createdAt: zod.string(),
                 ingredients: zod.array(
                   zod.object({
@@ -612,6 +652,8 @@ export const SwapMealPlanDaysResponse = zod.object({
                 aiGenerated: zod.boolean(),
                 energyType: zod.string(),
                 isPublic: zod.boolean(),
+                source: zod.string().nullish(),
+                sourceNote: zod.string().nullish(),
                 createdAt: zod.string(),
                 ingredients: zod.array(
                   zod.object({
@@ -696,6 +738,8 @@ export const UpdateMealEntryResponse = zod.object({
         aiGenerated: zod.boolean(),
         energyType: zod.string(),
         isPublic: zod.boolean(),
+        source: zod.string().nullish(),
+        sourceNote: zod.string().nullish(),
         createdAt: zod.string(),
         ingredients: zod.array(
           zod.object({

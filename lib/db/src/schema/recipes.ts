@@ -16,6 +16,8 @@ export const recipesTable = pgTable("recipes", {
   aiGenerated: boolean("ai_generated").notNull().default(false),
   energyType: text("energy_type").notNull().default("leicht"),
   isPublic: boolean("is_public").notNull().default(false),
+  source: text("source").default("manual"),
+  sourceNote: text("source_note"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

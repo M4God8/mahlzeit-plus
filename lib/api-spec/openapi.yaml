@@ -244,6 +244,44 @@ paths:
         "204":
           description: Deleted
 
+  /recipes/import-screenshot:
+    post:
+      operationId: importRecipeScreenshot
+      tags: [recipes]
+      summary: Import a recipe from a screenshot using AI vision
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required:
+                - images
+      responses:
+        "200":
+          description: Extracted recipe data from screenshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiRecipeOutput"
+        "400":
+          description: No recipe detected or invalid image
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                required:
+                  - error
+
   /meal-plans:
     get:
       operationId: listMealPlans
@@ -1183,6 +1221,10 @@ components:
           type: string
         isPublic:
           type: boolean
+        source:
+          type: ["string", "null"]
+        sourceNote:
+          type: ["string", "null"]
         createdAt:
           type: string
         ingredients:
@@ -1226,6 +1268,10 @@ components:
           type: string
         isPublic:
           type: boolean
+        source:
+          type: string
+        sourceNote:
+          type: string
         ingredients:
           type: array
           items:

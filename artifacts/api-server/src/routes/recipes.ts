@@ -1,12 +1,16 @@
 import { Router } from "express";
+import multer from "multer";
 import { db } from "@workspace/db";
 import {
   recipesTable,
   recipeIngredientsTable,
   ingredientsTable,
+  aiGenerationsTable,
 } from "@workspace/db";
 import { eq, ilike, and, or, sql } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
+import { anthropic } from "@workspace/integrations-anthropic-ai";
+import { AiGenerateRecipeResponse } from "@workspace/api-zod";
 import type { Recipe } from "@workspace/db";
 
 const router = Router();
@@ -78,6 +82,8 @@ function formatRecipe(recipe: RecipeRow) {
     aiGenerated: recipe.aiGenerated,
     energyType: recipe.energyType,
     isPublic: recipe.isPublic,
+    source: recipe.source ?? null,
+    sourceNote: recipe.sourceNote ?? null,
     createdAt: recipe.createdAt instanceof Date ? recipe.createdAt.toISOString() : recipe.createdAt,
     ingredients: recipe.ingredients,
   };
@@ -126,7 +132,7 @@ router.get("/recipes", requireAuth, async (req, res): Promise<void> => {
 router.post("/recipes", requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.userId!;
-    const { title, description, prepTime, cookTime, servings, instructions, tags, energyType, isPublic } = req.body;
+    const { title, description, prepTime, cookTime, servings, instructions, tags, energyType, isPublic, source, sourceNote } = req.body;
     const ingredients: IngredientInput[] = Array.isArray(req.body.ingredients) ? req.body.ingredients : [];
 
     const [recipe] = await db
@@ -142,6 +148,8 @@ router.post("/recipes", requireAuth, async (req, res): Promise<void> => {
         tags: tags ?? [],
         energyType: energyType ?? "leicht",
         isPublic: isPublic ?? false,
+        ...(source !== undefined && { source }),
+        ...(sourceNote !== undefined && { sourceNote }),
       })
       .returning();
 
@@ -199,7 +207,7 @@ router.patch("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
       return;
     }
 
-    const { title, description, prepTime, cookTime, servings, instructions, tags, energyType, isPublic } = req.body;
+    const { title, description, prepTime, cookTime, servings, instructions, tags, energyType, isPublic, source, sourceNote } = req.body;
     const ingredients: IngredientInput[] | undefined = Array.isArray(req.body.ingredients) ? req.body.ingredients : undefined;
 
     await db
@@ -214,6 +222,8 @@ router.patch("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
         ...(tags !== undefined && { tags }),
         ...(energyType !== undefined && { energyType }),
         ...(isPublic !== undefined && { isPublic }),
+        ...(source !== undefined && { source }),
+        ...(sourceNote !== undefined && { sourceNote }),
       })
       .where(eq(recipesTable.id, id));
 
@@ -237,6 +247,152 @@ router.patch("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 5 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png"];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Nur JPG und PNG Bilder sind erlaubt."));
+    }
+  },
+});
+
+function runMulterUpload(req: import("express").Request, res: import("express").Response): Promise<Express.Multer.File[]> {
+  return new Promise((resolve, reject) => {
+    upload.array("images", 5)(req, res, (err: unknown) => {
+      if (err) return reject(err);
+      resolve((req.files as Express.Multer.File[]) || []);
+    });
+  });
+}
+
+const VISION_MODEL = "claude-sonnet-4-6";
+
+router.post(
+  "/recipes/import-screenshot",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    try {
+      const userId = req.userId!;
+      let files: Express.Multer.File[];
+      try {
+        files = await runMulterUpload(req, res);
+      } catch (uploadErr) {
+        if (uploadErr instanceof multer.MulterError) {
+          if (uploadErr.code === "LIMIT_FILE_SIZE") {
+            res.status(400).json({ error: "Bild zu groß. Maximale Größe: 10 MB." });
+            return;
+          }
+          res.status(400).json({ error: "Fehler beim Hochladen der Datei." });
+          return;
+        }
+        if (uploadErr instanceof Error && uploadErr.message.includes("Nur JPG")) {
+          res.status(400).json({ error: uploadErr.message });
+          return;
+        }
+        throw uploadErr;
+      }
+
+      if (!files || files.length === 0) {
+        res.status(400).json({ error: "Bitte lade mindestens ein Bild hoch." });
+        return;
+      }
+
+      const imageContent = files.map((file) => ({
+        type: "image" as const,
+        source: {
+          type: "base64" as const,
+          media_type: file.mimetype as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+          data: file.buffer.toString("base64"),
+        },
+      }));
+
+      const systemPrompt = `Du bist ein Rezept-Erkennungs-Assistent. Du analysierst Screenshots von Rezepten (z.B. von TikTok, Instagram, Kochseiten) und extrahierst alle Rezeptdaten.
+Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.
+Wenn du ein Feld nicht sicher erkennen kannst, setze den Wert auf "?" (bei Strings) oder 0 (bei Zahlen).
+Alle Texte auf Deutsch.`;
+
+      const prompt = `Analysiere diese(n) Screenshot(s) und extrahiere das Rezept. Antworte mit folgendem JSON:
+{
+  "name": "Rezeptname",
+  "description": "Kurze Beschreibung (1-2 Sätze)",
+  "instructions": "Detaillierte Schritt-für-Schritt Anleitung",
+  "servings": 2,
+  "prepTime": 15,
+  "cookTime": 25,
+  "tags": ["tag1", "tag2"],
+  "ingredients": [
+    {"name": "Zutatname", "amount": "200", "unit": "g"}
+  ]
+}
+
+Wenn kein Rezept erkennbar ist, antworte mit:
+{"error": "Kein Rezept erkennbar"}`;
+
+      const response = await anthropic.messages.create({
+        model: VISION_MODEL,
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [
+          {
+            role: "user",
+            content: [...imageContent, { type: "text" as const, text: prompt }],
+          },
+        ],
+      });
+
+      const inputTokens = response.usage?.input_tokens ?? 0;
+      const outputTokens = response.usage?.output_tokens ?? 0;
+
+      const text = response.content
+        .filter((b) => b.type === "text")
+        .map((b) => (b as { type: "text"; text: string }).text)
+        .join("");
+
+      let parsed: unknown;
+      try {
+        const codeBlock = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+        const candidate = codeBlock ? codeBlock[1]!.trim() : text.trim();
+        parsed = JSON.parse(candidate);
+      } catch {
+        res.status(400).json({ error: "Die KI konnte kein Rezept aus dem Bild extrahieren." });
+        return;
+      }
+
+      if (parsed && typeof parsed === "object" && "error" in parsed) {
+        res.status(400).json({ error: (parsed as { error: string }).error });
+        return;
+      }
+
+      const result = AiGenerateRecipeResponse.safeParse(parsed);
+      if (!result.success) {
+        res.status(400).json({ error: "Das extrahierte Rezept hat ein ungültiges Format." });
+        return;
+      }
+
+      const costEur = (inputTokens * 0.000003 + outputTokens * 0.000015).toFixed(6);
+      await db.insert(aiGenerationsTable).values({
+        userId,
+        type: "import-screenshot",
+        input: `screenshot:${files.length} images`,
+        output: result.data as Record<string, unknown>,
+        model: VISION_MODEL,
+        inputTokens,
+        outputTokens,
+        costEur,
+      });
+
+      res.json(result.data);
+    } catch (err) {
+      req.log.error({ err }, "Failed to import recipe from screenshot");
+      res.status(500).json({ error: "Fehler beim Verarbeiten des Screenshots." });
+    }
+  }
+);
 
 router.delete("/recipes/:id", requireAuth, async (req, res): Promise<void> => {
   try {

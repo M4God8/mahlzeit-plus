@@ -43,7 +43,7 @@ Tabellen in `lib/db/src/schema/`:
 - `nutrition_profiles` — 5 Ernährungsprofile (Vollwertig, Pflanzenbasiert, Mediterran, Kraftvoll, Leicht)
 - `user_settings` — Benutzereinstellungen (activeProfileIds int[], Haushaltsgröße, Budget, Kochzeit, role, blocked, premiumUntil, createdAt)
 - `ingredients` — 60 Zutaten mit Kategorien, Bio-Empfehlung und Preisfelder (price_min, price_max, price_avg, price_unit, price_updated_at)
-- `recipes` + `recipe_ingredients` — Rezepte mit Zutaten (10 Starterrezepte)
+- `recipes` + `recipe_ingredients` — Rezepte mit Zutaten (10 Starterrezepte), source TEXT (manual|screenshot|ai_generated|tiktok), source_note TEXT
 - `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne
 - `ai_generations` — KI-Anfragen-Log (userId, type, input, output, model, inputTokens, outputTokens, costEur)
 - `meal_feedback` — Mahlzeit-Feedback (thumbs_up/thumbs_down)
@@ -73,6 +73,7 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | GET | /api/recipes/:id | Ja | Einzelnes Rezept (öffentliche oder eigene) |
 | PATCH | /api/recipes/:id | Ja | Rezept bearbeiten |
 | DELETE | /api/recipes/:id | Ja | Rezept löschen |
+| POST | /api/recipes/import-screenshot | Ja | Rezept aus Screenshot importieren (multipart/form-data, Claude Vision) |
 | GET | /api/meal-plans | Ja | Mahlzeitenpläne des Nutzers |
 | POST | /api/meal-plans | Ja | Plan erstellen (auto-creates day rows) |
 | POST | /api/meal-plans/starter | Ja | Starter-Plan erstellen/abrufen (idempotent) |

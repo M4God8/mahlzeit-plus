@@ -30,6 +30,8 @@ import type {
   CostEstimate,
   GetRecipeCostParams,
   HealthStatus,
+  ImportRecipeScreenshot400,
+  ImportRecipeScreenshotBody,
   Ingredient,
   ListIngredientsParams,
   ListRecipesParams,
@@ -995,6 +997,98 @@ export const useDeleteRecipe = <
   TContext
 > => {
   return useMutation(getDeleteRecipeMutationOptions(options));
+};
+
+/**
+ * @summary Import a recipe from a screenshot using AI vision
+ */
+export const getImportRecipeScreenshotUrl = () => {
+  return `/api/recipes/import-screenshot`;
+};
+
+export const importRecipeScreenshot = async (
+  importRecipeScreenshotBody: ImportRecipeScreenshotBody,
+  options?: RequestInit,
+): Promise<AiRecipeOutput> => {
+  const formData = new FormData();
+  importRecipeScreenshotBody.images.forEach((value) =>
+    formData.append(`images`, value),
+  );
+
+  return customFetch<AiRecipeOutput>(getImportRecipeScreenshotUrl(), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getImportRecipeScreenshotMutationOptions = <
+  TError = ErrorType<ImportRecipeScreenshot400>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importRecipeScreenshot>>,
+    TError,
+    { data: BodyType<ImportRecipeScreenshotBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importRecipeScreenshot>>,
+  TError,
+  { data: BodyType<ImportRecipeScreenshotBody> },
+  TContext
+> => {
+  const mutationKey = ["importRecipeScreenshot"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importRecipeScreenshot>>,
+    { data: BodyType<ImportRecipeScreenshotBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importRecipeScreenshot(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportRecipeScreenshotMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importRecipeScreenshot>>
+>;
+export type ImportRecipeScreenshotMutationBody =
+  BodyType<ImportRecipeScreenshotBody>;
+export type ImportRecipeScreenshotMutationError =
+  ErrorType<ImportRecipeScreenshot400>;
+
+/**
+ * @summary Import a recipe from a screenshot using AI vision
+ */
+export const useImportRecipeScreenshot = <
+  TError = ErrorType<ImportRecipeScreenshot400>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importRecipeScreenshot>>,
+    TError,
+    { data: BodyType<ImportRecipeScreenshotBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importRecipeScreenshot>>,
+  TError,
+  { data: BodyType<ImportRecipeScreenshotBody> },
+  TContext
+> => {
+  return useMutation(getImportRecipeScreenshotMutationOptions(options));
 };
 
 /**

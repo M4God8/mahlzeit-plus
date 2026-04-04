@@ -50,6 +50,13 @@
       "when": 1744070400000,
       "tag": "0006_align_user_settings_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1744156800000,
+      "tag": "0007_recipe_source",
+      "breakpoints": true
     }
   ]
 }

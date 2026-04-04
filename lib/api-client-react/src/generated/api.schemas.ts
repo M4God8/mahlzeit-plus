@@ -88,6 +88,10 @@ export interface Recipe {
   aiGenerated: boolean;
   energyType: string;
   isPublic: boolean;
+  /** @nullable */
+  source?: string | null;
+  /** @nullable */
+  sourceNote?: string | null;
   createdAt: string;
   ingredients: RecipeIngredient[];
 }
@@ -113,6 +117,8 @@ export interface RecipeInput {
   tags?: string[];
   energyType: string;
   isPublic?: boolean;
+  source?: string;
+  sourceNote?: string;
   ingredients?: RecipeInputIngredientsItem[];
 }
 
@@ -475,6 +481,14 @@ export type ListRecipesParams = {
   energyType?: string;
   search?: string;
   tags?: string;
+};
+
+export type ImportRecipeScreenshotBody = {
+  images: Blob[];
+};
+
+export type ImportRecipeScreenshot400 = {
+  error: string;
 };
 
 export type CopyMealPlanBody = {

@@ -5,13 +5,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Search, Clock, Plus, Book, Leaf } from "lucide-react";
+import { Loader2, Search, Clock, Plus, Book, Leaf, Camera } from "lucide-react";
+import ScreenshotImportModal from "./ScreenshotImportModal";
 
 export default function RecipeList() {
   const [search, setSearch] = useState("");
   const [energyType, setEnergyType] = useState<string>("");
+  const [showImportModal, setShowImportModal] = useState(false);
 
-  const { data: recipes, isLoading } = useListRecipes({ 
+  const { data: recipes, isLoading, refetch } = useListRecipes({ 
     search: search || undefined,
     energyType: energyType || undefined
   });
@@ -26,11 +28,13 @@ export default function RecipeList() {
             <h2 className="font-display text-4xl font-bold text-primary">Rezepte</h2>
             <p className="text-muted-foreground mt-1">Deine Sammlung</p>
           </div>
-          <Link href="/rezepte/neu" data-testid="link-new-recipe">
-            <Button size="icon" className="rounded-full shadow-sm bg-primary text-primary-foreground hover:bg-primary/90">
-              <Plus className="w-5 h-5" />
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/rezepte/neu" data-testid="link-new-recipe">
+              <Button size="icon" className="rounded-full shadow-sm bg-primary text-primary-foreground hover:bg-primary/90">
+                <Plus className="w-5 h-5" />
+              </Button>
+            </Link>
+          </div>
         </div>
         
         <div className="relative mb-4">
@@ -43,6 +47,16 @@ export default function RecipeList() {
             data-testid="input-search-recipes"
           />
         </div>
+
+        <Button
+          variant="outline"
+          className="w-full mb-4 gap-2"
+          onClick={() => setShowImportModal(true)}
+          data-testid="btn-import-screenshot"
+        >
+          <Camera className="w-4 h-4" />
+          Rezept aus Screenshot importieren
+        </Button>
 
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-hide">
           <Badge 
@@ -129,6 +143,12 @@ export default function RecipeList() {
           </div>
         )}
       </main>
+
+      <ScreenshotImportModal
+        open={showImportModal}
+        onOpenChange={setShowImportModal}
+        onRecipeSaved={() => refetch()}
+      />
     </div>
   );
 }
