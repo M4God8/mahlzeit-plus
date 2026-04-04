@@ -48,6 +48,8 @@ Tabellen in `lib/db/src/schema/`:
 - `ai_generations` — KI-Anfragen-Log (userId, type, input, output, model, inputTokens, outputTokens, costEur)
 - `meal_feedback` — Mahlzeit-Feedback (thumbs_up/thumbs_down)
 - `user_settings` hat zusätzlich: role (user/admin), isPremium, premiumExpiresAt, isBlocked, createdAt
+- `coaching_products` — Coaching-Produkte (name, description, url, tags[], triggerKeywords[], isActive)
+- `chat_sessions` — Chat-Session-Tracking (userId, messageCount, totalTokens — kein Chat-Inhalt)
 
 ### DB-Befehle
 ```bash
@@ -105,6 +107,12 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | GET | /api/costs/recipe/:id | Ja | Kostenberechnung für ein Rezept (?servings=N optional) |
 | GET | /api/costs/shopping-list/:id | Ja | Wochenkosten für eine Einkaufsliste |
 | GET | /api/costs/today | Ja | Tageskosten für heutige Mahlzeiten |
+| POST | /api/chat/message | Ja | Chat-Nachricht an Bewussten Begleiter (Platzhalter-Antwort) |
+| GET | /api/admin/products | Admin | Coaching-Produkte auflisten |
+| POST | /api/admin/products | Admin | Coaching-Produkt erstellen |
+| GET | /api/admin/products/:id | Admin | Coaching-Produkt abrufen |
+| PATCH | /api/admin/products/:id | Admin | Coaching-Produkt aktualisieren |
+| DELETE | /api/admin/products/:id | Admin | Coaching-Produkt löschen |
 
 ## Frontend-Seiten (wouter)
 

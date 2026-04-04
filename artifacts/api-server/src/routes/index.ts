@@ -12,6 +12,8 @@ import scannerRouter from "./scanner";
 import learnRouter from "./learn";
 import adminRouter from "./admin";
 import costsRouter from "./costs";
+import chatRouter from "./chat";
+import coachingProductsRouter from "./coachingProducts";
 
 const router: IRouter = Router();
 
@@ -28,5 +30,7 @@ router.use(scannerRouter);
 router.use(learnRouter);
 router.use(adminRouter);
 router.use(costsRouter);
+router.use(chatRouter);
+router.use(coachingProductsRouter);
 
 export default router;

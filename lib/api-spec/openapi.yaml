@@ -30,6 +30,10 @@ tags:
     description: Learning profile and personalisation aggregation
   - name: costs
     description: Cost estimation operations
+  - name: chat
+    description: Bewusster Begleiter chat operations
+  - name: coaching-products
+    description: Coaching products admin CRUD
 
 paths:
   /healthz:
@@ -1043,6 +1047,126 @@ paths:
                 items:
                   $ref: "#/components/schemas/ScannedProduct"
 
+  /chat/message:
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send a message to the Bewusster Begleiter chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "200":
+          description: Chat reply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageReply"
+        "400":
+          description: Invalid message
+        "401":
+          description: Unauthorized
+
+  /admin/products:
+    get:
+      operationId: listCoachingProducts
+      tags: [coaching-products]
+      summary: List all coaching products (admin)
+      responses:
+        "200":
+          description: List of coaching products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoachingProduct"
+        "403":
+          description: Forbidden
+    post:
+      operationId: createCoachingProduct
+      tags: [coaching-products]
+      summary: Create a coaching product (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachingProductInput"
+      responses:
+        "201":
+          description: Created coaching product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachingProduct"
+        "403":
+          description: Forbidden
+
+  /admin/products/{id}:
+    get:
+      operationId: getCoachingProduct
+      tags: [coaching-products]
+      summary: Get a coaching product by ID (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Coaching product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachingProduct"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateCoachingProduct
+      tags: [coaching-products]
+      summary: Update a coaching product (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoachingProductUpdate"
+      responses:
+        "200":
+          description: Updated coaching product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoachingProduct"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteCoachingProduct
+      tags: [coaching-products]
+      summary: Delete a coaching product (admin)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+
 components:
   schemas:
     HealthStatus:
@@ -1992,3 +2116,112 @@ components:
         - max
         - avg
         - meals
+
+    ChatMessageInput:
+      type: object
+      properties:
+        message:
+          type: string
+        history:
+          type: array
+          items:
+            type: object
+            properties:
+              role:
+                type: string
+                enum: [user, assistant]
+              content:
+                type: string
+            required:
+              - role
+              - content
+      required:
+        - message
+
+    ChatMessageReply:
+      type: object
+      properties:
+        reply:
+          type: string
+      required:
+        - reply
+
+    CoachingProduct:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        triggerKeywords:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - description
+        - url
+        - tags
+        - triggerKeywords
+        - isActive
+        - createdAt
+        - updatedAt
+
+    CoachingProductInput:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        triggerKeywords:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean
+      required:
+        - name
+
+    CoachingProductUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        triggerKeywords:
+          type: array
+          items:
+            type: string
+        isActive:
+          type: boolean

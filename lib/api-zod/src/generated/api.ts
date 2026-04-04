@@ -1232,3 +1232,106 @@ export const GetScanHistoryResponseItem = zod.object({
   scannedAt: zod.string(),
 });
 export const GetScanHistoryResponse = zod.array(GetScanHistoryResponseItem);
+
+/**
+ * @summary Send a message to the Bewusster Begleiter chat
+ */
+export const SendChatMessageBody = zod.object({
+  message: zod.string(),
+  history: zod
+    .array(
+      zod.object({
+        role: zod.enum(["user", "assistant"]),
+        content: zod.string(),
+      }),
+    )
+    .optional(),
+});
+
+export const SendChatMessageResponse = zod.object({
+  reply: zod.string(),
+});
+
+/**
+ * @summary List all coaching products (admin)
+ */
+export const ListCoachingProductsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string(),
+  url: zod.string(),
+  tags: zod.array(zod.string()),
+  triggerKeywords: zod.array(zod.string()),
+  isActive: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListCoachingProductsResponse = zod.array(
+  ListCoachingProductsResponseItem,
+);
+
+/**
+ * @summary Create a coaching product (admin)
+ */
+export const CreateCoachingProductBody = zod.object({
+  name: zod.string(),
+  description: zod.string().optional(),
+  url: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
+  triggerKeywords: zod.array(zod.string()).optional(),
+  isActive: zod.boolean().optional(),
+});
+
+/**
+ * @summary Get a coaching product by ID (admin)
+ */
+export const GetCoachingProductParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetCoachingProductResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string(),
+  url: zod.string(),
+  tags: zod.array(zod.string()),
+  triggerKeywords: zod.array(zod.string()),
+  isActive: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a coaching product (admin)
+ */
+export const UpdateCoachingProductParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCoachingProductBody = zod.object({
+  name: zod.string().optional(),
+  description: zod.string().optional(),
+  url: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
+  triggerKeywords: zod.array(zod.string()).optional(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateCoachingProductResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  description: zod.string(),
+  url: zod.string(),
+  tags: zod.array(zod.string()),
+  triggerKeywords: zod.array(zod.string()),
+  isActive: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a coaching product (admin)
+ */
+export const DeleteCoachingProductParams = zod.object({
+  id: zod.coerce.number(),
+});

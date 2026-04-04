@@ -26,6 +26,11 @@ import type {
   AiRecipeOutput,
   AiSubstituteInput,
   AiSubstituteOutput,
+  ChatMessageInput,
+  ChatMessageReply,
+  CoachingProduct,
+  CoachingProductInput,
+  CoachingProductUpdate,
   CopyMealPlanBody,
   CostEstimate,
   GetRecipeCostParams,
@@ -4328,3 +4333,508 @@ export function useGetScanHistory<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Send a message to the Bewusster Begleiter chat
+ */
+export const getSendChatMessageUrl = () => {
+  return `/api/chat/message`;
+};
+
+export const sendChatMessage = async (
+  chatMessageInput: ChatMessageInput,
+  options?: RequestInit,
+): Promise<ChatMessageReply> => {
+  return customFetch<ChatMessageReply>(getSendChatMessageUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(chatMessageInput),
+  });
+};
+
+export const getSendChatMessageMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendChatMessage>>,
+    TError,
+    { data: BodyType<ChatMessageInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendChatMessage>>,
+  TError,
+  { data: BodyType<ChatMessageInput> },
+  TContext
+> => {
+  const mutationKey = ["sendChatMessage"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendChatMessage>>,
+    { data: BodyType<ChatMessageInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return sendChatMessage(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendChatMessageMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendChatMessage>>
+>;
+export type SendChatMessageMutationBody = BodyType<ChatMessageInput>;
+export type SendChatMessageMutationError = ErrorType<void>;
+
+/**
+ * @summary Send a message to the Bewusster Begleiter chat
+ */
+export const useSendChatMessage = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendChatMessage>>,
+    TError,
+    { data: BodyType<ChatMessageInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendChatMessage>>,
+  TError,
+  { data: BodyType<ChatMessageInput> },
+  TContext
+> => {
+  return useMutation(getSendChatMessageMutationOptions(options));
+};
+
+/**
+ * @summary List all coaching products (admin)
+ */
+export const getListCoachingProductsUrl = () => {
+  return `/api/admin/products`;
+};
+
+export const listCoachingProducts = async (
+  options?: RequestInit,
+): Promise<CoachingProduct[]> => {
+  return customFetch<CoachingProduct[]>(getListCoachingProductsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCoachingProductsQueryKey = () => {
+  return [`/api/admin/products`] as const;
+};
+
+export const getListCoachingProductsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCoachingProducts>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCoachingProducts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCoachingProductsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCoachingProducts>>
+  > = ({ signal }) => listCoachingProducts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCoachingProducts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCoachingProductsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCoachingProducts>>
+>;
+export type ListCoachingProductsQueryError = ErrorType<void>;
+
+/**
+ * @summary List all coaching products (admin)
+ */
+
+export function useListCoachingProducts<
+  TData = Awaited<ReturnType<typeof listCoachingProducts>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCoachingProducts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCoachingProductsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a coaching product (admin)
+ */
+export const getCreateCoachingProductUrl = () => {
+  return `/api/admin/products`;
+};
+
+export const createCoachingProduct = async (
+  coachingProductInput: CoachingProductInput,
+  options?: RequestInit,
+): Promise<CoachingProduct> => {
+  return customFetch<CoachingProduct>(getCreateCoachingProductUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(coachingProductInput),
+  });
+};
+
+export const getCreateCoachingProductMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCoachingProduct>>,
+    TError,
+    { data: BodyType<CoachingProductInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCoachingProduct>>,
+  TError,
+  { data: BodyType<CoachingProductInput> },
+  TContext
+> => {
+  const mutationKey = ["createCoachingProduct"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCoachingProduct>>,
+    { data: BodyType<CoachingProductInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createCoachingProduct(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCoachingProductMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCoachingProduct>>
+>;
+export type CreateCoachingProductMutationBody = BodyType<CoachingProductInput>;
+export type CreateCoachingProductMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a coaching product (admin)
+ */
+export const useCreateCoachingProduct = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCoachingProduct>>,
+    TError,
+    { data: BodyType<CoachingProductInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCoachingProduct>>,
+  TError,
+  { data: BodyType<CoachingProductInput> },
+  TContext
+> => {
+  return useMutation(getCreateCoachingProductMutationOptions(options));
+};
+
+/**
+ * @summary Get a coaching product by ID (admin)
+ */
+export const getGetCoachingProductUrl = (id: number) => {
+  return `/api/admin/products/${id}`;
+};
+
+export const getCoachingProduct = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CoachingProduct> => {
+  return customFetch<CoachingProduct>(getGetCoachingProductUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCoachingProductQueryKey = (id: number) => {
+  return [`/api/admin/products/${id}`] as const;
+};
+
+export const getGetCoachingProductQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCoachingProduct>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCoachingProduct>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCoachingProductQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCoachingProduct>>
+  > = ({ signal }) => getCoachingProduct(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCoachingProduct>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCoachingProductQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCoachingProduct>>
+>;
+export type GetCoachingProductQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a coaching product by ID (admin)
+ */
+
+export function useGetCoachingProduct<
+  TData = Awaited<ReturnType<typeof getCoachingProduct>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCoachingProduct>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCoachingProductQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a coaching product (admin)
+ */
+export const getUpdateCoachingProductUrl = (id: number) => {
+  return `/api/admin/products/${id}`;
+};
+
+export const updateCoachingProduct = async (
+  id: number,
+  coachingProductUpdate: CoachingProductUpdate,
+  options?: RequestInit,
+): Promise<CoachingProduct> => {
+  return customFetch<CoachingProduct>(getUpdateCoachingProductUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(coachingProductUpdate),
+  });
+};
+
+export const getUpdateCoachingProductMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCoachingProduct>>,
+    TError,
+    { id: number; data: BodyType<CoachingProductUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCoachingProduct>>,
+  TError,
+  { id: number; data: BodyType<CoachingProductUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateCoachingProduct"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCoachingProduct>>,
+    { id: number; data: BodyType<CoachingProductUpdate> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCoachingProduct(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCoachingProductMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCoachingProduct>>
+>;
+export type UpdateCoachingProductMutationBody = BodyType<CoachingProductUpdate>;
+export type UpdateCoachingProductMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a coaching product (admin)
+ */
+export const useUpdateCoachingProduct = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCoachingProduct>>,
+    TError,
+    { id: number; data: BodyType<CoachingProductUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCoachingProduct>>,
+  TError,
+  { id: number; data: BodyType<CoachingProductUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateCoachingProductMutationOptions(options));
+};
+
+/**
+ * @summary Delete a coaching product (admin)
+ */
+export const getDeleteCoachingProductUrl = (id: number) => {
+  return `/api/admin/products/${id}`;
+};
+
+export const deleteCoachingProduct = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCoachingProductUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCoachingProductMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCoachingProduct>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCoachingProduct>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteCoachingProduct"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCoachingProduct>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCoachingProduct(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCoachingProductMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCoachingProduct>>
+>;
+
+export type DeleteCoachingProductMutationError = ErrorType<void>;
+
+/**
+ * @summary Delete a coaching product (admin)
+ */
+export const useDeleteCoachingProduct = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCoachingProduct>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCoachingProduct>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteCoachingProductMutationOptions(options));
+};

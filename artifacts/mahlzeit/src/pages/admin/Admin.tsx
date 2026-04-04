@@ -2,7 +2,8 @@ import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Redirect } from "wouter";
 import { useUser, Show } from "@clerk/react";
-import { Loader2, Users, CreditCard, Activity, TrendingUp, AlertTriangle, ShieldCheck, ShieldOff, Ban, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Loader2, Users, CreditCard, Activity, TrendingUp, AlertTriangle, ShieldCheck, ShieldOff, Ban, CheckCircle, XCircle, Clock, Package } from "lucide-react";
+import { ProductsPanel } from "./ProductsPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -684,6 +685,7 @@ function AdminDashboard() {
           <TabsList>
             <TabsTrigger value="users">User</TabsTrigger>
             <TabsTrigger value="costs">Kosten</TabsTrigger>
+            <TabsTrigger value="products">Produkte</TabsTrigger>
             <TabsTrigger value="health">System Health</TabsTrigger>
           </TabsList>
 
@@ -693,6 +695,10 @@ function AdminDashboard() {
 
           <TabsContent value="costs">
             <CostsPanel />
+          </TabsContent>
+
+          <TabsContent value="products">
+            <ProductsPanel />
           </TabsContent>
 
           <TabsContent value="health">

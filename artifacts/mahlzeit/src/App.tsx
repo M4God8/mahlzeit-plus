@@ -25,6 +25,7 @@ import AdminPage from "@/pages/admin/Admin";
 import NotFound from "@/pages/not-found";
 
 import { BottomNav } from "@/components/layout/BottomNav";
+import { ChatWidget } from "@/components/chat/ChatWidget";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -161,6 +162,7 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-[100dvh] bg-background text-foreground pb-20">
       {children}
       <BottomNav />
+      <ChatWidget />
     </div>
   );
 }

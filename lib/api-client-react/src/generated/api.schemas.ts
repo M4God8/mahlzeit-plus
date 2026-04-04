@@ -478,6 +478,58 @@ export interface TodayCost {
   meals: MealCost[];
 }
 
+export type ChatMessageInputHistoryItemRole =
+  (typeof ChatMessageInputHistoryItemRole)[keyof typeof ChatMessageInputHistoryItemRole];
+
+export const ChatMessageInputHistoryItemRole = {
+  user: "user",
+  assistant: "assistant",
+} as const;
+
+export type ChatMessageInputHistoryItem = {
+  role: ChatMessageInputHistoryItemRole;
+  content: string;
+};
+
+export interface ChatMessageInput {
+  message: string;
+  history?: ChatMessageInputHistoryItem[];
+}
+
+export interface ChatMessageReply {
+  reply: string;
+}
+
+export interface CoachingProduct {
+  id: number;
+  name: string;
+  description: string;
+  url: string;
+  tags: string[];
+  triggerKeywords: string[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CoachingProductInput {
+  name: string;
+  description?: string;
+  url?: string;
+  tags?: string[];
+  triggerKeywords?: string[];
+  isActive?: boolean;
+}
+
+export interface CoachingProductUpdate {
+  name?: string;
+  description?: string;
+  url?: string;
+  tags?: string[];
+  triggerKeywords?: string[];
+  isActive?: boolean;
+}
+
 export type ListIngredientsParams = {
   category?: string;
   search?: string;
