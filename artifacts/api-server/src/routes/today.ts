@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { mealPlansTable, mealPlanDaysTable, mealEntriesTable, recipesTable, fridgeItemsTable, ingredientsTable } from "@workspace/db";
+import { mealPlansTable, mealPlanDaysTable, mealEntriesTable, recipesTable, fridgeItemsTable, ingredientsTable, userSettingsTable } from "@workspace/db";
 import { eq, and, inArray, gte, lte } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 
@@ -18,6 +18,8 @@ interface TodayMealEntry {
   recipeId: number | null;
   energyType: string | null;
   overrideCookTime: number | null;
+  overrideServings: number | null;
+  mealPlanDayId: number | null;
 }
 
 router.get("/today", requireAuth, async (req, res): Promise<void> => {
@@ -27,10 +29,11 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
     const dateStr = now.toISOString().split("T")[0];
     const dayName = GERMAN_DAYS[now.getDay()];
 
-    const [activePlan] = await db
-      .select()
-      .from(mealPlansTable)
-      .where(and(eq(mealPlansTable.userId, userId), eq(mealPlansTable.active, true)));
+    const [[activePlan], [userSettings]] = await Promise.all([
+      db.select().from(mealPlansTable).where(and(eq(mealPlansTable.userId, userId), eq(mealPlansTable.active, true))),
+      db.select().from(userSettingsTable).where(eq(userSettingsTable.userId, userId)),
+    ]);
+    const householdSize = userSettings?.householdSize ?? 2;
 
     if (!activePlan) {
       const twoDaysFromNow2 = new Date();
@@ -58,6 +61,7 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
         meals: [] as TodayMealEntry[],
         hasPlan: false,
         expiringItems: earlyExpiring,
+        householdSize: userSettings?.householdSize ?? 2,
       });
       return;
     }
@@ -82,8 +86,10 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
         date: dateStr,
         dayName,
         planTitle: activePlan.title,
+        planId: activePlan.id,
         meals: [] as TodayMealEntry[],
         hasPlan: true,
+        householdSize,
       });
       return;
     }
@@ -95,6 +101,8 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
         recipeId: mealEntriesTable.recipeId,
         customNote: mealEntriesTable.customNote,
         overrideCookTime: mealEntriesTable.overrideCookTime,
+        overrideServings: mealEntriesTable.overrideServings,
+        mealPlanDayId: mealEntriesTable.mealPlanDayId,
         recipeTitle: recipesTable.title,
         recipeCookTime: recipesTable.cookTime,
         recipePrepTime: recipesTable.prepTime,
@@ -132,6 +140,7 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
       date: dateStr,
       dayName,
       planTitle: activePlan.title,
+      planId: activePlan.id,
       meals: sortedEntries.map((e): TodayMealEntry => ({
         id: e.id,
         mealType: e.mealType,
@@ -142,9 +151,12 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
         recipeId: e.recipeId,
         energyType: e.recipeEnergyType ?? null,
         overrideCookTime: e.overrideCookTime,
+        overrideServings: e.overrideServings,
+        mealPlanDayId: e.mealPlanDayId,
       })),
       hasPlan: true,
       expiringItems: expiringRows,
+      householdSize: userSettings?.householdSize ?? 2,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get today's meals");

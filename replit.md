@@ -44,7 +44,7 @@ Tabellen in `lib/db/src/schema/`:
 - `user_settings` — Benutzereinstellungen (activeProfileIds int[], Haushaltsgröße, Budget, Kochzeit, role, blocked, premiumUntil, createdAt)
 - `ingredients` — 60 Zutaten mit Kategorien, Bio-Empfehlung und Preisfelder (price_min, price_max, price_avg, price_unit, price_updated_at)
 - `recipes` + `recipe_ingredients` — Rezepte mit Zutaten (10 Starterrezepte), source TEXT (manual|screenshot|ai_generated|tiktok), source_note TEXT
-- `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne
+- `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne (meal_entries hat `override_servings` nullable INTEGER für portionsweise Überschreibung)
 - `ai_generations` — KI-Anfragen-Log (userId, type, input, output, model, inputTokens, outputTokens, costEur)
 - `meal_feedback` — Mahlzeit-Feedback (thumbs_up/thumbs_down)
 - `user_settings` hat zusätzlich: role (user/admin), isPremium, premiumExpiresAt, isBlocked, createdAt
@@ -92,7 +92,8 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | POST | /api/meal-plans/:id/days/:dayId/entries | Ja | Mahlzeiteintrag hinzufügen |
 | PATCH | /api/meal-plans/:id/days/:dayId/entries/:entryId | Ja | Eintrag aktualisieren |
 | DELETE | /api/meal-plans/:id/days/:dayId/entries/:entryId | Ja | Eintrag löschen |
-| GET | /api/today | Ja | Heutige Mahlzeiten |
+| PATCH | /api/meal-plans/:id/days/:dayId/entries/:entryId/servings | Ja | Portionen-Override setzen |
+| GET | /api/today | Ja | Heutige Mahlzeiten (inkl. householdSize, overrideServings) |
 | POST | /api/ai/generate-recipe | Ja | KI: Rezept generieren (Claude) |
 | POST | /api/ai/generate-plan | Ja | KI: Wochenplan generieren (Claude) |
 | POST | /api/ai/adjust-recipe | Ja | KI: Rezept anpassen (Claude) |

@@ -614,6 +614,41 @@ paths:
         "204":
           description: Deleted
 
+  /meal-plans/{id}/days/{dayId}/entries/{entryId}/servings:
+    patch:
+      operationId: updateMealEntryServings
+      tags: [meal-plans]
+      summary: Update the servings override for a meal entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: dayId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateServingsInput"
+      responses:
+        "200":
+          description: Updated servings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MealEntry"
+
   /today:
     get:
       operationId: getTodayMeals
@@ -1484,6 +1519,8 @@ components:
           type: ["string", "null"]
         overrideCookTime:
           type: ["integer", "null"]
+        overrideServings:
+          type: ["integer", "null"]
         recipe:
           oneOf:
             - $ref: "#/components/schemas/Recipe"
@@ -1628,6 +1665,10 @@ components:
           type: ["string", "null"]
         overrideCookTime:
           type: ["integer", "null"]
+        overrideServings:
+          type: ["integer", "null"]
+        mealPlanDayId:
+          type: ["integer", "null"]
       required:
         - id
         - mealType
@@ -1641,6 +1682,8 @@ components:
           type: string
         planTitle:
           type: ["string", "null"]
+        planId:
+          type: ["integer", "null"]
         meals:
           type: array
           items:
@@ -1651,6 +1694,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ExpiringFridgeItem"
+        householdSize:
+          type: integer
       required:
         - date
         - dayName
@@ -1911,6 +1956,14 @@ components:
       required:
         - preferences
 
+    UpdateServingsInput:
+      type: object
+      properties:
+        overrideServings:
+          type: ["integer", "null"]
+      required:
+        - overrideServings
+
     AiAdjustRecipeInput:
       type: object
       properties:
@@ -1918,6 +1971,8 @@ components:
           type: integer
         adjustmentPrompt:
           type: string
+        overrideServings:
+          type: integer
       required:
         - recipeId
         - adjustmentPrompt
@@ -1933,6 +1988,8 @@ components:
             type: string
         reason:
           type: string
+        overrideServings:
+          type: integer
       required:
         - recipeId
         - ingredients

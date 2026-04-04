@@ -71,6 +71,13 @@
       "when": 1744329600000,
       "tag": "0009_chat_coaching_products",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1744416000000,
+      "tag": "0005_override_servings",
+      "breakpoints": true
     }
   ]
 }

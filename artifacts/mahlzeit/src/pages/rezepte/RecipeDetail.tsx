@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { Link, useRoute, useLocation } from "wouter";
-import { useGetRecipe, useDeleteRecipe, useAiAdjustRecipe, useAiSubstituteIngredient, useGetRecipeCost } from "@workspace/api-client-react";
+import { useState, useCallback, useMemo } from "react";
+import { Link, useRoute, useLocation, useSearch } from "wouter";
+import { useGetRecipe, useDeleteRecipe, useAiAdjustRecipe, useAiSubstituteIngredient, useGetRecipeCost, useUpdateMealEntryServings, useGetUserSettings } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, Clock, Users, Flame, ChefHat, Trash2, Edit2, Loader2, Sparkles, RefreshCw, ChevronDown, ChevronUp, ArrowLeftRight, Euro } from "lucide-react";
+import { ChevronLeft, Clock, Users, Flame, ChefHat, Trash2, Edit2, Loader2, Sparkles, RefreshCw, ChevronDown, ChevronUp, ArrowLeftRight, Euro, Minus, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -14,13 +14,25 @@ export default function RecipeDetail() {
   const [, params] = useRoute("/rezepte/:id");
   const id = params?.id ? parseInt(params.id) : 0;
   const [, setLocation] = useLocation();
+  const searchString = useSearch();
   const { toast } = useToast();
+
+  const queryParams = useMemo(() => new URLSearchParams(searchString), [searchString]);
+  const mealEntryId = queryParams.get("mealEntryId") ? parseInt(queryParams.get("mealEntryId")!) : null;
+  const mealPlanDayId = queryParams.get("mealPlanDayId") ? parseInt(queryParams.get("mealPlanDayId")!) : null;
+  const planId = queryParams.get("planId") ? parseInt(queryParams.get("planId")!) : null;
+  const initialOverride = queryParams.get("overrideServings") ? parseInt(queryParams.get("overrideServings")!) : null;
+  const householdSizeParam = queryParams.get("householdSize") ? parseInt(queryParams.get("householdSize")!) : null;
+
+  const { data: userSettings } = useGetUserSettings({ query: { enabled: !!mealEntryId && !householdSizeParam, queryKey: ["/api/user-settings"] } });
+  const householdSize = householdSizeParam ?? userSettings?.householdSize ?? null;
 
   const [showAiTools, setShowAiTools] = useState(false);
   const [adjustPrompt, setAdjustPrompt] = useState("");
   const [adjustedRecipe, setAdjustedRecipe] = useState<AiRecipeOutput | null>(null);
   const [substituteResult, setSubstituteResult] = useState<AiSubstituteOutput | null>(null);
   const [substitutingIngredient, setSubstitutingIngredient] = useState<string | null>(null);
+  const [overrideServings, setOverrideServings] = useState<number | null>(initialOverride);
 
   const { data: recipe, isLoading } = useGetRecipe(id, {
     query: { enabled: !!id, queryKey: ["/api/recipes", id.toString()] }
@@ -56,16 +68,27 @@ export default function RecipeDetail() {
     },
   });
 
+  const servingsMutation = useUpdateMealEntryServings({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Portionen gespeichert" });
+      },
+      onError: () => {
+        toast({ title: "Fehler", description: "Portionen konnten nicht gespeichert werden.", variant: "destructive" });
+      },
+    },
+  });
+
   const handleAdjust = () => {
     if (!adjustPrompt.trim()) return;
-    adjustMutation.mutate({ data: { recipeId: id, adjustmentPrompt: adjustPrompt } });
+    adjustMutation.mutate({ data: { recipeId: id, adjustmentPrompt: adjustPrompt, overrideServings: overrideServings ?? undefined } });
   };
 
   const handleSubstituteIngredient = (ingredientName: string) => {
     setSubstitutingIngredient(ingredientName);
     setSubstituteResult(null);
     setShowAiTools(true);
-    substituteMutation.mutate({ data: { recipeId: id, ingredients: [ingredientName] } });
+    substituteMutation.mutate({ data: { recipeId: id, ingredients: [ingredientName], overrideServings: overrideServings ?? undefined } });
   };
 
   const handleDelete = () => {
@@ -79,6 +102,34 @@ export default function RecipeDetail() {
       }
     });
   };
+
+  const baseServings = recipe?.servings ?? 2;
+  const effectiveDefault = mealEntryId ? (householdSize ?? baseServings) : baseServings;
+  const displayServings = mealEntryId ? (overrideServings ?? effectiveDefault) : baseServings;
+
+  const scaleAmount = useCallback((amount: number | string): string => {
+    const num = typeof amount === "string" ? parseFloat(String(amount).replace(",", ".")) : amount;
+    if (isNaN(num)) return String(amount);
+    const scaled = (num / baseServings) * displayServings;
+    return String(Math.round(scaled * 100) / 100);
+  }, [baseServings, displayServings]);
+
+  const saveServingsOverride = useCallback((newServings: number | null) => {
+    if (!mealEntryId || !mealPlanDayId || !planId) return;
+    servingsMutation.mutate({
+      id: planId,
+      dayId: mealPlanDayId,
+      entryId: mealEntryId,
+      data: { overrideServings: newServings },
+    });
+  }, [mealEntryId, mealPlanDayId, planId, servingsMutation]);
+
+  const handleServingsChange = useCallback((delta: number) => {
+    const newValue = Math.max(1, Math.min(50, displayServings + delta));
+    const newOverride = newValue === effectiveDefault ? null : newValue;
+    setOverrideServings(newOverride);
+    saveServingsOverride(newOverride);
+  }, [displayServings, effectiveDefault, saveServingsOverride]);
 
   if (isLoading) {
     return (
@@ -181,7 +232,32 @@ export default function RecipeDetail() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Portionen</p>
-              <p className="font-mono font-medium">{recipe.servings}</p>
+              {mealEntryId ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => handleServingsChange(-1)}
+                    disabled={displayServings <= 1 || servingsMutation.isPending}
+                    className="w-6 h-6 rounded-full bg-muted flex items-center justify-center hover:bg-muted-foreground/20 disabled:opacity-40 transition-colors"
+                    data-testid="btn-servings-minus"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <span className="font-mono font-medium min-w-[1.5rem] text-center" data-testid="servings-display">
+                    {displayServings}
+                  </span>
+                  <button
+                    onClick={() => handleServingsChange(1)}
+                    disabled={displayServings >= 50 || servingsMutation.isPending}
+                    className="w-6 h-6 rounded-full bg-muted flex items-center justify-center hover:bg-muted-foreground/20 disabled:opacity-40 transition-colors"
+                    data-testid="btn-servings-plus"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                  {servingsMutation.isPending && <Loader2 className="w-3 h-3 animate-spin text-muted-foreground ml-1" />}
+                </div>
+              ) : (
+                <p className="font-mono font-medium">{recipe.servings}</p>
+              )}
             </div>
           </div>
 
@@ -226,7 +302,7 @@ export default function RecipeDetail() {
                   return (
                     <li key={i} className="flex items-center gap-2 p-3 rounded-xl bg-muted/30 group">
                       <span className="font-medium flex-1">{ingName}</span>
-                      <span className="font-mono text-primary font-semibold text-sm">{ing.amount} {ing.unit}</span>
+                      <span className="font-mono text-primary font-semibold text-sm">{scaleAmount(ing.amount)} {ing.unit}</span>
                       <Button
                         variant="ghost"
                         size="sm"

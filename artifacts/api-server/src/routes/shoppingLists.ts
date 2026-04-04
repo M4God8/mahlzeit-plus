@@ -12,6 +12,8 @@ import {
   ingredientsTable,
   fridgeItemsTable,
   spoilageDefaultsTable,
+  userSettingsTable,
+  recipesTable,
 } from "@workspace/db";
 import { requireAuth } from "../middlewares/requireAuth";
 import type { ShoppingList, ShoppingListItem, MealEntry } from "@workspace/db";
@@ -157,10 +159,33 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
           .where(inArray(mealEntriesTable.mealPlanDayId, dayIds))
       : [];
 
-    const recipeOccurrences = new Map<number, number>();
+    const [userSettings] = await db
+      .select()
+      .from(userSettingsTable)
+      .where(eq(userSettingsTable.userId, userId));
+    const householdSize = userSettings?.householdSize ?? 2;
+
+    type EntryInfo = { recipeId: number; servingsMultiplier: number };
+    const entryInfos: EntryInfo[] = [];
+    const recipeIds = new Set<number>();
     for (const entry of entries) {
       if (entry.recipeId !== null) {
-        recipeOccurrences.set(entry.recipeId, (recipeOccurrences.get(entry.recipeId) ?? 0) + 1);
+        recipeIds.add(entry.recipeId);
+        entryInfos.push({
+          recipeId: entry.recipeId,
+          servingsMultiplier: entry.overrideServings ?? householdSize,
+        });
+      }
+    }
+
+    const recipeBaseServingsMap = new Map<number, number>();
+    if (recipeIds.size > 0) {
+      const recipes = await db
+        .select({ id: recipesTable.id, servings: recipesTable.servings })
+        .from(recipesTable)
+        .where(inArray(recipesTable.id, [...recipeIds]));
+      for (const r of recipes) {
+        recipeBaseServingsMap.set(r.id, r.servings);
       }
     }
 
@@ -177,8 +202,9 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
 
     const mergedMap = new Map<string, MergedItem>();
 
-    for (const [recipeId, occurrenceCount] of recipeOccurrences) {
-      const ingredients = await db
+    const ingredientsCache = new Map<number, Awaited<ReturnType<typeof fetchRecipeIngredients>>>();
+    async function fetchRecipeIngredients(recipeId: number) {
+      return db
         .select({
           id: recipeIngredientsTable.id,
           ingredientId: recipeIngredientsTable.ingredientId,
@@ -193,6 +219,17 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
         .from(recipeIngredientsTable)
         .leftJoin(ingredientsTable, eq(recipeIngredientsTable.ingredientId, ingredientsTable.id))
         .where(eq(recipeIngredientsTable.recipeId, recipeId));
+    }
+
+    for (const info of entryInfos) {
+      let ingredients = ingredientsCache.get(info.recipeId);
+      if (!ingredients) {
+        ingredients = await fetchRecipeIngredients(info.recipeId);
+        ingredientsCache.set(info.recipeId, ingredients);
+      }
+
+      const baseServings = recipeBaseServingsMap.get(info.recipeId) ?? 2;
+      const scaleFactor = info.servingsMultiplier / baseServings;
 
       for (const ing of ingredients) {
         if (ing.optional) continue;
@@ -203,17 +240,15 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
         const parsed = tryParseAmount(ing.amount);
         const converted = parsed !== null ? convertToBase(parsed, ing.unit) : null;
         const singleAmount = converted?.amount ?? parsed;
-        const normalizedAmount = singleAmount !== null ? singleAmount * occurrenceCount : null;
+        const normalizedAmount = singleAmount !== null ? singleAmount * scaleFactor : null;
         const normalizedUnit = converted?.unit ?? baseUnit;
-
-        const rawAmountsForEntry = Array.from({ length: occurrenceCount }, () => ing.amount);
 
         const existing = mergedMap.get(key);
         if (existing) {
           if (normalizedAmount !== null && existing.hasNumericAmount) {
             existing.totalAmount = (existing.totalAmount ?? 0) + normalizedAmount;
           } else {
-            existing.rawAmounts.push(...rawAmountsForEntry);
+            existing.rawAmounts.push(ing.amount);
             existing.hasNumericAmount = false;
           }
         } else {
@@ -225,7 +260,7 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
             bioRecommended: ing.ingBio ?? false,
             ingredientId: ing.ingredientId,
             hasNumericAmount: normalizedAmount !== null,
-            rawAmounts: rawAmountsForEntry,
+            rawAmounts: [ing.amount],
           });
         }
       }

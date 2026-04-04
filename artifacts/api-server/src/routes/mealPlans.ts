@@ -21,6 +21,7 @@ interface MealEntryRow {
   customNote: string | null;
   timeSlot: string | null;
   overrideCookTime: number | null;
+  overrideServings: number | null;
   recipe: {
     id: number;
     userId: string | null;
@@ -67,6 +68,7 @@ async function getMealPlanWithDays(planId: number): Promise<MealPlanDetail | nul
           customNote: mealEntriesTable.customNote,
           timeSlot: mealEntriesTable.timeSlot,
           overrideCookTime: mealEntriesTable.overrideCookTime,
+          overrideServings: mealEntriesTable.overrideServings,
           recipeTitle: recipesTable.title,
           recipePrepTime: recipesTable.prepTime,
           recipeCookTime: recipesTable.cookTime,
@@ -96,6 +98,7 @@ async function getMealPlanWithDays(planId: number): Promise<MealPlanDetail | nul
           customNote: e.customNote,
           timeSlot: e.timeSlot ? String(e.timeSlot) : null,
           overrideCookTime: e.overrideCookTime,
+          overrideServings: e.overrideServings,
           recipe: e.recipeTitle ? {
             id: e.recipeId!,
             userId: e.recipeUserId,
@@ -391,6 +394,7 @@ router.post("/meal-plans/:id/copy", requireAuth, async (req, res): Promise<void>
             recipeId: e.recipeId,
             customNote: e.customNote,
             overrideCookTime: e.overrideCookTime,
+            overrideServings: e.overrideServings,
           }))
         );
       }
@@ -471,6 +475,7 @@ const mealEntryInputSchema = z.object({
   recipeId: z.number().int().nullable().optional(),
   customNote: z.string().nullable().optional(),
   overrideCookTime: z.number().int().nullable().optional(),
+  overrideServings: z.number().int().nullable().optional(),
 });
 
 router.post("/meal-plans/:id/days/:dayId/entries", requireAuth, async (req, res): Promise<void> => {
@@ -501,6 +506,7 @@ router.post("/meal-plans/:id/days/:dayId/entries", requireAuth, async (req, res)
       recipeId: parsed.data.recipeId ?? null,
       customNote: parsed.data.customNote ?? null,
       overrideCookTime: parsed.data.overrideCookTime ?? null,
+      overrideServings: parsed.data.overrideServings ?? null,
     }).returning();
 
     let recipe = null;
@@ -526,6 +532,7 @@ router.post("/meal-plans/:id/days/:dayId/entries", requireAuth, async (req, res)
       customNote: entry.customNote,
       timeSlot: entry.timeSlot ? String(entry.timeSlot) : null,
       overrideCookTime: entry.overrideCookTime,
+      overrideServings: entry.overrideServings,
       recipe,
     });
   } catch (err) {
@@ -565,6 +572,7 @@ router.put("/meal-plans/:id/days/:dayId/entries/:entryId", requireAuth, async (r
       recipeId: parsed.data.recipeId ?? null,
       customNote: parsed.data.customNote ?? null,
       overrideCookTime: parsed.data.overrideCookTime ?? null,
+      overrideServings: parsed.data.overrideServings ?? null,
     }).where(eq(mealEntriesTable.id, entryId)).returning();
 
     let recipe = null;
@@ -590,6 +598,7 @@ router.put("/meal-plans/:id/days/:dayId/entries/:entryId", requireAuth, async (r
       customNote: updated.customNote,
       timeSlot: updated.timeSlot ? String(updated.timeSlot) : null,
       overrideCookTime: updated.overrideCookTime,
+      overrideServings: updated.overrideServings,
       recipe,
     });
   } catch (err) {
@@ -619,6 +628,51 @@ router.delete("/meal-plans/:id/days/:dayId/entries/:entryId", requireAuth, async
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to delete meal entry");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+const updateServingsSchema = z.object({
+  overrideServings: z.number().int().min(1).max(50).nullable(),
+});
+
+router.patch("/meal-plans/:id/days/:dayId/entries/:entryId/servings", requireAuth, async (req, res): Promise<void> => {
+  try {
+    const userId = req.userId!;
+    const planId = parseInt(req.params["id"] as string);
+    const dayId = parseInt(req.params["dayId"] as string);
+    const entryId = parseInt(req.params["entryId"] as string);
+    if (isNaN(planId) || isNaN(dayId) || isNaN(entryId)) { res.status(400).json({ error: "Ungültige ID" }); return; }
+
+    const parsed = updateServingsSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "Ungültige Eingabe", details: parsed.error.flatten() }); return; }
+
+    const [plan] = await db.select().from(mealPlansTable).where(and(eq(mealPlansTable.id, planId), eq(mealPlansTable.userId, userId)));
+    if (!plan) { res.status(403).json({ error: "Zugriff verweigert" }); return; }
+
+    const [day] = await db.select().from(mealPlanDaysTable).where(and(eq(mealPlanDaysTable.id, dayId), eq(mealPlanDaysTable.mealPlanId, planId)));
+    if (!day) { res.status(404).json({ error: "Tag nicht gefunden" }); return; }
+
+    const [entry] = await db.select().from(mealEntriesTable).where(and(eq(mealEntriesTable.id, entryId), eq(mealEntriesTable.mealPlanDayId, dayId)));
+    if (!entry) { res.status(404).json({ error: "Eintrag nicht gefunden" }); return; }
+
+    const [updated] = await db
+      .update(mealEntriesTable)
+      .set({ overrideServings: parsed.data.overrideServings })
+      .where(eq(mealEntriesTable.id, entryId))
+      .returning();
+
+    res.json({
+      id: updated.id,
+      mealPlanDayId: updated.mealPlanDayId,
+      mealType: updated.mealType,
+      recipeId: updated.recipeId,
+      customNote: updated.customNote,
+      timeSlot: updated.timeSlot ? String(updated.timeSlot) : null,
+      overrideServings: updated.overrideServings,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update servings override");
     res.status(500).json({ error: "Internal server error" });
   }
 });

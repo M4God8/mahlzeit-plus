@@ -412,8 +412,10 @@ router.post("/ai/adjust-recipe", requireAuth, async (req, res) => {
     .leftJoin(ingredientsTable, eq(recipeIngredientsTable.ingredientId, ingredientsTable.id))
     .where(eq(recipeIngredientsTable.recipeId, recipe.id));
 
+  const portionen = body.overrideServings ?? ctx.householdSize;
   const systemPrompt = `Du bist ein Koch-Assistent. Du passt bestehende Rezepte an Nutzerwünsche an.
 Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.
+Portionen heute: ${portionen}
 
 Nutzerprofil:
 ${buildContextBlock(ctx)}`;
@@ -474,9 +476,11 @@ router.post("/ai/substitute-ingredient", requireAuth, async (req, res) => {
 
   const ctx = await getUserContext(userId);
 
+  const subPortionen = body.overrideServings ?? ctx.householdSize;
   const systemPrompt = `Du bist ein Koch-Experte für Zutaten-Substitutionen. 
 Du schlägst passende Alternativen für nicht verfügbare oder unerwünschte Zutaten vor.
 Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.
+Portionen heute: ${subPortionen}
 
 Nutzerprofil:
 ${buildContextBlock(ctx)}`;

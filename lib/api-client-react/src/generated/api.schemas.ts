@@ -134,6 +134,8 @@ export interface MealEntry {
   timeSlot?: string | null;
   /** @nullable */
   overrideCookTime?: number | null;
+  /** @nullable */
+  overrideServings?: number | null;
   recipe?: Recipe | null;
 }
 
@@ -204,6 +206,10 @@ export interface TodayMealEntry {
   energyType?: string | null;
   /** @nullable */
   overrideCookTime?: number | null;
+  /** @nullable */
+  overrideServings?: number | null;
+  /** @nullable */
+  mealPlanDayId?: number | null;
 }
 
 export interface ExpiringFridgeItem {
@@ -218,9 +224,12 @@ export interface TodaySummary {
   dayName: string;
   /** @nullable */
   planTitle?: string | null;
+  /** @nullable */
+  planId?: number | null;
   meals: TodayMealEntry[];
   hasPlan: boolean;
   expiringItems?: ExpiringFridgeItem[];
+  householdSize?: number;
 }
 
 export interface ShoppingListItem {
@@ -334,15 +343,22 @@ export interface AiGeneratePlanInput {
   weeksCount?: number;
 }
 
+export interface UpdateServingsInput {
+  /** @nullable */
+  overrideServings: number | null;
+}
+
 export interface AiAdjustRecipeInput {
   recipeId: number;
   adjustmentPrompt: string;
+  overrideServings?: number;
 }
 
 export interface AiSubstituteInput {
   recipeId: number;
   ingredients: string[];
   reason?: string;
+  overrideServings?: number;
 }
 
 export type AiFeedbackInputRating =

@@ -197,7 +197,7 @@ export default function Today() {
                         )}
                         <div className="ml-auto flex gap-2">
                           {meal.recipeId && (
-                            <Link href={`/rezepte/${meal.recipeId}`}>
+                            <Link href={`/rezepte/${meal.recipeId}?mealEntryId=${meal.id}&mealPlanDayId=${meal.mealPlanDayId ?? ""}&planId=${todaySummary?.planId ?? ""}${meal.overrideServings ? `&overrideServings=${meal.overrideServings}` : ""}&householdSize=${todaySummary?.householdSize ?? ""}`}>
                               <span className="text-xs text-primary font-medium hover:underline">Rezept</span>
                             </Link>
                           )}

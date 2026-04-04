@@ -378,6 +378,7 @@ export const CreateStarterMealPlanResponse = zod.object({
           customNote: zod.string().nullish(),
           timeSlot: zod.string().nullish(),
           overrideCookTime: zod.number().nullish(),
+          overrideServings: zod.number().nullish(),
           recipe: zod
             .union([
               zod.object({
@@ -442,6 +443,7 @@ export const GetActiveMealPlanResponse = zod.object({
           customNote: zod.string().nullish(),
           timeSlot: zod.string().nullish(),
           overrideCookTime: zod.number().nullish(),
+          overrideServings: zod.number().nullish(),
           recipe: zod
             .union([
               zod.object({
@@ -510,6 +512,7 @@ export const GetMealPlanResponse = zod.object({
           customNote: zod.string().nullish(),
           timeSlot: zod.string().nullish(),
           overrideCookTime: zod.number().nullish(),
+          overrideServings: zod.number().nullish(),
           recipe: zod
             .union([
               zod.object({
@@ -641,6 +644,7 @@ export const SwapMealPlanDaysResponse = zod.object({
           customNote: zod.string().nullish(),
           timeSlot: zod.string().nullish(),
           overrideCookTime: zod.number().nullish(),
+          overrideServings: zod.number().nullish(),
           recipe: zod
             .union([
               zod.object({
@@ -730,6 +734,7 @@ export const UpdateMealEntryResponse = zod.object({
   customNote: zod.string().nullish(),
   timeSlot: zod.string().nullish(),
   overrideCookTime: zod.number().nullish(),
+  overrideServings: zod.number().nullish(),
   recipe: zod
     .union([
       zod.object({
@@ -775,12 +780,70 @@ export const DeleteMealEntryParams = zod.object({
 });
 
 /**
+ * @summary Update the servings override for a meal entry
+ */
+export const UpdateMealEntryServingsParams = zod.object({
+  id: zod.coerce.number(),
+  dayId: zod.coerce.number(),
+  entryId: zod.coerce.number(),
+});
+
+export const UpdateMealEntryServingsBody = zod.object({
+  overrideServings: zod.number().nullable(),
+});
+
+export const UpdateMealEntryServingsResponse = zod.object({
+  id: zod.number(),
+  mealPlanDayId: zod.number(),
+  mealType: zod.string(),
+  recipeId: zod.number().nullish(),
+  customNote: zod.string().nullish(),
+  timeSlot: zod.string().nullish(),
+  overrideCookTime: zod.number().nullish(),
+  overrideServings: zod.number().nullish(),
+  recipe: zod
+    .union([
+      zod.object({
+        id: zod.number(),
+        userId: zod.string().nullish(),
+        title: zod.string(),
+        description: zod.string().nullish(),
+        prepTime: zod.number(),
+        cookTime: zod.number(),
+        servings: zod.number(),
+        instructions: zod.string(),
+        tags: zod.array(zod.string()),
+        aiGenerated: zod.boolean(),
+        energyType: zod.string(),
+        isPublic: zod.boolean(),
+        source: zod.string().nullish(),
+        sourceNote: zod.string().nullish(),
+        createdAt: zod.string(),
+        ingredients: zod.array(
+          zod.object({
+            id: zod.number(),
+            ingredientId: zod.number().nullish(),
+            customName: zod.string().nullish(),
+            amount: zod.number(),
+            unit: zod.string(),
+            optional: zod.boolean(),
+            ingredientName: zod.string().nullish(),
+          }),
+        ),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+});
+
+/**
  * @summary Get today's meals from the active plan
  */
 export const GetTodayMealsResponse = zod.object({
   date: zod.string(),
   dayName: zod.string(),
   planTitle: zod.string().nullish(),
+  planId: zod.number().nullish(),
   meals: zod.array(
     zod.object({
       id: zod.number(),
@@ -792,6 +855,8 @@ export const GetTodayMealsResponse = zod.object({
       recipeId: zod.number().nullish(),
       energyType: zod.string().nullish(),
       overrideCookTime: zod.number().nullish(),
+      overrideServings: zod.number().nullish(),
+      mealPlanDayId: zod.number().nullish(),
     }),
   ),
   hasPlan: zod.boolean(),
@@ -805,6 +870,7 @@ export const GetTodayMealsResponse = zod.object({
       }),
     )
     .optional(),
+  householdSize: zod.number().optional(),
 });
 
 /**
@@ -985,6 +1051,7 @@ export const AiGeneratePlanResponse = zod.object({
 export const AiAdjustRecipeBody = zod.object({
   recipeId: zod.number(),
   adjustmentPrompt: zod.string(),
+  overrideServings: zod.number().optional(),
 });
 
 export const AiAdjustRecipeResponse = zod.object({
@@ -1011,6 +1078,7 @@ export const AiSubstituteIngredientBody = zod.object({
   recipeId: zod.number(),
   ingredients: zod.array(zod.string()),
   reason: zod.string().optional(),
+  overrideServings: zod.number().optional(),
 });
 
 export const AiSubstituteIngredientResponse = zod.object({

@@ -64,6 +64,7 @@ import type {
   TodayCost,
   TodaySummary,
   UpdateFridgeItemBody,
+  UpdateServingsInput,
   UserLearnedPreferences,
   UserSettings,
   UserSettingsInput,
@@ -2315,6 +2316,127 @@ export const useDeleteMealEntry = <
   TContext
 > => {
   return useMutation(getDeleteMealEntryMutationOptions(options));
+};
+
+/**
+ * @summary Update the servings override for a meal entry
+ */
+export const getUpdateMealEntryServingsUrl = (
+  id: number,
+  dayId: number,
+  entryId: number,
+) => {
+  return `/api/meal-plans/${id}/days/${dayId}/entries/${entryId}/servings`;
+};
+
+export const updateMealEntryServings = async (
+  id: number,
+  dayId: number,
+  entryId: number,
+  updateServingsInput: UpdateServingsInput,
+  options?: RequestInit,
+): Promise<MealEntry> => {
+  return customFetch<MealEntry>(
+    getUpdateMealEntryServingsUrl(id, dayId, entryId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateServingsInput),
+    },
+  );
+};
+
+export const getUpdateMealEntryServingsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMealEntryServings>>,
+    TError,
+    {
+      id: number;
+      dayId: number;
+      entryId: number;
+      data: BodyType<UpdateServingsInput>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMealEntryServings>>,
+  TError,
+  {
+    id: number;
+    dayId: number;
+    entryId: number;
+    data: BodyType<UpdateServingsInput>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateMealEntryServings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMealEntryServings>>,
+    {
+      id: number;
+      dayId: number;
+      entryId: number;
+      data: BodyType<UpdateServingsInput>;
+    }
+  > = (props) => {
+    const { id, dayId, entryId, data } = props ?? {};
+
+    return updateMealEntryServings(id, dayId, entryId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMealEntryServingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMealEntryServings>>
+>;
+export type UpdateMealEntryServingsMutationBody = BodyType<UpdateServingsInput>;
+export type UpdateMealEntryServingsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update the servings override for a meal entry
+ */
+export const useUpdateMealEntryServings = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMealEntryServings>>,
+    TError,
+    {
+      id: number;
+      dayId: number;
+      entryId: number;
+      data: BodyType<UpdateServingsInput>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMealEntryServings>>,
+  TError,
+  {
+    id: number;
+    dayId: number;
+    entryId: number;
+    data: BodyType<UpdateServingsInput>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateMealEntryServingsMutationOptions(options));
 };
 
 /**
