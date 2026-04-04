@@ -84,7 +84,8 @@ export default function Today() {
     );
   }
 
-  const hasMeals = todaySummary?.meals && todaySummary.meals.length > 0;
+  const hasPlan = todaySummary?.hasPlan === true;
+  const hasMeals = hasPlan && todaySummary?.meals && todaySummary.meals.length > 0;
 
   return (
     <div className="flex flex-col min-h-[100dvh] pb-24 animate-in fade-in duration-500">
@@ -278,37 +279,38 @@ export default function Today() {
             ))}
           </div>
 
-          <div className="mt-8 pt-4 pb-4 space-y-3">
-            {activePlan && (
-              <Button
-                className="w-full rounded-2xl h-14 text-base shadow-sm"
-                variant="outline"
-                onClick={handleGenerateList}
-                disabled={generateList.isPending}
-                data-testid="btn-generate-shopping-list"
-              >
-                {generateList.isPending ? (
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                ) : (
-                  <ShoppingCart className="w-5 h-5 mr-2" />
-                )}
-                Einkaufsliste für diese Woche generieren
-              </Button>
-            )}
-            <Link href="/einkauf" data-testid="link-shopping-banner">
-              <div className="bg-primary text-primary-foreground rounded-2xl p-5 flex items-center justify-between shadow-md hover:shadow-lg transition-shadow">
-                <div>
-                  <h4 className="font-semibold text-lg">Einkaufsliste</h4>
-                  <p className="text-primary-foreground/80 text-sm mt-0.5">Für diese Woche</p>
-                </div>
-                <div className="w-10 h-10 bg-background/20 rounded-full flex items-center justify-center">
-                  <ArrowRight className="w-5 h-5" />
-                </div>
-              </div>
-            </Link>
-          </div>
           </>
         )}
+
+        <div className="mt-8 pt-4 pb-4 space-y-3">
+          {activePlan && (
+            <Button
+              className="w-full rounded-2xl h-14 text-base shadow-sm"
+              variant="outline"
+              onClick={handleGenerateList}
+              disabled={generateList.isPending}
+              data-testid="btn-generate-shopping-list"
+            >
+              {generateList.isPending ? (
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              ) : (
+                <ShoppingCart className="w-5 h-5 mr-2" />
+              )}
+              Einkaufsliste für diese Woche generieren
+            </Button>
+          )}
+          <Link href="/einkauf" data-testid="link-shopping-banner">
+            <div className="bg-primary text-primary-foreground rounded-2xl p-5 flex items-center justify-between shadow-md hover:shadow-lg transition-shadow">
+              <div>
+                <h4 className="font-semibold text-lg">Einkaufsliste</h4>
+                <p className="text-primary-foreground/80 text-sm mt-0.5">Für diese Woche</p>
+              </div>
+              <div className="w-10 h-10 bg-background/20 rounded-full flex items-center justify-center">
+                <ArrowRight className="w-5 h-5" />
+              </div>
+            </div>
+          </Link>
+        </div>
       </main>
     </div>
   );
