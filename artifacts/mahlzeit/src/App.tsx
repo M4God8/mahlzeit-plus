@@ -105,31 +105,66 @@ function useHasUserSettings() {
       if (!res.ok) throw new Error(`Unexpected status: ${res.status}`);
       return true;
     },
-    retry: false,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     staleTime: 60_000,
+    refetchOnWindowFocus: true,
   });
 }
 
 function AuthErrorFallback() {
   const { signOut } = useClerk();
+  const qc = useQueryClient();
+  const [retrying, setRetrying] = useState(false);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      setRetrying(true);
+      qc.invalidateQueries({ queryKey: ["user-settings-check"] }).finally(() => {
+        setTimeout(() => setRetrying(false), 2000);
+      });
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") handleFocus();
+    });
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [qc]);
+
   return (
     <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4 bg-background text-foreground px-6 text-center">
-      <p className="text-lg font-semibold">Verbindungsfehler</p>
-      <p className="text-sm text-muted-foreground">Die Einstellungen konnten nicht geladen werden. Bitte versuche es erneut.</p>
-      <div className="flex gap-3">
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium"
-        >
-          Erneut versuchen
-        </button>
-        <button
-          onClick={() => signOut()}
-          className="px-4 py-2 rounded-md border text-sm font-medium"
-        >
-          Abmelden
-        </button>
-      </div>
+      {retrying ? (
+        <>
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Verbindung wird wiederhergestellt…</p>
+        </>
+      ) : (
+        <>
+          <p className="text-lg font-semibold">Verbindungsfehler</p>
+          <p className="text-sm text-muted-foreground">Die Einstellungen konnten nicht geladen werden. Bitte versuche es erneut.</p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setRetrying(true);
+                qc.invalidateQueries({ queryKey: ["user-settings-check"] }).finally(() => {
+                  setTimeout(() => setRetrying(false), 3000);
+                });
+              }}
+              className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium"
+            >
+              Erneut versuchen
+            </button>
+            <button
+              onClick={() => signOut()}
+              className="px-4 py-2 rounded-md border text-sm font-medium"
+            >
+              Abmelden
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
