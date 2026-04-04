@@ -30,6 +30,11 @@ router.get("/ingredients", async (req, res): Promise<void> => {
       defaultUnit: i.defaultUnit,
       bioRecommended: i.bioRecommended,
       scoreBase: i.scoreBase,
+      priceMin: i.priceMin ? parseFloat(i.priceMin) : null,
+      priceMax: i.priceMax ? parseFloat(i.priceMax) : null,
+      priceAvg: i.priceAvg ? parseFloat(i.priceAvg) : null,
+      priceUnit: i.priceUnit ?? null,
+      priceUpdatedAt: i.priceUpdatedAt ? i.priceUpdatedAt.toISOString() : null,
     })));
   } catch (err) {
     req.log.error({ err }, "Failed to list ingredients");

@@ -11,9 +11,8 @@ export const userSettingsTable = pgTable("user_settings", {
   cookTimeLimit: integer("cook_time_limit").notNull().default(30),
   bioPreferred: boolean("bio_preferred").notNull().default(false),
   role: text("role").notNull().default("user"),
-  isPremium: boolean("is_premium").notNull().default(false),
-  premiumExpiresAt: timestamp("premium_expires_at"),
-  isBlocked: boolean("is_blocked").notNull().default(false),
+  isBlocked: boolean("blocked").notNull().default(false),
+  premiumUntil: timestamp("premium_until"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

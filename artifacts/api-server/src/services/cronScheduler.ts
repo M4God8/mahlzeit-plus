@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { mealFeedbackTable } from "@workspace/db";
 import { gte } from "drizzle-orm";
 import { aggregateUserPreferences } from "./aggregateService";
+import { updatePricesFromOpenFoodFacts } from "./priceUpdateService";
 import { logger } from "../lib/logger";
 
 const WINDOW_WEEKS = 4;
@@ -41,5 +42,16 @@ export function startCronJobs(): void {
     }
   });
 
-  logger.info("Cron jobs registered (weekly learn aggregation: Mondays 03:00)");
+  cron.schedule("0 4 1,15 * *", async () => {
+    logger.info("Bi-monthly price update job started (1st and 15th)");
+
+    try {
+      const result = await updatePricesFromOpenFoodFacts();
+      logger.info(result, "Bi-monthly price update job completed");
+    } catch (err) {
+      logger.error({ err }, "Bi-monthly price update job failed");
+    }
+  });
+
+  logger.info("Cron jobs registered (weekly learn aggregation: Mondays 03:00, price update: 1st & 15th 04:00)");
 }

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db, userSettingsTable, aiGenerationsTable, nutritionProfilesTable } from "@workspace/db";
-import { eq, sql, gte, lte, and, inArray, count, sum, type SQL } from "drizzle-orm";
+import { eq, sql, gte, lte, and, inArray, count, sum, isNull, type SQL } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/requireAdmin";
 import { requireAuth } from "../middlewares/requireAuth";
 import { pool } from "@workspace/db";
@@ -45,7 +45,7 @@ router.get("/admin/stats", requireAdmin, async (req, res) => {
     const [premiumUsers] = await db
       .select({ count: count() })
       .from(userSettingsTable)
-      .where(eq(userSettingsTable.isPremium, true));
+      .where(gte(userSettingsTable.premiumUntil, new Date()));
 
     const [newToday] = await db
       .select({ count: count() })
@@ -94,9 +94,11 @@ router.get("/admin/users", requireAdmin, async (req, res) => {
     const conditions: SQL[] = [];
 
     if (plan === "premium") {
-      conditions.push(eq(userSettingsTable.isPremium, true));
+      conditions.push(gte(userSettingsTable.premiumUntil, new Date()));
     } else if (plan === "free") {
-      conditions.push(eq(userSettingsTable.isPremium, false));
+      conditions.push(
+        sql`(${userSettingsTable.premiumUntil} IS NULL OR ${userSettingsTable.premiumUntil} < NOW())`
+      );
     }
 
     if (periodDays) {
@@ -174,8 +176,8 @@ router.get("/admin/users", requireAdmin, async (req, res) => {
         userId: u.userId,
         email: emailMap[u.userId] ?? "",
         role: u.role,
-        isPremium: u.isPremium,
-        premiumExpiresAt: u.premiumExpiresAt,
+        isPremium: u.premiumUntil ? new Date(u.premiumUntil) > new Date() : false,
+        premiumExpiresAt: u.premiumUntil,
         isBlocked: u.isBlocked,
         createdAt: u.createdAt,
         householdSize: u.householdSize,
@@ -318,15 +320,16 @@ router.get("/admin/costs", requireAdmin, async (req, res) => {
 
 router.patch("/admin/users/:id/premium", requireAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params["id"] as string;
     const { isPremium, premiumExpiresAt } = req.body as { isPremium?: boolean; premiumExpiresAt?: string };
+
+    const premiumUntil = isPremium
+      ? (premiumExpiresAt ? new Date(premiumExpiresAt) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000))
+      : null;
 
     const [updated] = await db
       .update(userSettingsTable)
-      .set({
-        isPremium: Boolean(isPremium),
-        premiumExpiresAt: premiumExpiresAt ? new Date(premiumExpiresAt) : null,
-      })
+      .set({ premiumUntil })
       .where(eq(userSettingsTable.userId, id))
       .returning();
 
@@ -335,7 +338,11 @@ router.patch("/admin/users/:id/premium", requireAdmin, async (req, res) => {
       return;
     }
 
-    res.json({ userId: updated.userId, isPremium: updated.isPremium, premiumExpiresAt: updated.premiumExpiresAt });
+    res.json({
+      userId: updated.userId,
+      isPremium: updated.premiumUntil ? new Date(updated.premiumUntil) > new Date() : false,
+      premiumExpiresAt: updated.premiumUntil,
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to toggle premium");
     res.status(500).json({ error: "Internal server error" });
@@ -344,7 +351,7 @@ router.patch("/admin/users/:id/premium", requireAdmin, async (req, res) => {
 
 router.patch("/admin/users/:id/block", requireAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = req.params["id"] as string;
     const { isBlocked } = req.body as { isBlocked?: boolean };
 
     const [updated] = await db

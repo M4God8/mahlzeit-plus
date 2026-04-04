@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useGetTodayMeals, useGetActiveMealPlan, useGenerateShoppingList, useAiSubmitFeedback, useGetLearnProfile } from "@workspace/api-client-react";
+import { useGetTodayMeals, useGetActiveMealPlan, useGenerateShoppingList, useAiSubmitFeedback, useGetLearnProfile, useGetTodayCost } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart, ThumbsUp, ThumbsDown, Minus, Sparkles, X } from "lucide-react";
+import { Clock, Loader2, ArrowRight, ChefHat, PlusCircle, Leaf, RefreshCw, ShoppingCart, ThumbsUp, ThumbsDown, Minus, Sparkles, X, Euro } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +35,7 @@ export default function Today() {
   const { data: todaySummary, isLoading } = useGetTodayMeals();
   const { data: activePlan } = useGetActiveMealPlan({ query: { queryKey: ["/api/meal-plans/active"], retry: false } });
   const { data: learnProfile } = useGetLearnProfile({ query: { queryKey: ["/api/learn/profile"], retry: false } });
+  const { data: todayCost } = useGetTodayCost({ query: { queryKey: ["/api/costs/today"] } });
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -99,6 +100,20 @@ export default function Today() {
       </header>
 
       <main className="flex-1 px-4 space-y-6">
+        {todayCost && todayCost.avg > 0 && (
+          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 animate-in fade-in duration-300">
+            <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+              <Euro className="w-4 h-4 text-emerald-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-emerald-800">
+                Tageskosten: ca. {todayCost.min.toFixed(2)}€ – {todayCost.max.toFixed(2)}€
+              </p>
+              <p className="text-xs text-emerald-600">∅ {todayCost.avg.toFixed(2)}€ pro Person</p>
+            </div>
+          </div>
+        )}
+
         {learnProfile?.insightMessage && !insightDismissed && (
           <div className="relative flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 animate-in slide-in-from-top-2 duration-300">
             <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />

@@ -11,6 +11,7 @@ import aiRouter from "./ai";
 import scannerRouter from "./scanner";
 import learnRouter from "./learn";
 import adminRouter from "./admin";
+import costsRouter from "./costs";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(aiRouter);
 router.use(scannerRouter);
 router.use(learnRouter);
 router.use(adminRouter);
+router.use(costsRouter);
 
 export default router;

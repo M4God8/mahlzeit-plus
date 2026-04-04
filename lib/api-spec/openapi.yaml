@@ -28,6 +28,8 @@ tags:
     description: Barcode scanner and product score operations
   - name: learn
     description: Learning profile and personalisation aggregation
+  - name: costs
+    description: Cost estimation operations
 
 paths:
   /healthz:
@@ -882,6 +884,66 @@ paths:
               schema:
                 $ref: "#/components/schemas/UserLearnedPreferences"
 
+  /costs/recipe/{id}:
+    get:
+      operationId: getRecipeCost
+      tags: [costs]
+      summary: Calculate cost estimate for a recipe
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: servings
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cost estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecipeCost"
+        "404":
+          description: Recipe not found
+
+  /costs/shopping-list/{id}:
+    get:
+      operationId: getShoppingListCost
+      tags: [costs]
+      summary: Calculate total cost for a shopping list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cost estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CostEstimate"
+        "404":
+          description: Shopping list not found
+
+  /costs/today:
+    get:
+      operationId: getTodayCost
+      tags: [costs]
+      summary: Calculate cost for today's planned meals
+      responses:
+        "200":
+          description: Today's cost estimate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TodayCost"
+
   /scanner/lookup/{barcode}:
     get:
       operationId: scannerLookup
@@ -1051,6 +1113,16 @@ components:
           type: boolean
         scoreBase:
           type: integer
+        priceMin:
+          type: ["number", "null"]
+        priceMax:
+          type: ["number", "null"]
+        priceAvg:
+          type: ["number", "null"]
+        priceUnit:
+          type: ["string", "null"]
+        priceUpdatedAt:
+          type: ["string", "null"]
       required:
         - id
         - name
@@ -1802,3 +1874,69 @@ components:
         - totalScore
         - profileFitExclusions
         - scannedAt
+
+    CostEstimate:
+      type: object
+      properties:
+        min:
+          type: number
+        max:
+          type: number
+        avg:
+          type: number
+      required:
+        - min
+        - max
+        - avg
+
+    RecipeCost:
+      type: object
+      properties:
+        min:
+          type: number
+        max:
+          type: number
+        avg:
+          type: number
+        perServing:
+          $ref: "#/components/schemas/CostEstimate"
+      required:
+        - min
+        - max
+        - avg
+        - perServing
+
+    MealCost:
+      type: object
+      properties:
+        mealType:
+          type: string
+        recipeTitle:
+          type: ["string", "null"]
+        cost:
+          oneOf:
+            - $ref: "#/components/schemas/CostEstimate"
+            - type: "null"
+      required:
+        - mealType
+        - recipeTitle
+        - cost
+
+    TodayCost:
+      type: object
+      properties:
+        min:
+          type: number
+        max:
+          type: number
+        avg:
+          type: number
+        meals:
+          type: array
+          items:
+            $ref: "#/components/schemas/MealCost"
+      required:
+        - min
+        - max
+        - avg
+        - meals

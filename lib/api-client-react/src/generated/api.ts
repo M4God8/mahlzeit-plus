@@ -27,6 +27,8 @@ import type {
   AiSubstituteInput,
   AiSubstituteOutput,
   CopyMealPlanBody,
+  CostEstimate,
+  GetRecipeCostParams,
   HealthStatus,
   Ingredient,
   ListIngredientsParams,
@@ -42,6 +44,7 @@ import type {
   MealPlanUpdateInput,
   NutritionProfile,
   Recipe,
+  RecipeCost,
   RecipeInput,
   ScannedProduct,
   ScoreBreakdown,
@@ -49,6 +52,7 @@ import type {
   ShoppingListItem,
   ShoppingListSummary,
   SwapMealPlanDaysBody,
+  TodayCost,
   TodaySummary,
   UserLearnedPreferences,
   UserSettings,
@@ -3709,6 +3713,277 @@ export const useTriggerLearnAggregate = <
 > => {
   return useMutation(getTriggerLearnAggregateMutationOptions(options));
 };
+
+/**
+ * @summary Calculate cost estimate for a recipe
+ */
+export const getGetRecipeCostUrl = (
+  id: number,
+  params?: GetRecipeCostParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/costs/recipe/${id}?${stringifiedParams}`
+    : `/api/costs/recipe/${id}`;
+};
+
+export const getRecipeCost = async (
+  id: number,
+  params?: GetRecipeCostParams,
+  options?: RequestInit,
+): Promise<RecipeCost> => {
+  return customFetch<RecipeCost>(getGetRecipeCostUrl(id, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRecipeCostQueryKey = (
+  id: number,
+  params?: GetRecipeCostParams,
+) => {
+  return [`/api/costs/recipe/${id}`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetRecipeCostQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRecipeCost>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  params?: GetRecipeCostParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRecipeCost>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetRecipeCostQueryKey(id, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRecipeCost>>> = ({
+    signal,
+  }) => getRecipeCost(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRecipeCost>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRecipeCostQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRecipeCost>>
+>;
+export type GetRecipeCostQueryError = ErrorType<void>;
+
+/**
+ * @summary Calculate cost estimate for a recipe
+ */
+
+export function useGetRecipeCost<
+  TData = Awaited<ReturnType<typeof getRecipeCost>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  params?: GetRecipeCostParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRecipeCost>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRecipeCostQueryOptions(id, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Calculate total cost for a shopping list
+ */
+export const getGetShoppingListCostUrl = (id: number) => {
+  return `/api/costs/shopping-list/${id}`;
+};
+
+export const getShoppingListCost = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CostEstimate> => {
+  return customFetch<CostEstimate>(getGetShoppingListCostUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetShoppingListCostQueryKey = (id: number) => {
+  return [`/api/costs/shopping-list/${id}`] as const;
+};
+
+export const getGetShoppingListCostQueryOptions = <
+  TData = Awaited<ReturnType<typeof getShoppingListCost>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getShoppingListCost>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetShoppingListCostQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getShoppingListCost>>
+  > = ({ signal }) => getShoppingListCost(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getShoppingListCost>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetShoppingListCostQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getShoppingListCost>>
+>;
+export type GetShoppingListCostQueryError = ErrorType<void>;
+
+/**
+ * @summary Calculate total cost for a shopping list
+ */
+
+export function useGetShoppingListCost<
+  TData = Awaited<ReturnType<typeof getShoppingListCost>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getShoppingListCost>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetShoppingListCostQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Calculate cost for today's planned meals
+ */
+export const getGetTodayCostUrl = () => {
+  return `/api/costs/today`;
+};
+
+export const getTodayCost = async (
+  options?: RequestInit,
+): Promise<TodayCost> => {
+  return customFetch<TodayCost>(getGetTodayCostUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetTodayCostQueryKey = () => {
+  return [`/api/costs/today`] as const;
+};
+
+export const getGetTodayCostQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTodayCost>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTodayCost>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetTodayCostQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getTodayCost>>> = ({
+    signal,
+  }) => getTodayCost({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTodayCost>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTodayCostQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTodayCost>>
+>;
+export type GetTodayCostQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Calculate cost for today's planned meals
+ */
+
+export function useGetTodayCost<
+  TData = Awaited<ReturnType<typeof getTodayCost>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTodayCost>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTodayCostQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Look up a product by barcode (cached or live Open Food Facts)

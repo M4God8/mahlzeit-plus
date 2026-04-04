@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Link, useRoute, useLocation } from "wouter";
-import { useGetRecipe, useDeleteRecipe, useAiAdjustRecipe, useAiSubstituteIngredient } from "@workspace/api-client-react";
+import { useGetRecipe, useDeleteRecipe, useAiAdjustRecipe, useAiSubstituteIngredient, useGetRecipeCost } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ChevronLeft, Clock, Users, Flame, ChefHat, Trash2, Edit2, Loader2, Sparkles, RefreshCw, ChevronDown, ChevronUp, ArrowLeftRight } from "lucide-react";
+import { ChevronLeft, Clock, Users, Flame, ChefHat, Trash2, Edit2, Loader2, Sparkles, RefreshCw, ChevronDown, ChevronUp, ArrowLeftRight, Euro } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,10 @@ export default function RecipeDetail() {
 
   const { data: recipe, isLoading } = useGetRecipe(id, {
     query: { enabled: !!id, queryKey: ["/api/recipes", id.toString()] }
+  });
+
+  const { data: recipeCost } = useGetRecipeCost(id, undefined, {
+    query: { enabled: !!id, queryKey: ["/api/costs/recipe", id.toString()] }
   });
 
   const deleteRecipe = useDeleteRecipe();
@@ -192,6 +196,23 @@ export default function RecipeDetail() {
               <p className="font-medium capitalize">{recipe.energyType}</p>
             </div>
           </div>
+
+          {recipeCost && recipeCost.perServing && (
+            <>
+              <div className="w-px h-10 bg-border/50 shrink-0"></div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                  <Euro className="w-5 h-5 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">pro Portion</p>
+                  <p className="font-mono font-medium text-sm">
+                    ca. {recipeCost.perServing.min.toFixed(2)}€ – {recipeCost.perServing.max.toFixed(2)}€
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="space-y-8">

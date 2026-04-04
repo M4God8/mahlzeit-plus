@@ -42,10 +42,17 @@ interface LearnedPrefs {
   frequentlyReplacedRecipeTitles: string[];
 }
 
+const BUDGET_EURO_MAP: Record<string, number> = {
+  low: 35,
+  medium: 50,
+  high: 75,
+};
+
 interface UserContext {
   householdSize: number;
   cookTimeLimit: number;
   budgetLevel: string;
+  budgetEuro: number;
   bioPreferred: boolean;
   profileNames: string[];
   excludedIngredients: string[];
@@ -84,6 +91,7 @@ async function getUserContext(userId: string): Promise<UserContext> {
       householdSize: 2,
       cookTimeLimit: 30,
       budgetLevel: "medium",
+      budgetEuro: BUDGET_EURO_MAP["medium"]!,
       bioPreferred: false,
       profileNames: [],
       excludedIngredients: [],
@@ -113,6 +121,7 @@ async function getUserContext(userId: string): Promise<UserContext> {
     householdSize: settings.householdSize,
     cookTimeLimit: settings.cookTimeLimit,
     budgetLevel: settings.budgetLevel,
+    budgetEuro: BUDGET_EURO_MAP[settings.budgetLevel] ?? BUDGET_EURO_MAP["medium"]!,
     bioPreferred: settings.bioPreferred,
     profileNames,
     excludedIngredients,
@@ -126,7 +135,8 @@ function buildContextBlock(ctx: UserContext): string {
   const lines: string[] = [];
   lines.push(`Haushaltsgröße: ${ctx.householdSize} Person(en)`);
   lines.push(`Maximale Kochzeit: ${ctx.cookTimeLimit} Minuten`);
-  lines.push(`Budget: ${ctx.budgetLevel === "low" ? "sparsam" : ctx.budgetLevel === "high" ? "großzügig" : "mittel"}`);
+  lines.push(`Budget: ${ctx.budgetLevel === "low" ? "sparsam" : ctx.budgetLevel === "high" ? "großzügig" : "mittel"} (${ctx.budgetEuro}€/Woche)`);
+  lines.push(`Budget des Nutzers: ${ctx.budgetEuro}€/Woche. Plane Mahlzeiten die darunter oder max. 10% darüber liegen. Bei leichter Überschreitung (bis 10%): trotzdem vorschlagen mit kurzem Hinweis ("Liegt leicht über deinem Budget…"). Nie hart ablehnen — bei deutlicher Überschreitung bevorzuge günstigere Alternativen, zeige teurere Option aber als Alternativ-Vorschlag.`);
   if (ctx.bioPreferred) lines.push("Bio-Produkte werden bevorzugt.");
   if (ctx.profileNames.length > 0) lines.push(`Ernährungsstil: ${ctx.profileNames.join(", ")}`);
   if (ctx.mealStyles.length > 0) lines.push(`Mahlzeitenstil: ${ctx.mealStyles.join(", ")}`);

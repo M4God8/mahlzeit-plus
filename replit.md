@@ -42,7 +42,7 @@ Mahlzeit+ ist eine deutschsprachige Mahlzeitenplanungs-App für bewusste Esser. 
 Tabellen in `lib/db/src/schema/`:
 - `nutrition_profiles` — 5 Ernährungsprofile (Vollwertig, Pflanzenbasiert, Mediterran, Kraftvoll, Leicht)
 - `user_settings` — Benutzereinstellungen (activeProfileIds int[], Haushaltsgröße, Budget, Kochzeit, role, blocked, premiumUntil, createdAt)
-- `ingredients` — 60 Zutaten mit Kategorien und Bio-Empfehlung
+- `ingredients` — 60 Zutaten mit Kategorien, Bio-Empfehlung und Preisfelder (price_min, price_max, price_avg, price_unit, price_updated_at)
 - `recipes` + `recipe_ingredients` — Rezepte mit Zutaten (10 Starterrezepte)
 - `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne
 - `ai_generations` — KI-Anfragen-Log (userId, type, input, output, model, inputTokens, outputTokens, costEur)
@@ -101,6 +101,9 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | PATCH | /api/admin/users/:id/block | Admin | User sperren/entsperren |
 | GET | /api/admin/costs | Admin | KI-Kosten Übersicht mit Filtern (dateFrom/dateTo, userId, aiType, groupBy=day/week/month) |
 | GET | /api/admin/health | Admin | System Health Check (DB, Claude API, Open Food Facts, Stripe placeholder) |
+| GET | /api/costs/recipe/:id | Ja | Kostenberechnung für ein Rezept (?servings=N optional) |
+| GET | /api/costs/shopping-list/:id | Ja | Wochenkosten für eine Einkaufsliste |
+| GET | /api/costs/today | Ja | Tageskosten für heutige Mahlzeiten |
 
 ## Frontend-Seiten (wouter)
 
@@ -155,8 +158,9 @@ KI-Modell: `claude-sonnet-4-6`, max_tokens: 8192
 - **Phase 2** ✅ Wochenplan-Builder: Plan-CRUD, Rezept-Zuweisung, Aktivierung, Kopieren, Tage tauschen, Loop, Kalenderansicht, RecipeEdit
 - **Phase 3** ✅ Einkaufsliste: Auto-Generierung aus Plan, Kategorisierung, Mengen-Aggregation
 - **Phase 4** ✅ KI-Layer: Claude AI (Rezeptgenerator, Wochenplaner, Rezept-Anpassung, Zutaten-Alternativen, Feedback)
-- **Phase 5** Scanner: Barcode-Scanner für Zutaten
-- **Phase 6** Lern-System: Personalisierung (abhängig von Phase 4)
+- **Phase 5** ✅ Scanner: Barcode-Scanner für Zutaten
+- **Phase 6** ✅ Lern-System: Personalisierung (abhängig von Phase 4)
+- **Phase 7** ✅ Preislogik: Kostenschätzung, Soft-Budget-Logik in KI-Prompts, Auto-Update Cron (Open Food Facts)
 
 ## Wichtige Entwicklungshinweise
 

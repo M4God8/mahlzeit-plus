@@ -125,6 +125,11 @@ export const ListIngredientsResponseItem = zod.object({
   defaultUnit: zod.string(),
   bioRecommended: zod.boolean(),
   scoreBase: zod.number(),
+  priceMin: zod.number().nullish(),
+  priceMax: zod.number().nullish(),
+  priceAvg: zod.number().nullish(),
+  priceUnit: zod.string().nullish(),
+  priceUpdatedAt: zod.string().nullish(),
 });
 export const ListIngredientsResponse = zod.array(ListIngredientsResponseItem);
 
@@ -1039,6 +1044,64 @@ export const TriggerLearnAggregateResponse = zod.object({
     .nullish()
     .describe("Human-readable insight for the Heute-Screen hint banner"),
   updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Calculate cost estimate for a recipe
+ */
+export const GetRecipeCostParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetRecipeCostQueryParams = zod.object({
+  servings: zod.coerce.number().optional(),
+});
+
+export const GetRecipeCostResponse = zod.object({
+  min: zod.number(),
+  max: zod.number(),
+  avg: zod.number(),
+  perServing: zod.object({
+    min: zod.number(),
+    max: zod.number(),
+    avg: zod.number(),
+  }),
+});
+
+/**
+ * @summary Calculate total cost for a shopping list
+ */
+export const GetShoppingListCostParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetShoppingListCostResponse = zod.object({
+  min: zod.number(),
+  max: zod.number(),
+  avg: zod.number(),
+});
+
+/**
+ * @summary Calculate cost for today's planned meals
+ */
+export const GetTodayCostResponse = zod.object({
+  min: zod.number(),
+  max: zod.number(),
+  avg: zod.number(),
+  meals: zod.array(
+    zod.object({
+      mealType: zod.string(),
+      recipeTitle: zod.string().nullable(),
+      cost: zod.union([
+        zod.object({
+          min: zod.number(),
+          max: zod.number(),
+          avg: zod.number(),
+        }),
+        zod.null(),
+      ]),
+    }),
+  ),
 });
 
 /**

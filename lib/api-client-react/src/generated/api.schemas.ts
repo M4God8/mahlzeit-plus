@@ -48,6 +48,16 @@ export interface Ingredient {
   defaultUnit: string;
   bioRecommended: boolean;
   scoreBase: number;
+  /** @nullable */
+  priceMin?: number | null;
+  /** @nullable */
+  priceMax?: number | null;
+  /** @nullable */
+  priceAvg?: number | null;
+  /** @nullable */
+  priceUnit?: string | null;
+  /** @nullable */
+  priceUpdatedAt?: string | null;
 }
 
 export interface RecipeIngredient {
@@ -429,6 +439,33 @@ export interface ScannedProduct {
   scannedAt: string;
 }
 
+export interface CostEstimate {
+  min: number;
+  max: number;
+  avg: number;
+}
+
+export interface RecipeCost {
+  min: number;
+  max: number;
+  avg: number;
+  perServing: CostEstimate;
+}
+
+export interface MealCost {
+  mealType: string;
+  /** @nullable */
+  recipeTitle: string | null;
+  cost: CostEstimate | null;
+}
+
+export interface TodayCost {
+  min: number;
+  max: number;
+  avg: number;
+  meals: MealCost[];
+}
+
 export type ListIngredientsParams = {
   category?: string;
   search?: string;
@@ -451,4 +488,8 @@ export type SwapMealPlanDaysBody = {
 
 export type AddMealPlanDayBody = {
   dayNumber: number;
+};
+
+export type GetRecipeCostParams = {
+  servings?: number;
 };

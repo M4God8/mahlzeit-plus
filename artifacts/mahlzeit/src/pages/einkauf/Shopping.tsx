@@ -23,6 +23,7 @@ import {
   useDeleteShoppingListItem,
   useArchiveShoppingList,
   useDeleteShoppingList,
+  useGetShoppingListCost,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListShoppingListsQueryKey, getGetShoppingListQueryKey } from "@workspace/api-client-react";
@@ -59,6 +60,9 @@ export default function Shopping() {
 
   const { data: listSummaries = [], isLoading: listsLoading } = useListShoppingLists();
   const { data: activeList } = useGetShoppingList(activeListId ?? 0);
+  const { data: listCost } = useGetShoppingListCost(activeListId ?? 0, {
+    query: { enabled: activeListId !== null, queryKey: ["/api/costs/shopping-list", String(activeListId ?? 0)] }
+  });
 
   const generateMutation = useGenerateShoppingList({
     mutation: {
@@ -183,6 +187,13 @@ export default function Shopping() {
           <p className="text-sm text-muted-foreground ml-8">
             {activeList.weekFrom} – {activeList.weekTo}
           </p>
+          {listCost && (
+            <div className="mt-2 ml-8 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2">
+              <p className="text-sm font-semibold text-emerald-700">
+                Diese Woche: ca. {listCost.min.toFixed(0)}€ – {listCost.max.toFixed(0)}€ (∅ {listCost.avg.toFixed(0)}€)
+              </p>
+            </div>
+          )}
           <div className="mt-3 ml-8">
             <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
               <span>{checkedItems} von {totalItems} erledigt</span>
