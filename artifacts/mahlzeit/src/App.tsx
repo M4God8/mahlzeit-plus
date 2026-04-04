@@ -50,7 +50,7 @@ function SignInPage() {
         <div className="mb-8 text-center">
           <span className="font-display font-bold text-2xl text-primary">Mahlzeit+</span>
         </div>
-        <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+        <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={`${basePath}/`} />
       </div>
     </div>
   );
@@ -63,7 +63,7 @@ function SignUpPage() {
         <div className="mb-8 text-center">
           <span className="font-display font-bold text-2xl text-primary">Mahlzeit+</span>
         </div>
-        <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+        <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} fallbackRedirectUrl={`${basePath}/`} />
       </div>
     </div>
   );
@@ -219,6 +219,8 @@ function ClerkProviderWithRoutes() {
       proxyUrl={clerkProxyUrl}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+      signInFallbackRedirectUrl={`${basePath}/`}
+      signUpFallbackRedirectUrl={`${basePath}/`}
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
