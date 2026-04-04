@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, ShoppingCart, Sun, ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -85,8 +85,31 @@ export default function IntroTour({ onComplete }: IntroTourProps) {
     onComplete();
   };
 
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const delta = e.changedTouches[0].clientX - touchStartX.current;
+    const SWIPE_THRESHOLD = 50;
+    if (delta < -SWIPE_THRESHOLD && step < TOUR_SCREENS.length - 1) {
+      setStep(step + 1);
+    } else if (delta > SWIPE_THRESHOLD && step > 0) {
+      setStep(step - 1);
+    }
+    touchStartX.current = null;
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col" data-testid="intro-tour">
+    <div
+      className="fixed inset-0 z-50 bg-background flex flex-col"
+      data-testid="intro-tour"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="flex justify-end px-6 pt-12">
         {!isLast && (
           <button
