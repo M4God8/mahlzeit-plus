@@ -50,6 +50,7 @@ Tabellen in `lib/db/src/schema/`:
 - `user_settings` hat zusätzlich: role (user/admin), isPremium, premiumExpiresAt, isBlocked, createdAt
 - `coaching_products` — Coaching-Produkte (name, description, url, tags[], triggerKeywords[], isActive)
 - `chat_sessions` — Chat-Session-Tracking (userId, messageCount, totalTokens — kein Chat-Inhalt)
+- `scanned_products` — Gescannte Produkte mit 4-Säulen-Score (scoreIngredients, scoreNutrition, scoreProcessing, scoreProfileFit, totalScore, contextLabel, warningFlags, summary)
 - `spoilage_defaults` — Haltbarkeitsdaten pro Zutat (typicalDaysFresh, spoilageSpeed: fast/medium/slow, trackByDefault)
 - `fridge_items` — Automatisches Kühlschrank-Tracking (userId, ingredientId, status, bestBeforeDate, source)
 

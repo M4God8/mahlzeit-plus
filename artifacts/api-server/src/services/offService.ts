@@ -16,6 +16,8 @@ export interface OffProduct {
   ingredients: string;
   nutriments: OffNutriments;
   labels: string[];
+  nova_group?: number;
+  additives_n?: number;
 }
 
 interface OffApiProduct {
@@ -27,6 +29,7 @@ interface OffApiProduct {
   labels?: string;
   labels_tags?: string[];
   nova_group?: number;
+  additives_n?: number;
 }
 
 interface OffApiResponse {
@@ -44,7 +47,7 @@ export type OffResult = OffProduct | null | "upstream_error";
 async function singleFetch(barcode: string, attempt: number): Promise<OffResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  const url = `${OFF_BASE}/${encodeURIComponent(barcode)}?fields=product_name,brands,image_url,ingredients_text,nutriments,labels,labels_tags,nova_group`;
+  const url = `${OFF_BASE}/${encodeURIComponent(barcode)}?fields=product_name,brands,image_url,ingredients_text,nutriments,labels,labels_tags,nova_group,additives_n`;
 
   console.log(`[OFF] Attempt ${attempt}/${MAX_RETRIES} fetching barcode=${barcode} url=${url}`);
 
@@ -90,6 +93,8 @@ async function singleFetch(barcode: string, attempt: number): Promise<OffResult>
       ingredients: p.ingredients_text ?? "",
       nutriments,
       labels,
+      nova_group: typeof p.nova_group === "number" ? p.nova_group : undefined,
+      additives_n: typeof p.additives_n === "number" ? p.additives_n : undefined,
     };
   } catch (err) {
     const isAbort = err instanceof DOMException && err.name === "AbortError";

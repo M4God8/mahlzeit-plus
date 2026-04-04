@@ -13,45 +13,45 @@ import ScannerRecipeModal from "./ScannerRecipeModal";
 type Tab = "scan" | "history";
 
 function scoreLabel(total: number): string {
-  if (total >= 80) return "Sehr empfehlenswert";
-  if (total >= 60) return "Gut — gelegentlich";
-  if (total >= 40) return "Mit Bedacht";
-  return "Lieber vermeiden";
+  if (total >= 85) return "Sehr empfehlenswert";
+  if (total >= 65) return "Gut — gelegentlich";
+  if (total >= 40) return "Mit Bedacht genießen";
+  return "Weniger passend für deinen Alltag";
 }
 
 function scoreEmoji(total: number): string {
-  if (total >= 80) return "🟢";
-  if (total >= 60) return "🟡";
+  if (total >= 85) return "🟢";
+  if (total >= 65) return "🟡";
   if (total >= 40) return "🟠";
   return "🔴";
 }
 
 function scoreColorClass(total: number): string {
-  if (total >= 80) return "bg-green-500";
-  if (total >= 60) return "bg-yellow-400";
+  if (total >= 85) return "bg-green-500";
+  if (total >= 65) return "bg-yellow-400";
   if (total >= 40) return "bg-orange-400";
   return "bg-red-500";
 }
 
 function scoreTextColorClass(total: number): string {
-  if (total >= 80) return "text-green-700";
-  if (total >= 60) return "text-yellow-700";
+  if (total >= 85) return "text-green-700";
+  if (total >= 65) return "text-yellow-700";
   if (total >= 40) return "text-orange-600";
   return "text-red-600";
 }
 
 const FOOD_SUB_SCORES = [
-  { key: "scoreNaturalness", label: "Zutatenklarheit" },
-  { key: "scoreNutrientBalance", label: "Nährwert-Balance" },
+  { key: "scoreIngredients", label: "Zutatenqualität" },
+  { key: "scoreNutrition", label: "Nährwerte" },
+  { key: "scoreProcessing", label: "Verarbeitung" },
   { key: "scoreProfileFit", label: "Profil-Fit" },
-  { key: "scoreQualityBonus", label: "Qualitätsbonus" },
 ] as const;
 
 const COSMETIC_SUB_SCORES = [
-  { key: "scoreNaturalness", label: "Natürlichkeit" },
-  { key: "scoreNutrientBalance", label: "Inhaltsstoff-Klarheit" },
+  { key: "scoreIngredients", label: "Natürlichkeit" },
+  { key: "scoreNutrition", label: "Inhaltsstoff-Klarheit" },
+  { key: "scoreProcessing", label: "Qualitätsbonus" },
   { key: "scoreProfileFit", label: "Profil-Fit" },
-  { key: "scoreQualityBonus", label: "Qualitätsbonus" },
 ] as const;
 
 function getSubScores(productType: string) {
@@ -69,10 +69,26 @@ function ScoreBar({ value, max = 25 }: { value: number; max?: number }) {
   );
 }
 
+function getProfileFitLabel(product: ScannedProduct): string {
+  const score = product.scoreProfileFit;
+  if (score >= 20) return "✅ Passt gut zu deinem Profil";
+  if (score >= 10) return "🟡 Mit Bedacht genießen";
+  return "🔶 Für dein Profil nur eingeschränkt passend";
+}
+
+function getProfileFitStyle(product: ScannedProduct): string {
+  const score = product.scoreProfileFit;
+  if (score >= 20) return "bg-green-50 text-green-700";
+  if (score >= 10) return "bg-yellow-50 text-yellow-700";
+  return "bg-orange-50 text-orange-600";
+}
+
 function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedProduct; onReset: () => void; onCreateRecipe?: () => void }) {
-  const fitsProfile = product.profileFitExclusions.length === 0;
   const isCosmetic = product.productType === "cosmetic";
   const subScores = getSubScores(product.productType);
+  const contextLabel = product.contextLabel ?? null;
+  const warningFlags = product.warningFlags ?? [];
+  const summary = product.summary ?? null;
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -113,25 +129,34 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
         </div>
         <Badge
           variant="outline"
-          className={cn(
-            "text-base font-bold px-3 py-1 border-none",
-            fitsProfile ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"
-          )}
+          className={cn("text-sm font-bold px-3 py-1 border-none", getProfileFitStyle(product))}
         >
-          {fitsProfile ? (
-            <><CheckCircle2 className="w-4 h-4 mr-1.5 inline" />Passt zu deinem Profil</>
-          ) : (
-            <><XCircle className="w-4 h-4 mr-1.5 inline" />Passt nicht (Ausschluss: {product.profileFitExclusions[0]})</>
-          )}
+          {getProfileFitLabel(product)}
         </Badge>
       </div>
 
-      {!fitsProfile && (
+      {product.profileFitExclusions.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {product.profileFitExclusions.map((ex: string) => (
             <Badge key={ex} variant="destructive" className="text-xs">
               {ex}
             </Badge>
+          ))}
+        </div>
+      )}
+
+      {contextLabel && (
+        <div className="px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-sm font-medium">
+          {contextLabel}
+        </div>
+      )}
+
+      {warningFlags.length > 0 && (
+        <div className="space-y-1">
+          {warningFlags.map((flag: string, i: number) => (
+            <div key={i} className="px-3 py-2 rounded-xl bg-amber-50 text-amber-700 text-sm">
+              {flag}
+            </div>
           ))}
         </div>
       )}
@@ -153,17 +178,23 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
           <p className={cn("text-sm font-semibold", scoreTextColorClass(product.totalScore))}>
             {scoreLabel(product.totalScore)}
           </p>
+          {summary && (
+            <p className="text-xs text-muted-foreground">{summary}</p>
+          )}
 
           <div className="space-y-3 pt-2 border-t border-border/50">
-            {subScores.map(({ key, label }) => (
-              <div key={key} className="space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{label}</span>
-                  <span className="font-mono font-medium">{product[key]}/25</span>
+            {subScores.map(({ key, label }) => {
+              const value = product[key];
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="font-mono font-medium">{value}/25</span>
+                  </div>
+                  <ScoreBar value={value} />
                 </div>
-                <ScoreBar value={product[key]} />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

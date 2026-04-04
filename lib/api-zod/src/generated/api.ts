@@ -1294,12 +1294,10 @@ export const ScannerLookupResponse = zod.object({
     .describe(
       "Product type - food (from Open Food Facts) or cosmetic (from Open Beauty Facts)",
     ),
-  scoreNaturalness: zod.number().describe("Zutatenklarheit score (0–25)"),
-  scoreNutrientBalance: zod
-    .number()
-    .describe("Nährwert-Balance \/ Inhaltsstoff-Klarheit score (0–25)"),
+  scoreIngredients: zod.number().describe("Zutatenqualität score (0–25)"),
+  scoreNutrition: zod.number().describe("Nährwerte score (0–25)"),
+  scoreProcessing: zod.number().describe("Verarbeitung score (0–25)"),
   scoreProfileFit: zod.number().describe("Profil-Fit score (0–25)"),
-  scoreQualityBonus: zod.number().describe("Qualitätsbonus score (0–25)"),
   totalScore: zod.number().describe("Gesamt-Score (0–100)"),
   profileFitExclusions: zod
     .array(zod.string())
@@ -1308,6 +1306,12 @@ export const ScannerLookupResponse = zod.object({
     .string()
     .nullish()
     .describe("Fluoride info note for toothpaste products"),
+  contextLabel: zod
+    .string()
+    .nullish()
+    .describe("Kontext-Label z.B. Bewusstes Genussmittel"),
+  warningFlags: zod.array(zod.string()).describe("Warnhinweise"),
+  summary: zod.string().nullish().describe("Kurzer Erklärungstext"),
   scannedAt: zod.string(),
 });
 
@@ -1319,10 +1323,10 @@ export const GetScannerScoreParams = zod.object({
 });
 
 export const GetScannerScoreResponse = zod.object({
-  naturalness: zod.number().describe("Zutatenklarheit (0–25)"),
-  nutrientBalance: zod.number().describe("Nährwert-Balance (0–25)"),
+  ingredients: zod.number().describe("Zutatenqualität (0–25)"),
+  nutrition: zod.number().describe("Nährwerte (0–25)"),
+  processing: zod.number().describe("Verarbeitung (0–25)"),
   profileFit: zod.number().describe("Profil-Fit (0–25)"),
-  qualityBonus: zod.number().describe("Qualitätsbonus (0–25)"),
   total: zod.number().describe("Gesamt-Score (0–100)"),
   profileFitExclusions: zod
     .array(zod.string())
@@ -1330,9 +1334,20 @@ export const GetScannerScoreResponse = zod.object({
   label: zod
     .string()
     .describe(
-      "Lesbare Bewertung: Sehr empfehlenswert | Gut — gelegentlich | Mit Bedacht | Lieber vermeiden",
+      "Lesbare Bewertung: Sehr empfehlenswert | Gut — gelegentlich | Mit Bedacht genießen | Weniger passend für deinen Alltag",
     ),
   color: zod.enum(["green", "yellow", "orange", "red"]),
+  contextLabel: zod
+    .string()
+    .nullish()
+    .describe(
+      "Kontext-Label z.B. Bewusstes Genussmittel oder Natürlicher Fruchtzucker",
+    ),
+  warningFlags: zod
+    .array(zod.string())
+    .describe("Warnhinweise z.B. Enthält Fluorid"),
+  summary: zod.string().describe("Kurzer Erklärungstext zum Gesamt-Score"),
+  profileFitLabel: zod.string().describe("Profil-Fit Bewertungslabel"),
 });
 
 /**
@@ -1353,12 +1368,10 @@ export const GetScanHistoryResponseItem = zod.object({
     .describe(
       "Product type - food (from Open Food Facts) or cosmetic (from Open Beauty Facts)",
     ),
-  scoreNaturalness: zod.number().describe("Zutatenklarheit score (0–25)"),
-  scoreNutrientBalance: zod
-    .number()
-    .describe("Nährwert-Balance \/ Inhaltsstoff-Klarheit score (0–25)"),
+  scoreIngredients: zod.number().describe("Zutatenqualität score (0–25)"),
+  scoreNutrition: zod.number().describe("Nährwerte score (0–25)"),
+  scoreProcessing: zod.number().describe("Verarbeitung score (0–25)"),
   scoreProfileFit: zod.number().describe("Profil-Fit score (0–25)"),
-  scoreQualityBonus: zod.number().describe("Qualitätsbonus score (0–25)"),
   totalScore: zod.number().describe("Gesamt-Score (0–100)"),
   profileFitExclusions: zod
     .array(zod.string())
@@ -1367,6 +1380,12 @@ export const GetScanHistoryResponseItem = zod.object({
     .string()
     .nullish()
     .describe("Fluoride info note for toothpaste products"),
+  contextLabel: zod
+    .string()
+    .nullish()
+    .describe("Kontext-Label z.B. Bewusstes Genussmittel"),
+  warningFlags: zod.array(zod.string()).describe("Warnhinweise"),
+  summary: zod.string().nullish().describe("Kurzer Erklärungstext"),
   scannedAt: zod.string(),
 });
 export const GetScanHistoryResponse = zod.array(GetScanHistoryResponseItem);

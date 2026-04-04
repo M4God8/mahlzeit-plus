@@ -12,7 +12,7 @@ import { fetchProductFromOff } from "../services/offService";
 import { fetchProductFromObf } from "../services/obfService";
 import type { OffProduct } from "../services/offService";
 import type { ObfProduct } from "../services/obfService";
-import { calculateScore, calculateCosmeticScore, ScoreBreakdownSchema } from "../services/scoreService";
+import { calculateScore, calculateCosmeticScore, scoreLabel, scoreColor } from "../services/scoreService";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { CreateRecipeFromProductBody } from "@workspace/api-zod";
 import { z } from "zod";
@@ -129,10 +129,10 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
         nutriments: {},
         labels: product.labels,
         productType: "cosmetic",
-        scoreNaturalness: score.naturalness,
-        scoreNutrientBalance: score.nutrientBalance,
+        scoreIngredients: score.ingredients,
+        scoreNutrition: score.nutrition,
+        scoreProcessing: score.processing,
         scoreProfileFit: score.profileFit,
-        scoreQualityBonus: score.qualityBonus,
         totalScore: score.total,
         profileFitExclusions: score.profileFitExclusions,
         fluorideNote: score.fluorideNote ?? null,
@@ -159,12 +159,15 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
       nutriments: product.nutriments as Record<string, unknown>,
       labels: product.labels,
       productType: "food",
-      scoreNaturalness: score.naturalness,
-      scoreNutrientBalance: score.nutrientBalance,
+      scoreIngredients: score.ingredients,
+      scoreNutrition: score.nutrition,
+      scoreProcessing: score.processing,
       scoreProfileFit: score.profileFit,
-      scoreQualityBonus: score.qualityBonus,
       totalScore: score.total,
       profileFitExclusions: score.profileFitExclusions,
+      contextLabel: score.contextLabel,
+      warningFlags: score.warningFlags,
+      summary: score.summary,
     })
     .returning();
 
@@ -194,24 +197,27 @@ router.get("/scanner/score/:barcode", requireAuth, async (req, res) => {
     .limit(1);
 
   if (cached) {
-    const score = ScoreBreakdownSchema.parse({
-      naturalness: cached.scoreNaturalness,
-      nutrientBalance: cached.scoreNutrientBalance,
-      profileFit: cached.scoreProfileFit,
-      qualityBonus: cached.scoreQualityBonus,
-      total: cached.totalScore,
+    const total = cached.totalScore;
+    const pfScore = cached.scoreProfileFit;
+    res.json({
+      ingredients: cached.scoreIngredients,
+      nutrition: cached.scoreNutrition,
+      processing: cached.scoreProcessing,
+      profileFit: pfScore,
+      total,
+      label: scoreLabel(total),
+      color: scoreColor(total),
+      contextLabel: cached.contextLabel ?? null,
+      warningFlags: cached.warningFlags ?? [],
+      summary: cached.summary ?? "",
+      profileFitLabel: pfScore >= 20
+        ? "✅ Passt gut zu deinem Profil"
+        : pfScore >= 10
+          ? "🟡 Mit Bedacht genießen"
+          : "🔶 Für dein Profil nur eingeschränkt passend",
       profileFitExclusions: cached.profileFitExclusions,
-      label: cached.totalScore >= 80 ? "Sehr empfehlenswert"
-        : cached.totalScore >= 60 ? "Gut — gelegentlich"
-        : cached.totalScore >= 40 ? "Mit Bedacht"
-        : "Lieber vermeiden",
-      color: cached.totalScore >= 80 ? "green"
-        : cached.totalScore >= 60 ? "yellow"
-        : cached.totalScore >= 40 ? "orange"
-        : "red",
       fluorideNote: cached.fluorideNote ?? null,
     });
-    res.json(score);
     return;
   }
 
@@ -242,10 +248,10 @@ router.get("/scanner/score/:barcode", requireAuth, async (req, res) => {
       nutriments: {},
       labels: result.product.labels,
       productType: "cosmetic",
-      scoreNaturalness: score.naturalness,
-      scoreNutrientBalance: score.nutrientBalance,
+      scoreIngredients: score.ingredients,
+      scoreNutrition: score.nutrition,
+      scoreProcessing: score.processing,
       scoreProfileFit: score.profileFit,
-      scoreQualityBonus: score.qualityBonus,
       totalScore: score.total,
       profileFitExclusions: score.profileFitExclusions,
       fluorideNote: score.fluorideNote ?? null,
@@ -267,12 +273,15 @@ router.get("/scanner/score/:barcode", requireAuth, async (req, res) => {
     nutriments: result.product.nutriments as Record<string, unknown>,
     labels: result.product.labels,
     productType: "food",
-    scoreNaturalness: score.naturalness,
-    scoreNutrientBalance: score.nutrientBalance,
+    scoreIngredients: score.ingredients,
+    scoreNutrition: score.nutrition,
+    scoreProcessing: score.processing,
     scoreProfileFit: score.profileFit,
-    scoreQualityBonus: score.qualityBonus,
     totalScore: score.total,
     profileFitExclusions: score.profileFitExclusions,
+    contextLabel: score.contextLabel,
+    warningFlags: score.warningFlags,
+    summary: score.summary,
   });
 
   res.json(score);

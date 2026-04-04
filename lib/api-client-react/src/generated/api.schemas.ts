@@ -429,21 +429,32 @@ export const ScoreBreakdownColor = {
 } as const;
 
 export interface ScoreBreakdown {
-  /** Zutatenklarheit (0–25) */
-  naturalness: number;
-  /** Nährwert-Balance (0–25) */
-  nutrientBalance: number;
+  /** Zutatenqualität (0–25) */
+  ingredients: number;
+  /** Nährwerte (0–25) */
+  nutrition: number;
+  /** Verarbeitung (0–25) */
+  processing: number;
   /** Profil-Fit (0–25) */
   profileFit: number;
-  /** Qualitätsbonus (0–25) */
-  qualityBonus: number;
   /** Gesamt-Score (0–100) */
   total: number;
   /** Ausgeschlossene Zutaten gefunden im Produkt */
   profileFitExclusions: string[];
-  /** Lesbare Bewertung: Sehr empfehlenswert | Gut — gelegentlich | Mit Bedacht | Lieber vermeiden */
+  /** Lesbare Bewertung: Sehr empfehlenswert | Gut — gelegentlich | Mit Bedacht genießen | Weniger passend für deinen Alltag */
   label: string;
   color: ScoreBreakdownColor;
+  /**
+   * Kontext-Label z.B. Bewusstes Genussmittel oder Natürlicher Fruchtzucker
+   * @nullable
+   */
+  contextLabel?: string | null;
+  /** Warnhinweise z.B. Enthält Fluorid */
+  warningFlags: string[];
+  /** Kurzer Erklärungstext zum Gesamt-Score */
+  summary: string;
+  /** Profil-Fit Bewertungslabel */
+  profileFitLabel: string;
 }
 
 /**
@@ -479,14 +490,14 @@ export interface ScannedProduct {
   labels: string[];
   /** Product type - food (from Open Food Facts) or cosmetic (from Open Beauty Facts) */
   productType: ScannedProductProductType;
-  /** Zutatenklarheit score (0–25) */
-  scoreNaturalness: number;
-  /** Nährwert-Balance / Inhaltsstoff-Klarheit score (0–25) */
-  scoreNutrientBalance: number;
+  /** Zutatenqualität score (0–25) */
+  scoreIngredients: number;
+  /** Nährwerte score (0–25) */
+  scoreNutrition: number;
+  /** Verarbeitung score (0–25) */
+  scoreProcessing: number;
   /** Profil-Fit score (0–25) */
   scoreProfileFit: number;
-  /** Qualitätsbonus score (0–25) */
-  scoreQualityBonus: number;
   /** Gesamt-Score (0–100) */
   totalScore: number;
   /** List of excluded ingredients found in this product */
@@ -496,6 +507,18 @@ export interface ScannedProduct {
    * @nullable
    */
   fluorideNote?: string | null;
+  /**
+   * Kontext-Label z.B. Bewusstes Genussmittel
+   * @nullable
+   */
+  contextLabel?: string | null;
+  /** Warnhinweise */
+  warningFlags: string[];
+  /**
+   * Kurzer Erklärungstext
+   * @nullable
+   */
+  summary?: string | null;
   scannedAt: string;
 }
 

@@ -2170,18 +2170,18 @@ components:
     ScoreBreakdown:
       type: object
       properties:
-        naturalness:
+        ingredients:
           type: integer
-          description: Zutatenklarheit (0–25)
-        nutrientBalance:
+          description: Zutatenqualität (0–25)
+        nutrition:
           type: integer
-          description: Nährwert-Balance (0–25)
+          description: Nährwerte (0–25)
+        processing:
+          type: integer
+          description: Verarbeitung (0–25)
         profileFit:
           type: integer
           description: Profil-Fit (0–25)
-        qualityBonus:
-          type: integer
-          description: Qualitätsbonus (0–25)
         total:
           type: integer
           description: Gesamt-Score (0–100)
@@ -2192,19 +2192,36 @@ components:
           description: Ausgeschlossene Zutaten gefunden im Produkt
         label:
           type: string
-          description: "Lesbare Bewertung: Sehr empfehlenswert | Gut — gelegentlich | Mit Bedacht | Lieber vermeiden"
+          description: "Lesbare Bewertung: Sehr empfehlenswert | Gut — gelegentlich | Mit Bedacht genießen | Weniger passend für deinen Alltag"
         color:
           type: string
           enum: [green, yellow, orange, red]
+        contextLabel:
+          type: ["string", "null"]
+          description: Kontext-Label z.B. Bewusstes Genussmittel oder Natürlicher Fruchtzucker
+        warningFlags:
+          type: array
+          items:
+            type: string
+          description: Warnhinweise z.B. Enthält Fluorid
+        summary:
+          type: string
+          description: Kurzer Erklärungstext zum Gesamt-Score
+        profileFitLabel:
+          type: string
+          description: Profil-Fit Bewertungslabel
       required:
-        - naturalness
-        - nutrientBalance
+        - ingredients
+        - nutrition
+        - processing
         - profileFit
-        - qualityBonus
         - total
         - profileFitExclusions
         - label
         - color
+        - warningFlags
+        - summary
+        - profileFitLabel
 
     ScannedProduct:
       type: object
@@ -2233,18 +2250,18 @@ components:
           type: string
           enum: ["food", "cosmetic"]
           description: Product type - food (from Open Food Facts) or cosmetic (from Open Beauty Facts)
-        scoreNaturalness:
+        scoreIngredients:
           type: integer
-          description: Zutatenklarheit score (0–25)
-        scoreNutrientBalance:
+          description: Zutatenqualität score (0–25)
+        scoreNutrition:
           type: integer
-          description: Nährwert-Balance / Inhaltsstoff-Klarheit score (0–25)
+          description: Nährwerte score (0–25)
+        scoreProcessing:
+          type: integer
+          description: Verarbeitung score (0–25)
         scoreProfileFit:
           type: integer
           description: Profil-Fit score (0–25)
-        scoreQualityBonus:
-          type: integer
-          description: Qualitätsbonus score (0–25)
         totalScore:
           type: integer
           description: Gesamt-Score (0–100)
@@ -2256,6 +2273,17 @@ components:
         fluorideNote:
           type: ["string", "null"]
           description: Fluoride info note for toothpaste products
+        contextLabel:
+          type: ["string", "null"]
+          description: Kontext-Label z.B. Bewusstes Genussmittel
+        warningFlags:
+          type: array
+          items:
+            type: string
+          description: Warnhinweise
+        summary:
+          type: ["string", "null"]
+          description: Kurzer Erklärungstext
         scannedAt:
           type: string
       required:
@@ -2264,12 +2292,13 @@ components:
         - userId
         - labels
         - productType
-        - scoreNaturalness
-        - scoreNutrientBalance
+        - scoreIngredients
+        - scoreNutrition
+        - scoreProcessing
         - scoreProfileFit
-        - scoreQualityBonus
         - totalScore
         - profileFitExclusions
+        - warningFlags
         - scannedAt
 
     CostEstimate:
