@@ -1451,3 +1451,64 @@ export const UpdateCoachingProductResponse = zod.object({
 export const DeleteCoachingProductParams = zod.object({
   id: zod.coerce.number(),
 });
+
+/**
+ * @summary Get monthly review data
+ */
+export const GetMonthlyReviewQueryParams = zod.object({
+  month: zod.coerce
+    .string()
+    .optional()
+    .describe("Month in YYYY-MM format (defaults to current month)"),
+});
+
+export const GetMonthlyReviewResponse = zod.object({
+  month: zod.string(),
+  mealDistribution: zod.object({
+    total: zod.number(),
+    byType: zod.array(
+      zod.object({
+        type: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    topRecipes: zod.array(
+      zod.object({
+        id: zod.number(),
+        title: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+  }),
+  costs: zod.object({
+    totalMin: zod.number(),
+    totalMax: zod.number(),
+    totalAvg: zod.number(),
+    perDayAvg: zod.number(),
+    perWeekAvg: zod.number(),
+    previousMonth: zod.union([
+      zod.object({
+        totalAvg: zod.number(),
+      }),
+      zod.null(),
+    ]),
+  }),
+  nutritionBalance: zod.array(
+    zod.object({
+      category: zod.string(),
+      count: zod.number(),
+    }),
+  ),
+  foodWaste: zod.object({
+    itemsUsedBeforeExpiry: zod.number(),
+    itemsExpired: zod.number(),
+    wastePreventionRate: zod.number(),
+  }),
+  score: zod.number(),
+  scoreBreakdown: zod.object({
+    regularity: zod.number(),
+    variety: zod.number(),
+    costEfficiency: zod.number(),
+    wasteAvoidance: zod.number(),
+  }),
+});

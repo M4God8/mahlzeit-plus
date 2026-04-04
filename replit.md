@@ -112,6 +112,7 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 | GET | /api/costs/recipe/:id | Ja | Kostenberechnung für ein Rezept (?servings=N optional) |
 | GET | /api/costs/shopping-list/:id | Ja | Wochenkosten für eine Einkaufsliste |
 | GET | /api/costs/today | Ja | Tageskosten für heutige Mahlzeiten |
+| GET | /api/review/monthly | Ja | Monats-Rückblick (?month=YYYY-MM, default: aktueller Monat) |
 | POST | /api/chat/message | Ja | Chat-Nachricht an Bewussten Begleiter (Platzhalter-Antwort) |
 | GET | /api/admin/products | Admin | Coaching-Produkte auflisten |
 | POST | /api/admin/products | Admin | Coaching-Produkt erstellen |
@@ -135,6 +136,7 @@ Alle Routes unter `/api/` (proxied durch Replit zu Port 8080):
 - `/rezepte/:id/bearbeiten` — Rezept bearbeiten (protected)
 - `/ki` — KI-Küche: Rezeptgenerator + Wochenplan-Generator via Claude AI (protected)
 - `/einstellungen` — Einstellungen (protected)
+- `/rueckblick` — Monats-Rückblick: Ess-Verteilung, Kosten, Ernährungs-Balance, Food Waste, Score (protected)
 - `/admin` — Admin-Panel (nur role=admin, sonst Redirect)
 
 ## Umgebungsvariablen (Secrets)

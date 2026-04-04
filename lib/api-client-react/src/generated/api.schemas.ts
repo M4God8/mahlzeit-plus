@@ -591,6 +591,64 @@ export interface UpdateFridgeItemBody {
   status: UpdateFridgeItemBodyStatus;
 }
 
+export interface MealTypeCount {
+  type: string;
+  count: number;
+}
+
+export interface TopRecipe {
+  id: number;
+  title: string;
+  count: number;
+}
+
+export interface CategoryDistribution {
+  category: string;
+  count: number;
+}
+
+export interface PreviousMonthCost {
+  totalAvg: number;
+}
+
+export type MonthlyReviewMealDistribution = {
+  total: number;
+  byType: MealTypeCount[];
+  topRecipes: TopRecipe[];
+};
+
+export type MonthlyReviewCosts = {
+  totalMin: number;
+  totalMax: number;
+  totalAvg: number;
+  perDayAvg: number;
+  perWeekAvg: number;
+  previousMonth: PreviousMonthCost | null;
+};
+
+export type MonthlyReviewFoodWaste = {
+  itemsUsedBeforeExpiry: number;
+  itemsExpired: number;
+  wastePreventionRate: number;
+};
+
+export type MonthlyReviewScoreBreakdown = {
+  regularity: number;
+  variety: number;
+  costEfficiency: number;
+  wasteAvoidance: number;
+};
+
+export interface MonthlyReview {
+  month: string;
+  mealDistribution: MonthlyReviewMealDistribution;
+  costs: MonthlyReviewCosts;
+  nutritionBalance: CategoryDistribution[];
+  foodWaste: MonthlyReviewFoodWaste;
+  score: number;
+  scoreBreakdown: MonthlyReviewScoreBreakdown;
+}
+
 export type ListIngredientsParams = {
   category?: string;
   search?: string;
@@ -629,4 +687,11 @@ export type AddMealPlanDayBody = {
 
 export type GetRecipeCostParams = {
   servings?: number;
+};
+
+export type GetMonthlyReviewParams = {
+  /**
+   * Month in YYYY-MM format (defaults to current month)
+   */
+  month?: string;
 };

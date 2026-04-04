@@ -15,7 +15,8 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Check, Loader2, LogOut, User as UserIcon, Brain, RotateCcw, RefreshCw, Clock, Utensils, TrendingUp } from "lucide-react";
+import { Check, Loader2, LogOut, User as UserIcon, Brain, RotateCcw, RefreshCw, Clock, Utensils, TrendingUp, BarChart3, ChevronRight } from "lucide-react";
+import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 const COMPLEXITY_LABEL: Record<string, string> = {
@@ -329,6 +330,21 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        <Link href="/rueckblick" data-testid="link-rueckblick">
+          <Card className="border-border/50 shadow-sm hover:bg-muted/50 transition-colors cursor-pointer">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <BarChart3 className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-display font-semibold">Monats-Rückblick</h4>
+                <p className="text-sm text-muted-foreground">Deine monatliche Zusammenfassung</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
 
         <Button 
           variant="ghost" 

@@ -22,6 +22,7 @@ import Onboarding from "@/pages/Onboarding";
 import KiKueche from "@/pages/ki/KiKueche";
 import ScannerPage from "@/pages/scanner/Scanner";
 import AdminPage from "@/pages/admin/Admin";
+import MonthlyReview from "@/pages/rueckblick/MonthlyReview";
 import NotFound from "@/pages/not-found";
 
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -242,6 +243,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/ki" component={() => <ProtectedRoute component={KiKueche} />} />
           <Route path="/scanner" component={() => <ProtectedRoute component={ScannerPage} />} />
           <Route path="/einstellungen" component={() => <ProtectedRoute component={Settings} />} />
+          <Route path="/rueckblick" component={() => <ProtectedRoute component={MonthlyReview} />} />
 
           <Route path="/admin">
             <Show when="signed-in"><AdminPage /></Show>

@@ -35,6 +35,7 @@ import type {
   CostEstimate,
   FridgeItem,
   FridgeItemRaw,
+  GetMonthlyReviewParams,
   GetRecipeCostParams,
   HealthStatus,
   ImportRecipeScreenshot400,
@@ -51,6 +52,7 @@ import type {
   MealPlanDetail,
   MealPlanInput,
   MealPlanUpdateInput,
+  MonthlyReview,
   NutritionProfile,
   Recipe,
   RecipeCost,
@@ -5125,3 +5127,100 @@ export const useDeleteCoachingProduct = <
 > => {
   return useMutation(getDeleteCoachingProductMutationOptions(options));
 };
+
+/**
+ * @summary Get monthly review data
+ */
+export const getGetMonthlyReviewUrl = (params?: GetMonthlyReviewParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/review/monthly?${stringifiedParams}`
+    : `/api/review/monthly`;
+};
+
+export const getMonthlyReview = async (
+  params?: GetMonthlyReviewParams,
+  options?: RequestInit,
+): Promise<MonthlyReview> => {
+  return customFetch<MonthlyReview>(getGetMonthlyReviewUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMonthlyReviewQueryKey = (
+  params?: GetMonthlyReviewParams,
+) => {
+  return [`/api/review/monthly`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetMonthlyReviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMonthlyReview>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetMonthlyReviewParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMonthlyReview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMonthlyReviewQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMonthlyReview>>
+  > = ({ signal }) => getMonthlyReview(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMonthlyReview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMonthlyReviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMonthlyReview>>
+>;
+export type GetMonthlyReviewQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get monthly review data
+ */
+
+export function useGetMonthlyReview<
+  TData = Awaited<ReturnType<typeof getMonthlyReview>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetMonthlyReviewParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMonthlyReview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMonthlyReviewQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

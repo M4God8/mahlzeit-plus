@@ -36,6 +36,8 @@ tags:
     description: Coaching products admin CRUD
   - name: fridge
     description: Automatic fridge/pantry tracking
+  - name: review
+    description: Monthly review and insights
 
 paths:
   /healthz:
@@ -1252,6 +1254,26 @@ paths:
         "404":
           description: Not found
 
+  /review/monthly:
+    get:
+      operationId: getMonthlyReview
+      tags: [review]
+      summary: Get monthly review data
+      parameters:
+        - name: month
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "Month in YYYY-MM format (defaults to current month)"
+      responses:
+        "200":
+          description: Monthly review data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MonthlyReview"
+
 components:
   schemas:
     HealthStatus:
@@ -2416,3 +2438,106 @@ components:
         - ingredientName
         - bestBeforeDate
         - ingredientId
+
+    MealTypeCount:
+      type: object
+      properties:
+        type:
+          type: string
+        count:
+          type: integer
+      required: [type, count]
+
+    TopRecipe:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        count:
+          type: integer
+      required: [id, title, count]
+
+    CategoryDistribution:
+      type: object
+      properties:
+        category:
+          type: string
+        count:
+          type: integer
+      required: [category, count]
+
+    PreviousMonthCost:
+      type: object
+      properties:
+        totalAvg:
+          type: number
+      required: [totalAvg]
+
+    MonthlyReview:
+      type: object
+      properties:
+        month:
+          type: string
+        mealDistribution:
+          type: object
+          properties:
+            total:
+              type: integer
+            byType:
+              type: array
+              items:
+                $ref: "#/components/schemas/MealTypeCount"
+            topRecipes:
+              type: array
+              items:
+                $ref: "#/components/schemas/TopRecipe"
+          required: [total, byType, topRecipes]
+        costs:
+          type: object
+          properties:
+            totalMin:
+              type: number
+            totalMax:
+              type: number
+            totalAvg:
+              type: number
+            perDayAvg:
+              type: number
+            perWeekAvg:
+              type: number
+            previousMonth:
+              oneOf:
+                - $ref: "#/components/schemas/PreviousMonthCost"
+                - type: "null"
+          required: [totalMin, totalMax, totalAvg, perDayAvg, perWeekAvg, previousMonth]
+        nutritionBalance:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryDistribution"
+        foodWaste:
+          type: object
+          properties:
+            itemsUsedBeforeExpiry:
+              type: integer
+            itemsExpired:
+              type: integer
+            wastePreventionRate:
+              type: integer
+          required: [itemsUsedBeforeExpiry, itemsExpired, wastePreventionRate]
+        score:
+          type: integer
+        scoreBreakdown:
+          type: object
+          properties:
+            regularity:
+              type: integer
+            variety:
+              type: integer
+            costEfficiency:
+              type: integer
+            wasteAvoidance:
+              type: integer
+          required: [regularity, variety, costEfficiency, wasteAvoidance]
+      required: [month, mealDistribution, costs, nutritionBalance, foodWaste, score, scoreBreakdown]
