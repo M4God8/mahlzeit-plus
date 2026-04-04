@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { useListNutritionProfiles, useCreateOrUpdateUserSettings } from "@workspace/api-client-react";
 import { ArrowRight, Check, ChevronLeft, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import IntroTour, { hasSeenIntroTour } from "@/components/IntroTour";
+import IntroTour, { hasSeenIntroTour, markOnboardingDone } from "@/components/IntroTour";
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
@@ -76,6 +76,7 @@ export default function Onboarding() {
             ? "Dein Profil wurde eingerichtet. Dein erster Plan wartet auf dich."
             : "Dein Profil wurde gespeichert. Erstelle deinen ersten Mahlzeitenplan unter 'Plan'.",
         });
+        markOnboardingDone();
         if (!hasSeenIntroTour()) {
           setShowTour(true);
         } else {

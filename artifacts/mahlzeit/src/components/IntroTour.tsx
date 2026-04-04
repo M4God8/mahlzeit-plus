@@ -31,6 +31,7 @@ const TOUR_SCREENS = [
 ] as const;
 
 const STORAGE_KEY = "mahlzeit_intro_seen";
+const ONBOARDED_KEY = "mahlzeit_onboarded";
 
 export function hasSeenIntroTour(): boolean {
   try {
@@ -44,6 +45,20 @@ export function markIntroTourSeen(): void {
   try {
     localStorage.setItem(STORAGE_KEY, "1");
   } catch {}
+}
+
+export function markOnboardingDone(): void {
+  try {
+    localStorage.setItem(ONBOARDED_KEY, "1");
+  } catch {}
+}
+
+export function needsIntroTour(): boolean {
+  try {
+    return localStorage.getItem(ONBOARDED_KEY) === "1" && localStorage.getItem(STORAGE_KEY) !== "1";
+  } catch {
+    return false;
+  }
 }
 
 interface IntroTourProps {
