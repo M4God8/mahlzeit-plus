@@ -35,16 +35,18 @@ interface OffApiResponse {
 }
 
 const OFF_BASE = "https://world.openfoodfacts.org/api/v2/product";
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 10000;
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 800;
 
 export type OffResult = OffProduct | null | "upstream_error";
 
-export async function fetchProductFromOff(barcode: string): Promise<OffResult> {
+async function singleFetch(barcode: string, attempt: number): Promise<OffResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   const url = `${OFF_BASE}/${encodeURIComponent(barcode)}?fields=product_name,brands,image_url,ingredients_text,nutriments,labels,labels_tags,nova_group`;
 
-  console.log(`[OFF] Fetching barcode=${barcode} url=${url}`);
+  console.log(`[OFF] Attempt ${attempt}/${MAX_RETRIES} fetching barcode=${barcode} url=${url}`);
 
   try {
     const res = await fetch(url, {
@@ -53,10 +55,10 @@ export async function fetchProductFromOff(barcode: string): Promise<OffResult> {
       }
     );
 
-    console.log(`[OFF] Response status=${res.status} for barcode=${barcode}`);
+    console.log(`[OFF] Attempt ${attempt}/${MAX_RETRIES} response status=${res.status} for barcode=${barcode}`);
 
     if (!res.ok) {
-      console.error(`[OFF] Upstream error: HTTP ${res.status} for barcode=${barcode}`);
+      console.error(`[OFF] Upstream error: HTTP ${res.status} for barcode=${barcode} (attempt ${attempt}/${MAX_RETRIES})`);
       return "upstream_error";
     }
 
@@ -91,9 +93,25 @@ export async function fetchProductFromOff(barcode: string): Promise<OffResult> {
     };
   } catch (err) {
     const isAbort = err instanceof DOMException && err.name === "AbortError";
-    console.error(`[OFF] Fetch error for barcode=${barcode}: ${isAbort ? "timeout" : (err as Error).message}`);
+    console.error(`[OFF] Fetch error for barcode=${barcode} (attempt ${attempt}/${MAX_RETRIES}): ${isAbort ? "timeout" : (err as Error).message}`);
     return "upstream_error";
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function fetchProductFromOff(barcode: string): Promise<OffResult> {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const result = await singleFetch(barcode, attempt);
+
+    if (result !== "upstream_error") return result;
+
+    if (attempt < MAX_RETRIES) {
+      console.log(`[OFF] Retry ${attempt}/${MAX_RETRIES} for barcode=${barcode}, waiting ${RETRY_DELAY_MS}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    }
+  }
+
+  console.error(`[OFF] All ${MAX_RETRIES} attempts failed for barcode=${barcode}`);
+  return "upstream_error";
 }

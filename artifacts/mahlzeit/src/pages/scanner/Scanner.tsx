@@ -394,7 +394,7 @@ export default function Scanner() {
                       {(lookupError as { status?: number })?.status === 502
                         ? "Externer Dienst nicht erreichbar — bitte erneut versuchen."
                         : (lookupError as { status?: number })?.status === 404
-                          ? "Produkt nicht gefunden"
+                          ? "Produkt nicht gefunden — manuelle Eingabe möglich"
                           : "Fehler beim Abrufen des Produkts. Bitte erneut versuchen."}
                     </p>
                     {(lookupError as { status?: number })?.status === 404 && (

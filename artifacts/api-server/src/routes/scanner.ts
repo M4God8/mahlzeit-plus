@@ -103,7 +103,7 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
 
   if (result.type === "not_found") {
     console.warn(`[Scanner] Product not found for barcode=${barcode}`);
-    res.status(404).json({ error: "Produkt nicht gefunden", notFound: true });
+    res.status(404).json({ error: "Produkt nicht gefunden — manuelle Eingabe möglich", notFound: true });
     return;
   }
 
@@ -219,7 +219,7 @@ router.get("/scanner/score/:barcode", requireAuth, async (req, res) => {
   }
 
   if (result.type === "not_found") {
-    res.status(404).json({ error: "Produkt nicht gefunden", notFound: true });
+    res.status(404).json({ error: "Produkt nicht gefunden — manuelle Eingabe möglich", notFound: true });
     return;
   }
 
