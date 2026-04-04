@@ -100,37 +100,6 @@ export default function Today() {
       </header>
 
       <main className="flex-1 px-4 space-y-6">
-        {todayCost && todayCost.avg > 0 && (
-          <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 animate-in fade-in duration-300">
-            <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-              <Euro className="w-4 h-4 text-emerald-600" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-emerald-800">
-                Tageskosten: ca. {todayCost.min.toFixed(2)}€ – {todayCost.max.toFixed(2)}€
-              </p>
-              <p className="text-xs text-emerald-600">∅ {todayCost.avg.toFixed(2)}€ pro Person</p>
-            </div>
-          </div>
-        )}
-
-        {learnProfile?.insightMessage && !insightDismissed && (
-          <div className="relative flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 animate-in slide-in-from-top-2 duration-300">
-            <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-sm text-amber-800 flex-1 leading-snug">
-              <span className="font-semibold">Dein Profil sagt: </span>
-              {learnProfile.insightMessage}
-            </p>
-            <button
-              onClick={() => setInsightDismissed(true)}
-              className="text-amber-400 hover:text-amber-600 shrink-0"
-              aria-label="Schließen"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
         {todaySummary?.expiringItems && todaySummary.expiringItems.length > 0 && (
           <button
             onClick={() => {
@@ -142,31 +111,63 @@ export default function Today() {
             <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 shrink-0" />
             <div className="flex-1">
               <p className="text-sm text-yellow-800 leading-snug">
-                <span className="font-semibold">🟡 Bald aufbrauchen: </span>
+                <span className="font-semibold">Bald aufbrauchen: </span>
                 {todaySummary.expiringItems.map((i) => i.ingredientName).join(", ")}
               </p>
-              <p className="text-xs text-yellow-600 mt-0.5">Tap für Rezeptvorschläge →</p>
+              <p className="text-xs text-yellow-600 mt-0.5">Tap für Rezeptvorschläge</p>
             </div>
           </button>
         )}
 
         {!hasMeals ? (
-          <div className="flex flex-col items-center justify-center text-center py-16 px-4 bg-primary/5 rounded-3xl border border-primary/10">
-            <div className="w-16 h-16 bg-background rounded-full flex items-center justify-center mb-4 shadow-sm">
-              <ChefHat className="w-8 h-8 text-primary" />
+          <div className="flex flex-col items-center justify-center text-center py-20 px-6">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+              <ChefHat className="w-10 h-10 text-primary" />
             </div>
-            <h3 className="font-display text-xl font-semibold mb-2">Kein Plan für heute</h3>
-            <p className="text-muted-foreground mb-6">
-              Lass uns entspannt in die Woche starten. Erstelle deinen ersten Mahlzeitenplan.
+            <h3 className="font-display text-2xl font-bold mb-3">Noch kein Plan aktiv</h3>
+            <p className="text-muted-foreground max-w-xs mb-8 leading-relaxed">
+              Starte mit deinem ersten Wochenplan — die App erstellt dir Vorschläge, Einkaufslisten und mehr.
             </p>
             <Link href="/plan" data-testid="link-create-plan">
-              <Button className="rounded-full shadow-sm">
-                <PlusCircle className="w-4 h-4 mr-2" />
-                Plan erstellen
+              <Button size="lg" className="rounded-full shadow-md px-8 text-base">
+                <PlusCircle className="w-5 h-5 mr-2" />
+                Ersten Plan erstellen
               </Button>
             </Link>
           </div>
         ) : (
+          <>
+          {todayCost && todayCost.avg > 0 && (
+            <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 animate-in fade-in duration-300">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                <Euro className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-emerald-800">
+                  Tageskosten: ca. {todayCost.min.toFixed(2)}€ – {todayCost.max.toFixed(2)}€
+                </p>
+                <p className="text-xs text-emerald-600">∅ {todayCost.avg.toFixed(2)}€ pro Person</p>
+              </div>
+            </div>
+          )}
+
+          {learnProfile?.insightMessage && !insightDismissed && (
+            <div className="relative flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 animate-in slide-in-from-top-2 duration-300">
+              <Sparkles className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-800 flex-1 leading-snug">
+                <span className="font-semibold">Dein Profil sagt: </span>
+                {learnProfile.insightMessage}
+              </p>
+              <button
+                onClick={() => setInsightDismissed(true)}
+                className="text-amber-400 hover:text-amber-600 shrink-0"
+                aria-label="Schließen"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <div className="space-y-4">
             {todaySummary.meals.map((meal, idx) => (
               <Card
@@ -276,37 +277,38 @@ export default function Today() {
               </Card>
             ))}
           </div>
-        )}
 
-        <div className="mt-8 pt-4 pb-4 space-y-3">
-          {activePlan && (
-            <Button
-              className="w-full rounded-2xl h-14 text-base shadow-sm"
-              variant="outline"
-              onClick={handleGenerateList}
-              disabled={generateList.isPending}
-              data-testid="btn-generate-shopping-list"
-            >
-              {generateList.isPending ? (
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              ) : (
-                <ShoppingCart className="w-5 h-5 mr-2" />
-              )}
-              Einkaufsliste für diese Woche generieren
-            </Button>
-          )}
-          <Link href="/einkauf" data-testid="link-shopping-banner">
-            <div className="bg-primary text-primary-foreground rounded-2xl p-5 flex items-center justify-between shadow-md hover:shadow-lg transition-shadow">
-              <div>
-                <h4 className="font-semibold text-lg">Einkaufsliste</h4>
-                <p className="text-primary-foreground/80 text-sm mt-0.5">Für diese Woche</p>
+          <div className="mt-8 pt-4 pb-4 space-y-3">
+            {activePlan && (
+              <Button
+                className="w-full rounded-2xl h-14 text-base shadow-sm"
+                variant="outline"
+                onClick={handleGenerateList}
+                disabled={generateList.isPending}
+                data-testid="btn-generate-shopping-list"
+              >
+                {generateList.isPending ? (
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                ) : (
+                  <ShoppingCart className="w-5 h-5 mr-2" />
+                )}
+                Einkaufsliste für diese Woche generieren
+              </Button>
+            )}
+            <Link href="/einkauf" data-testid="link-shopping-banner">
+              <div className="bg-primary text-primary-foreground rounded-2xl p-5 flex items-center justify-between shadow-md hover:shadow-lg transition-shadow">
+                <div>
+                  <h4 className="font-semibold text-lg">Einkaufsliste</h4>
+                  <p className="text-primary-foreground/80 text-sm mt-0.5">Für diese Woche</p>
+                </div>
+                <div className="w-10 h-10 bg-background/20 rounded-full flex items-center justify-center">
+                  <ArrowRight className="w-5 h-5" />
+                </div>
               </div>
-              <div className="w-10 h-10 bg-background/20 rounded-full flex items-center justify-center">
-                <ArrowRight className="w-5 h-5" />
-              </div>
-            </div>
-          </Link>
-        </div>
+            </Link>
+          </div>
+          </>
+        )}
       </main>
     </div>
   );
