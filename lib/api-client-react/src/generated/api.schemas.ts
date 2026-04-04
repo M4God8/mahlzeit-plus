@@ -445,6 +445,17 @@ export interface ScoreBreakdown {
  */
 export type ScannedProductNutriments = { [key: string]: unknown } | null;
 
+/**
+ * Product type - food (from Open Food Facts) or cosmetic (from Open Beauty Facts)
+ */
+export type ScannedProductProductType =
+  (typeof ScannedProductProductType)[keyof typeof ScannedProductProductType];
+
+export const ScannedProductProductType = {
+  food: "food",
+  cosmetic: "cosmetic",
+} as const;
+
 export interface ScannedProduct {
   id: number;
   barcode: string;
@@ -460,9 +471,11 @@ export interface ScannedProduct {
   /** @nullable */
   nutriments?: ScannedProductNutriments;
   labels: string[];
+  /** Product type - food (from Open Food Facts) or cosmetic (from Open Beauty Facts) */
+  productType: ScannedProductProductType;
   /** Zutatenklarheit score (0–25) */
   scoreNaturalness: number;
-  /** Nährwert-Balance score (0–25) */
+  /** Nährwert-Balance / Inhaltsstoff-Klarheit score (0–25) */
   scoreNutrientBalance: number;
   /** Profil-Fit score (0–25) */
   scoreProfileFit: number;
@@ -472,6 +485,11 @@ export interface ScannedProduct {
   totalScore: number;
   /** List of excluded ingredients found in this product */
   profileFitExclusions: string[];
+  /**
+   * Fluoride info note for toothpaste products
+   * @nullable
+   */
+  fluorideNote?: string | null;
   scannedAt: string;
 }
 

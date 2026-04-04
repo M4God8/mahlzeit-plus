@@ -2149,12 +2149,16 @@ components:
           type: array
           items:
             type: string
+        productType:
+          type: string
+          enum: ["food", "cosmetic"]
+          description: Product type - food (from Open Food Facts) or cosmetic (from Open Beauty Facts)
         scoreNaturalness:
           type: integer
           description: Zutatenklarheit score (0–25)
         scoreNutrientBalance:
           type: integer
-          description: Nährwert-Balance score (0–25)
+          description: Nährwert-Balance / Inhaltsstoff-Klarheit score (0–25)
         scoreProfileFit:
           type: integer
           description: Profil-Fit score (0–25)
@@ -2169,6 +2173,9 @@ components:
           items:
             type: string
           description: List of excluded ingredients found in this product
+        fluorideNote:
+          type: ["string", "null"]
+          description: Fluoride info note for toothpaste products
         scannedAt:
           type: string
       required:
@@ -2176,6 +2183,7 @@ components:
         - barcode
         - userId
         - labels
+        - productType
         - scoreNaturalness
         - scoreNutrientBalance
         - scoreProfileFit

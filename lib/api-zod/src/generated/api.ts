@@ -1289,14 +1289,25 @@ export const ScannerLookupResponse = zod.object({
   ingredients: zod.string().nullish(),
   nutriments: zod.object({}).passthrough().nullish(),
   labels: zod.array(zod.string()),
+  productType: zod
+    .enum(["food", "cosmetic"])
+    .describe(
+      "Product type - food (from Open Food Facts) or cosmetic (from Open Beauty Facts)",
+    ),
   scoreNaturalness: zod.number().describe("Zutatenklarheit score (0–25)"),
-  scoreNutrientBalance: zod.number().describe("Nährwert-Balance score (0–25)"),
+  scoreNutrientBalance: zod
+    .number()
+    .describe("Nährwert-Balance \/ Inhaltsstoff-Klarheit score (0–25)"),
   scoreProfileFit: zod.number().describe("Profil-Fit score (0–25)"),
   scoreQualityBonus: zod.number().describe("Qualitätsbonus score (0–25)"),
   totalScore: zod.number().describe("Gesamt-Score (0–100)"),
   profileFitExclusions: zod
     .array(zod.string())
     .describe("List of excluded ingredients found in this product"),
+  fluorideNote: zod
+    .string()
+    .nullish()
+    .describe("Fluoride info note for toothpaste products"),
   scannedAt: zod.string(),
 });
 
@@ -1337,14 +1348,25 @@ export const GetScanHistoryResponseItem = zod.object({
   ingredients: zod.string().nullish(),
   nutriments: zod.object({}).passthrough().nullish(),
   labels: zod.array(zod.string()),
+  productType: zod
+    .enum(["food", "cosmetic"])
+    .describe(
+      "Product type - food (from Open Food Facts) or cosmetic (from Open Beauty Facts)",
+    ),
   scoreNaturalness: zod.number().describe("Zutatenklarheit score (0–25)"),
-  scoreNutrientBalance: zod.number().describe("Nährwert-Balance score (0–25)"),
+  scoreNutrientBalance: zod
+    .number()
+    .describe("Nährwert-Balance \/ Inhaltsstoff-Klarheit score (0–25)"),
   scoreProfileFit: zod.number().describe("Profil-Fit score (0–25)"),
   scoreQualityBonus: zod.number().describe("Qualitätsbonus score (0–25)"),
   totalScore: zod.number().describe("Gesamt-Score (0–100)"),
   profileFitExclusions: zod
     .array(zod.string())
     .describe("List of excluded ingredients found in this product"),
+  fluorideNote: zod
+    .string()
+    .nullish()
+    .describe("Fluoride info note for toothpaste products"),
   scannedAt: zod.string(),
 });
 export const GetScanHistoryResponse = zod.array(GetScanHistoryResponseItem);

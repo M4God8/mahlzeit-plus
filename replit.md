@@ -174,7 +174,7 @@ KI-Modell: `claude-sonnet-4-6`, max_tokens: 8192
 - **Phase 2** ✅ Wochenplan-Builder: Plan-CRUD, Rezept-Zuweisung, Aktivierung, Kopieren, Tage tauschen, Loop, Kalenderansicht, RecipeEdit
 - **Phase 3** ✅ Einkaufsliste: Auto-Generierung aus Plan, Kategorisierung, Mengen-Aggregation
 - **Phase 4** ✅ KI-Layer: Claude AI (Rezeptgenerator, Wochenplaner, Rezept-Anpassung, Zutaten-Alternativen, Feedback)
-- **Phase 5** ✅ Scanner: Barcode-Scanner für Zutaten
+- **Phase 5** ✅ Scanner: Barcode-Scanner für Zutaten (OFF + OBF Fallback, Kosmetik-Score)
 - **Phase 6** ✅ Lern-System: Personalisierung (abhängig von Phase 4)
 - **Phase 7** ✅ Preislogik: Kostenschätzung, Soft-Budget-Logik in KI-Prompts, Auto-Update Cron (Open Food Facts)
 

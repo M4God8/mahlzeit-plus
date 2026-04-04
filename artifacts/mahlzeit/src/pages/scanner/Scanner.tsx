@@ -1,11 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useZxing } from "react-zxing";
 import { useScannerLookup, useGetScanHistory } from "@workspace/api-client-react";
 import type { ScannedProduct } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, ScanBarcode, History, ChevronLeft, X, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, ScanBarcode, History, ChevronLeft, X, AlertCircle, CheckCircle2, XCircle, Info, Sparkles, ShoppingBasket } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Tab = "scan" | "history";
@@ -38,12 +38,23 @@ function scoreTextColorClass(total: number): string {
   return "text-red-600";
 }
 
-const SUB_SCORES = [
+const FOOD_SUB_SCORES = [
   { key: "scoreNaturalness", label: "Zutatenklarheit" },
   { key: "scoreNutrientBalance", label: "Nährwert-Balance" },
   { key: "scoreProfileFit", label: "Profil-Fit" },
   { key: "scoreQualityBonus", label: "Qualitätsbonus" },
 ] as const;
+
+const COSMETIC_SUB_SCORES = [
+  { key: "scoreNaturalness", label: "Natürlichkeit" },
+  { key: "scoreNutrientBalance", label: "Inhaltsstoff-Klarheit" },
+  { key: "scoreProfileFit", label: "Profil-Fit" },
+  { key: "scoreQualityBonus", label: "Qualitätsbonus" },
+] as const;
+
+function getSubScores(productType: string) {
+  return productType === "cosmetic" ? COSMETIC_SUB_SCORES : FOOD_SUB_SCORES;
+}
 
 function ScoreBar({ value, max = 25 }: { value: number; max?: number }) {
   const pct = Math.round((value / max) * 100);
@@ -58,6 +69,8 @@ function ScoreBar({ value, max = 25 }: { value: number; max?: number }) {
 
 function ProductResult({ product, onReset }: { product: ScannedProduct; onReset: () => void }) {
   const fitsProfile = product.profileFitExclusions.length === 0;
+  const isCosmetic = product.productType === "cosmetic";
+  const subScores = getSubScores(product.productType);
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -68,6 +81,21 @@ function ProductResult({ product, onReset }: { product: ScannedProduct; onReset:
         <h2 className="font-display font-bold text-lg flex-1 line-clamp-1">
           {product.productName || product.brand || "Unbekanntes Produkt"}
         </h2>
+        <Badge
+          variant="outline"
+          className={cn(
+            "text-xs font-semibold px-2 py-0.5 shrink-0",
+            isCosmetic
+              ? "bg-purple-50 text-purple-700 border-purple-200"
+              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+          )}
+        >
+          {isCosmetic ? (
+            <><Sparkles className="w-3 h-3 mr-1 inline" />Kosmetik</>
+          ) : (
+            <><ShoppingBasket className="w-3 h-3 mr-1 inline" />Lebensmittel</>
+          )}
+        </Badge>
       </div>
 
       {product.imageUrl && (
@@ -89,9 +117,9 @@ function ProductResult({ product, onReset }: { product: ScannedProduct; onReset:
           )}
         >
           {fitsProfile ? (
-            <><CheckCircle2 className="w-4 h-4 mr-1.5 inline" />Passt zu deinem Profil ✅</>
+            <><CheckCircle2 className="w-4 h-4 mr-1.5 inline" />Passt zu deinem Profil</>
           ) : (
-            <><XCircle className="w-4 h-4 mr-1.5 inline" />Passt nicht (Ausschluss: {product.profileFitExclusions[0]}) ❌</>
+            <><XCircle className="w-4 h-4 mr-1.5 inline" />Passt nicht (Ausschluss: {product.profileFitExclusions[0]})</>
           )}
         </Badge>
       </div>
@@ -125,7 +153,7 @@ function ProductResult({ product, onReset }: { product: ScannedProduct; onReset:
           </p>
 
           <div className="space-y-3 pt-2 border-t border-border/50">
-            {SUB_SCORES.map(({ key, label }) => (
+            {subScores.map(({ key, label }) => (
               <div key={key} className="space-y-1">
                 <div className="flex justify-between text-xs">
                   <span className="text-muted-foreground">{label}</span>
@@ -138,10 +166,17 @@ function ProductResult({ product, onReset }: { product: ScannedProduct; onReset:
         </CardContent>
       </Card>
 
+      {product.fluorideNote && (
+        <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+          <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-700">{product.fluorideNote}</p>
+        </div>
+      )}
+
       {product.ingredients && (
         <details className="group">
           <summary className="text-sm text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors">
-            Zutaten anzeigen
+            {isCosmetic ? "INCI / Inhaltsstoffe anzeigen" : "Zutaten anzeigen"}
           </summary>
           <p className="mt-2 text-xs text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-xl">
             {product.ingredients}
@@ -166,7 +201,14 @@ function HistoryItem({ product, onClick }: { product: ScannedProduct; onClick: (
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm truncate">{product.productName || product.brand || product.barcode}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="font-medium text-sm truncate">{product.productName || product.brand || product.barcode}</p>
+          {product.productType === "cosmetic" && (
+            <Badge variant="outline" className="text-[10px] px-1 py-0 bg-purple-50 text-purple-600 border-purple-200 shrink-0">
+              Kosmetik
+            </Badge>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground">{product.brand}</p>
       </div>
       <span className={cn("text-sm font-bold shrink-0", scoreTextColorClass(product.totalScore))}>
@@ -261,6 +303,7 @@ export default function Scanner() {
   const [isPaused, setIsPaused] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<ScannedProduct | null>(null);
   const [manualBarcode, setManualBarcode] = useState("");
+  const manualInputRef = useRef<HTMLInputElement>(null);
 
   const {
     data: product,
@@ -344,16 +387,34 @@ export default function Scanner() {
               </div>
             ) : lookupError ? (
               <div className="space-y-4">
-                <div className="flex items-center gap-2 p-4 bg-destructive/10 rounded-xl">
-                  <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
-                  <p className="text-sm text-destructive">
-                    {(lookupError as { status?: number })?.status === 502
-                      ? "Externer Dienst nicht erreichbar — bitte erneut versuchen."
-                      : (lookupError as { status?: number })?.status === 404
-                        ? "Produkt nicht in der Datenbank gefunden. Versuche einen anderen Barcode."
-                        : "Fehler beim Abrufen des Produkts. Bitte erneut versuchen."}
-                  </p>
-                  <Button variant="ghost" size="sm" className="ml-auto" onClick={reset}>
+                <div className="flex items-start gap-2 p-4 bg-destructive/10 rounded-xl">
+                  <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-destructive">
+                      {(lookupError as { status?: number })?.status === 502
+                        ? "Externer Dienst nicht erreichbar — bitte erneut versuchen."
+                        : (lookupError as { status?: number })?.status === 404
+                          ? "Produkt nicht gefunden"
+                          : "Fehler beim Abrufen des Produkts. Bitte erneut versuchen."}
+                    </p>
+                    {(lookupError as { status?: number })?.status === 404 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => {
+                          reset();
+                          setTimeout(() => {
+                            manualInputRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                            manualInputRef.current?.focus();
+                          }, 100);
+                        }}
+                      >
+                        Manuell eingeben
+                      </Button>
+                    )}
+                  </div>
+                  <Button variant="ghost" size="sm" className="shrink-0" onClick={reset}>
                     <X className="w-4 h-4" />
                   </Button>
                 </div>
@@ -364,6 +425,7 @@ export default function Scanner() {
                 <BarcodeScanner onDetected={handleDetected} />
                 <div className="flex gap-2">
                   <input
+                    ref={manualInputRef}
                     type="number"
                     inputMode="numeric"
                     placeholder="Barcode manuell eingeben"

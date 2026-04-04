@@ -8,7 +8,10 @@ import {
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { fetchProductFromOff } from "../services/offService";
-import { calculateScore, ScoreBreakdownSchema } from "../services/scoreService";
+import { fetchProductFromObf } from "../services/obfService";
+import type { OffProduct } from "../services/offService";
+import type { ObfProduct } from "../services/obfService";
+import { calculateScore, calculateCosmeticScore, ScoreBreakdownSchema } from "../services/scoreService";
 
 const router = Router();
 
@@ -32,6 +35,32 @@ async function getExcludedIngredients(userId: string): Promise<string[]> {
     }
   }
   return Array.from(excluded);
+}
+
+type LookupResult =
+  | { type: "food"; product: OffProduct }
+  | { type: "cosmetic"; product: ObfProduct }
+  | { type: "not_found" }
+  | { type: "upstream_error" };
+
+async function lookupProduct(barcode: string): Promise<LookupResult> {
+  const offResult = await fetchProductFromOff(barcode);
+
+  if (offResult !== null && offResult !== "upstream_error") {
+    return { type: "food", product: offResult };
+  }
+
+  const obfResult = await fetchProductFromObf(barcode);
+
+  if (obfResult !== null && obfResult !== "upstream_error") {
+    return { type: "cosmetic", product: obfResult };
+  }
+
+  if (offResult === "upstream_error" && obfResult === "upstream_error") {
+    return { type: "upstream_error" };
+  }
+
+  return { type: "not_found" };
 }
 
 router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
@@ -64,34 +93,68 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
     return;
   }
 
-  const offResult = await fetchProductFromOff(barcode);
+  const result = await lookupProduct(barcode);
 
-  if (offResult === "upstream_error") {
+  if (result.type === "upstream_error") {
     console.error(`[Scanner] Upstream error for barcode=${barcode}`);
     res.status(502).json({ error: "Externer Dienst nicht erreichbar — bitte erneut versuchen" });
     return;
   }
 
-  if (offResult === null) {
+  if (result.type === "not_found") {
     console.warn(`[Scanner] Product not found for barcode=${barcode}`);
-    res.status(404).json({ error: "Produkt nicht in der Datenbank gefunden. Versuche einen anderen Barcode." });
+    res.status(404).json({ error: "Produkt nicht gefunden", notFound: true });
     return;
   }
 
   const excludedIngredients = await getExcludedIngredients(userId);
-  const score = calculateScore(offResult, excludedIngredients);
+
+  if (result.type === "cosmetic") {
+    const product = result.product;
+    const score = calculateCosmeticScore(product, excludedIngredients);
+
+    const [inserted] = await db
+      .insert(scannedProductsTable)
+      .values({
+        barcode,
+        userId,
+        productName: product.productName,
+        brand: product.brand,
+        imageUrl: product.imageUrl,
+        ingredients: product.ingredients,
+        nutriments: {},
+        labels: product.labels,
+        productType: "cosmetic",
+        scoreNaturalness: score.naturalness,
+        scoreNutrientBalance: score.nutrientBalance,
+        scoreProfileFit: score.profileFit,
+        scoreQualityBonus: score.qualityBonus,
+        totalScore: score.total,
+        profileFitExclusions: score.profileFitExclusions,
+        fluorideNote: score.fluorideNote ?? null,
+      })
+      .returning();
+
+    console.log(`[Scanner] Saved cosmetic barcode=${barcode} name=${product.productName} score=${score.total}`);
+    res.json(inserted);
+    return;
+  }
+
+  const product = result.product;
+  const score = calculateScore(product, excludedIngredients);
 
   const [inserted] = await db
     .insert(scannedProductsTable)
     .values({
       barcode,
       userId,
-      productName: offResult.productName,
-      brand: offResult.brand,
-      imageUrl: offResult.imageUrl,
-      ingredients: offResult.ingredients,
-      nutriments: offResult.nutriments as Record<string, unknown>,
-      labels: offResult.labels,
+      productName: product.productName,
+      brand: product.brand,
+      imageUrl: product.imageUrl,
+      ingredients: product.ingredients,
+      nutriments: product.nutriments as Record<string, unknown>,
+      labels: product.labels,
+      productType: "food",
       scoreNaturalness: score.naturalness,
       scoreNutrientBalance: score.nutrientBalance,
       scoreProfileFit: score.profileFit,
@@ -101,7 +164,7 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
     })
     .returning();
 
-  console.log(`[Scanner] Saved product barcode=${barcode} name=${offResult.productName} score=${score.total}`);
+  console.log(`[Scanner] Saved food barcode=${barcode} name=${product.productName} score=${score.total}`);
   res.json(inserted);
 });
 
@@ -142,35 +205,64 @@ router.get("/scanner/score/:barcode", requireAuth, async (req, res) => {
         : cached.totalScore >= 60 ? "yellow"
         : cached.totalScore >= 40 ? "orange"
         : "red",
+      fluorideNote: cached.fluorideNote ?? null,
     });
     res.json(score);
     return;
   }
 
-  const offResult = await fetchProductFromOff(barcode);
+  const result = await lookupProduct(barcode);
 
-  if (offResult === "upstream_error") {
+  if (result.type === "upstream_error") {
     res.status(502).json({ error: "Externer Dienst nicht erreichbar — bitte erneut versuchen" });
     return;
   }
 
-  if (offResult === null) {
-    res.status(404).json({ error: "Produkt nicht gefunden" });
+  if (result.type === "not_found") {
+    res.status(404).json({ error: "Produkt nicht gefunden", notFound: true });
     return;
   }
 
   const excludedIngredients = await getExcludedIngredients(userId);
-  const score = calculateScore(offResult, excludedIngredients);
+
+  if (result.type === "cosmetic") {
+    const score = calculateCosmeticScore(result.product, excludedIngredients);
+
+    await db.insert(scannedProductsTable).values({
+      barcode,
+      userId,
+      productName: result.product.productName,
+      brand: result.product.brand,
+      imageUrl: result.product.imageUrl,
+      ingredients: result.product.ingredients,
+      nutriments: {},
+      labels: result.product.labels,
+      productType: "cosmetic",
+      scoreNaturalness: score.naturalness,
+      scoreNutrientBalance: score.nutrientBalance,
+      scoreProfileFit: score.profileFit,
+      scoreQualityBonus: score.qualityBonus,
+      totalScore: score.total,
+      profileFitExclusions: score.profileFitExclusions,
+      fluorideNote: score.fluorideNote ?? null,
+    });
+
+    res.json(score);
+    return;
+  }
+
+  const score = calculateScore(result.product, excludedIngredients);
 
   await db.insert(scannedProductsTable).values({
     barcode,
     userId,
-    productName: offResult.productName,
-    brand: offResult.brand,
-    imageUrl: offResult.imageUrl,
-    ingredients: offResult.ingredients,
-    nutriments: offResult.nutriments as Record<string, unknown>,
-    labels: offResult.labels,
+    productName: result.product.productName,
+    brand: result.product.brand,
+    imageUrl: result.product.imageUrl,
+    ingredients: result.product.ingredients,
+    nutriments: result.product.nutriments as Record<string, unknown>,
+    labels: result.product.labels,
+    productType: "food",
     scoreNaturalness: score.naturalness,
     scoreNutrientBalance: score.nutrientBalance,
     scoreProfileFit: score.profileFit,

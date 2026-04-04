@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { OffProduct, OffNutriments } from "./offService";
+import type { ObfProduct } from "./obfService";
 
 export const ScoreBreakdownSchema = z.object({
   naturalness: z.number().int().min(0).max(25),
@@ -10,6 +11,7 @@ export const ScoreBreakdownSchema = z.object({
   profileFitExclusions: z.array(z.string()),
   label: z.string(),
   color: z.enum(["green", "yellow", "orange", "red"]),
+  fluorideNote: z.string().nullable().optional(),
 });
 
 export type ScoreBreakdown = z.infer<typeof ScoreBreakdownSchema>;
@@ -142,6 +144,119 @@ export function calculateScore(
     profileFitExclusions,
     label: scoreLabel(total),
     color: scoreColor(total),
+  };
+
+  return ScoreBreakdownSchema.parse(raw);
+}
+
+const COSMETIC_ALARM_INGREDIENTS = [
+  "paraben", "methylparaben", "ethylparaben", "propylparaben", "butylparaben",
+  "silikon", "silicone", "dimethicone", "cyclomethicone", "cyclopentasiloxane",
+  "mineralöl", "mineral oil", "paraffin", "petrolatum", "vaseline",
+  "peg-", "polyethylene glycol",
+  "microplastik", "microplastic", "polyethylene", "polypropylene", "nylon-",
+  "formaldehyd", "formaldehyde",
+  "triclosan",
+  "bht", "bha",
+  "sodium lauryl sulfate", "sodium laureth sulfate", "sls", "sles",
+];
+
+const TOOTHPASTE_KEYWORDS = [
+  "zahnpasta", "zahncreme", "toothpaste", "dentifrice", "dental",
+  "zahnpflege", "tooth", "zahn",
+];
+
+const FLUORIDE_KEYWORDS = [
+  "fluorid", "fluoride", "sodium fluoride", "natriumfluorid",
+  "stannous fluoride", "zinnfluorid", "amin fluorid", "olaflur",
+];
+
+function isToothpaste(product: ObfProduct): boolean {
+  const searchText = [
+    product.productName,
+    product.categories?.join(" ") ?? "",
+  ].join(" ").toLowerCase();
+  return TOOTHPASTE_KEYWORDS.some((kw) => searchText.includes(kw));
+}
+
+function detectFluoride(product: ObfProduct): string | null {
+  if (!isToothpaste(product)) return null;
+  const lc = product.ingredients.toLowerCase();
+  const hasFluoride = FLUORIDE_KEYWORDS.some((kw) => lc.includes(kw));
+  if (hasFluoride) {
+    return "Enthält Fluorid — ein gängiger Wirkstoff zur Kariesvorbeugung.";
+  }
+  return "Kein Fluorid erkannt — fluoridfreie Zahnpasta.";
+}
+
+function calcCosmeticNaturalness(ingredients: string): number {
+  if (!ingredients) return 12;
+  const lc = ingredients.toLowerCase();
+  const alarmCount = COSMETIC_ALARM_INGREDIENTS.filter((a) => lc.includes(a)).length;
+  const eCount = (ingredients.match(E_NUMBER_RE) ?? []).length;
+
+  let score = 25;
+  score -= Math.min(alarmCount * 3, 15);
+  score -= Math.min(eCount * 2, 8);
+  return Math.max(0, Math.min(25, score));
+}
+
+function calcIngredientClarity(ingredients: string): number {
+  if (!ingredients) return 12;
+  const parts = ingredients.split(",").map((s) => s.trim()).filter(Boolean);
+  const count = parts.length;
+
+  let score = 25;
+  if (count > 30) score -= 8;
+  else if (count > 20) score -= 4;
+  else if (count > 15) score -= 2;
+
+  const longNames = parts.filter((p) => p.length > 25).length;
+  score -= Math.min(longNames * 1, 5);
+
+  if (count <= 8) score += 2;
+
+  return Math.max(0, Math.min(25, score));
+}
+
+function calcCosmeticQualityBonus(labels: string[]): number {
+  const labelStr = labels.join(" ").toLowerCase();
+  let score = 10;
+
+  if (labelStr.includes("naturkosmetik") || labelStr.includes("natural cosmetic") || labelStr.includes("natrue")) score += 5;
+  if (labelStr.includes("organic") || labelStr.includes("bio") || labelStr.includes("ökologisch")) score += 4;
+  if (labelStr.includes("vegan")) score += 3;
+  if (labelStr.includes("tierversuchsfrei") || labelStr.includes("cruelty-free") || labelStr.includes("cruelty free") || labelStr.includes("leaping bunny")) score += 3;
+  if (labelStr.includes("ecocert") || labelStr.includes("cosmos")) score += 2;
+  if (labelStr.includes("fairtrade") || labelStr.includes("fair-trade")) score += 2;
+
+  return Math.min(25, score);
+}
+
+export function calculateCosmeticScore(
+  product: ObfProduct,
+  excludedIngredients: string[]
+): ScoreBreakdown {
+  const naturalness = calcCosmeticNaturalness(product.ingredients);
+  const nutrientBalance = calcIngredientClarity(product.ingredients);
+  const { score: profileFit, exclusions: profileFitExclusions } = calcProfileFit(
+    product.ingredients,
+    excludedIngredients
+  );
+  const qualityBonus = calcCosmeticQualityBonus(product.labels);
+  const total = naturalness + nutrientBalance + profileFit + qualityBonus;
+  const fluorideNote = detectFluoride(product);
+
+  const raw = {
+    naturalness,
+    nutrientBalance,
+    profileFit,
+    qualityBonus,
+    total,
+    profileFitExclusions,
+    label: scoreLabel(total),
+    color: scoreColor(total),
+    fluorideNote,
   };
 
   return ScoreBreakdownSchema.parse(raw);
