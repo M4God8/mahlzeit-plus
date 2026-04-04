@@ -2,8 +2,11 @@ import { db } from "@workspace/db";
 import {
   nutritionProfilesTable,
   ingredientsTable,
+  recipesTable,
+  recipeIngredientsTable,
+  spoilageDefaultsTable,
 } from "@workspace/db";
-import { count } from "drizzle-orm";
+import { count, eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 const nutritionProfiles = [
@@ -112,21 +115,287 @@ const ingredients = [
   { name: "Salz", category: "Gewürze", defaultUnit: "TL", bioRecommended: false, scoreBase: 50, priceMin: "0.29", priceMax: "0.99", priceAvg: "0.49", priceUnit: "pro kg" },
 ];
 
+const recipeData = [
+  {
+    title: "Dhal mit roten Linsen",
+    description: "Cremiges indisches Linsen-Gericht mit Kokosmilch und Gewürzen. Sättigend, wärmend und unglaublich einfach.",
+    prepTime: 10,
+    cookTime: 25,
+    servings: 4,
+    instructions: "Zwiebeln und Knoblauch in Öl anschwitzen. Gewürze rösten. Linsen und Gemüsebrühe dazugeben, 20 Min köcheln. Kokosmilch einrühren, abschmecken.",
+    tags: ["vegan", "glutenfrei", "sättigend"],
+    energyType: "sättigend",
+    isPublic: true,
+    ingredients: [
+      { name: "Linsen (rot)", amount: "300", unit: "g" },
+      { name: "Zwiebeln", amount: "2", unit: "Stück" },
+      { name: "Knoblauch", amount: "3", unit: "Zehe" },
+      { name: "Kokosmilch", amount: "400", unit: "ml" },
+      { name: "Gemüsebrühe", amount: "500", unit: "ml" },
+      { name: "Kurkuma", amount: "1", unit: "TL" },
+      { name: "Kreuzkümmel", amount: "1", unit: "TL" },
+      { name: "Ingwer", amount: "20", unit: "g" },
+      { name: "Olivenöl", amount: "2", unit: "EL" },
+    ],
+  },
+  {
+    title: "Quinoa-Bowl mit Röstgemüse",
+    description: "Bunte Bowl mit knackigem Ofengemüse, Quinoa und Tahini-Dressing. Schnell, nährstoffreich und vielfältig variierbar.",
+    prepTime: 15,
+    cookTime: 30,
+    servings: 2,
+    instructions: "Quinoa nach Packungsanweisung kochen. Gemüse in Stücke schneiden, mit Olivenöl und Gewürzen 25 Min rösten. Alles in einer Bowl anrichten, mit Tahini beträufeln.",
+    tags: ["vegan", "glutenfrei", "meal-prep"],
+    energyType: "leicht",
+    isPublic: true,
+    ingredients: [
+      { name: "Quinoa", amount: "150", unit: "g" },
+      { name: "Süßkartoffeln", amount: "300", unit: "g" },
+      { name: "Brokkoli", amount: "200", unit: "g" },
+      { name: "Paprika", amount: "1", unit: "Stück" },
+      { name: "Olivenöl", amount: "3", unit: "EL" },
+      { name: "Kurkuma", amount: "1", unit: "TL" },
+      { name: "Kürbiskerne", amount: "30", unit: "g" },
+    ],
+  },
+  {
+    title: "Overnight Oats mit Beeren",
+    description: "Über Nacht gequollene Haferflocken mit Naturjoghurt und frischen Früchten. Kein Kochen, maximale Wirkung.",
+    prepTime: 5,
+    cookTime: 0,
+    servings: 1,
+    instructions: "Haferflocken mit Joghurt, Milch und Honig verrühren. Im Kühlschrank über Nacht quellen lassen. Morgens mit Früchten und Chiasamen servieren.",
+    tags: ["schnell", "frühstück", "meal-prep"],
+    energyType: "schnell",
+    isPublic: true,
+    ingredients: [
+      { name: "Haferflocken", amount: "80", unit: "g" },
+      { name: "Naturjoghurt", amount: "150", unit: "g" },
+      { name: "Chiasamen", amount: "15", unit: "g" },
+      { name: "Honig", amount: "1", unit: "EL" },
+      { name: "Banane", amount: "1", unit: "Stück" },
+    ],
+  },
+  {
+    title: "Mediterrane Kichererbsen-Pfanne",
+    description: "Kichererbsen mit Tomaten, Paprika und Feta. In 20 Minuten fertig — typisch mediterran.",
+    prepTime: 5,
+    cookTime: 20,
+    servings: 2,
+    instructions: "Zwiebeln und Knoblauch anschwitzen. Paprika dazugeben, 5 Min mitbraten. Kichererbsen und Tomaten dazu, 10 Min köcheln. Mit Feta bestreuen und servieren.",
+    tags: ["vegetarisch", "schnell", "mediterran"],
+    energyType: "leicht",
+    isPublic: true,
+    ingredients: [
+      { name: "Kichererbsen", amount: "400", unit: "g" },
+      { name: "Tomaten (Dose)", amount: "400", unit: "g" },
+      { name: "Paprika", amount: "2", unit: "Stück" },
+      { name: "Zwiebeln", amount: "1", unit: "Stück" },
+      { name: "Knoblauch", amount: "2", unit: "Zehe" },
+      { name: "Feta", amount: "100", unit: "g" },
+      { name: "Olivenöl", amount: "2", unit: "EL" },
+    ],
+  },
+  {
+    title: "Gebackener Lachs mit Brokkoli",
+    description: "Einfaches One-Pan-Gericht mit Lachs und Ofenbrokkoli. Reich an Omega-3-Fettsäuren und Protein.",
+    prepTime: 10,
+    cookTime: 20,
+    servings: 2,
+    instructions: "Brokkoli in Röschen teilen, mit Olivenöl und Salz mischen. Lachs mit Zitrone belegen. Alles zusammen bei 200°C 18-20 Min backen.",
+    tags: ["glutenfrei", "high-protein", "schnell"],
+    energyType: "leicht",
+    isPublic: true,
+    ingredients: [
+      { name: "Lachs", amount: "300", unit: "g" },
+      { name: "Brokkoli", amount: "400", unit: "g" },
+      { name: "Zitrone", amount: "1", unit: "Stück" },
+      { name: "Olivenöl", amount: "2", unit: "EL" },
+      { name: "Knoblauch", amount: "2", unit: "Zehe" },
+      { name: "Salz", amount: "1", unit: "TL" },
+    ],
+  },
+  {
+    title: "Rote Bete Suppe",
+    description: "Cremige Rote Bete Suppe mit Ingwer und einem Hauch Kokosmilch. Wunderschöne Farbe, intensive Wärme.",
+    prepTime: 15,
+    cookTime: 30,
+    servings: 4,
+    instructions: "Rote Bete schälen und würfeln. Mit Zwiebeln und Ingwer in Brühe weich kochen. Fein pürieren, Kokosmilch einrühren, abschmecken.",
+    tags: ["vegan", "suppe", "warm"],
+    energyType: "warm",
+    isPublic: true,
+    ingredients: [
+      { name: "Möhren", amount: "200", unit: "g" },
+      { name: "Zwiebeln", amount: "1", unit: "Stück" },
+      { name: "Ingwer", amount: "30", unit: "g" },
+      { name: "Kokosmilch", amount: "200", unit: "ml" },
+      { name: "Gemüsebrühe", amount: "800", unit: "ml" },
+      { name: "Olivenöl", amount: "2", unit: "EL" },
+    ],
+  },
+  {
+    title: "Gemüse-Curry mit Süßkartoffeln",
+    description: "Sämiges Curry mit Süßkartoffeln, Kichererbsen und Spinat in Kokosmilch. Herzhaft, wärmend und vegan.",
+    prepTime: 10,
+    cookTime: 30,
+    servings: 4,
+    instructions: "Zwiebeln, Knoblauch und Ingwer anbraten. Gewürze rösten. Süßkartoffeln und Kichererbsen hinzufügen, mit Kokosmilch aufgießen. 20 Min köcheln, Spinat unterrühren.",
+    tags: ["vegan", "glutenfrei", "sättigend"],
+    energyType: "sättigend",
+    isPublic: true,
+    ingredients: [
+      { name: "Süßkartoffeln", amount: "400", unit: "g" },
+      { name: "Kichererbsen", amount: "300", unit: "g" },
+      { name: "Spinat", amount: "200", unit: "g" },
+      { name: "Kokosmilch", amount: "400", unit: "ml" },
+      { name: "Zwiebeln", amount: "1", unit: "Stück" },
+      { name: "Knoblauch", amount: "3", unit: "Zehe" },
+      { name: "Ingwer", amount: "20", unit: "g" },
+      { name: "Kurkuma", amount: "1", unit: "TL" },
+      { name: "Kreuzkümmel", amount: "1", unit: "TL" },
+    ],
+  },
+  {
+    title: "Spinat-Feta-Rührei",
+    description: "Schnelles, proteinreiches Frühstück mit Spinat, Feta und Eiern. Fertig in 10 Minuten.",
+    prepTime: 5,
+    cookTime: 10,
+    servings: 2,
+    instructions: "Eier aufschlagen und würzen. Spinat in Butter anwelken. Eiermasse dazu, weich rühren. Feta darüber bröckeln.",
+    tags: ["vegetarisch", "frühstück", "high-protein", "schnell"],
+    energyType: "schnell",
+    isPublic: true,
+    ingredients: [
+      { name: "Eier", amount: "4", unit: "Stück" },
+      { name: "Spinat", amount: "150", unit: "g" },
+      { name: "Feta", amount: "80", unit: "g" },
+      { name: "Butter", amount: "15", unit: "g" },
+      { name: "Salz", amount: "0.5", unit: "TL" },
+    ],
+  },
+  {
+    title: "Zucchini-Nudeln mit Pesto",
+    description: "Leichte Alternative zu klassischer Pasta — Zucchini-Spiralen mit hausgemachtem Basilikum-Pesto.",
+    prepTime: 15,
+    cookTime: 5,
+    servings: 2,
+    instructions: "Zucchini spiralisieren. Walnüsse, Basilikum, Knoblauch und Olivenöl zu Pesto pürieren. Zucchini kurz in Olivenöl schwenken, mit Pesto vermengen.",
+    tags: ["vegan", "glutenfrei", "leicht"],
+    energyType: "leicht",
+    isPublic: true,
+    ingredients: [
+      { name: "Zucchini", amount: "600", unit: "g" },
+      { name: "Walnüsse", amount: "50", unit: "g" },
+      { name: "Knoblauch", amount: "2", unit: "Zehe" },
+      { name: "Olivenöl", amount: "4", unit: "EL" },
+      { name: "Zitrone", amount: "0.5", unit: "Stück" },
+    ],
+  },
+  {
+    title: "Hähnchen-Bowl mit Naturreis",
+    description: "Proteinreiche Bowl mit saftigem Hähnchen, Naturreis und buntem Gemüse. Meal-Prep tauglich.",
+    prepTime: 15,
+    cookTime: 25,
+    servings: 3,
+    instructions: "Naturreis kochen. Hähnchenbrust würzen und in Olivenöl anbraten, 5 Min ruhen lassen. Gemüse in der gleichen Pfanne sautieren. Alles anrichten.",
+    tags: ["high-protein", "meal-prep", "glutenfrei"],
+    energyType: "sättigend",
+    isPublic: true,
+    ingredients: [
+      { name: "Hühnerbrust", amount: "400", unit: "g" },
+      { name: "Naturreis", amount: "200", unit: "g" },
+      { name: "Brokkoli", amount: "200", unit: "g" },
+      { name: "Möhren", amount: "150", unit: "g" },
+      { name: "Olivenöl", amount: "2", unit: "EL" },
+      { name: "Paprikapulver", amount: "1", unit: "TL" },
+      { name: "Knoblauch", amount: "2", unit: "Zehe" },
+    ],
+  },
+];
+
+const spoilageDefaults: Record<string, { typicalDaysFresh: number; spoilageSpeed: string; trackByDefault: string }> = {
+  "Kartoffeln": { typicalDaysFresh: 14, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Möhren": { typicalDaysFresh: 10, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Zwiebeln": { typicalDaysFresh: 21, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Knoblauch": { typicalDaysFresh: 21, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Tomaten": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Paprika": { typicalDaysFresh: 7, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Zucchini": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Spinat": { typicalDaysFresh: 3, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Brokkoli": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Blumenkohl": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Süßkartoffeln": { typicalDaysFresh: 14, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Sellerie": { typicalDaysFresh: 10, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Porree": { typicalDaysFresh: 7, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Gurken": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Auberginen": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Champignons": { typicalDaysFresh: 4, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Steinpilze": { typicalDaysFresh: 3, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Kichererbsen": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Linsen (rot)": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Schwarze Bohnen": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Weiße Bohnen": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Tofu": { typicalDaysFresh: 7, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Edamame": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Quinoa": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Vollkornnudeln": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Basmatireis": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Naturreis": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Dinkelmehl": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Haferflocken": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Buchweizen": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Hühnerbrust": { typicalDaysFresh: 3, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Lachs": { typicalDaysFresh: 2, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Thunfisch (Dose)": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Eier": { typicalDaysFresh: 21, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Naturjoghurt": { typicalDaysFresh: 10, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Mozzarella": { typicalDaysFresh: 7, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Feta": { typicalDaysFresh: 14, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Olivenöl": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Kokosöl": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Butter": { typicalDaysFresh: 30, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Mandeln": { typicalDaysFresh: 180, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Walnüsse": { typicalDaysFresh: 180, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Chiasamen": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Kürbiskerne": { typicalDaysFresh: 180, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Erdnussbutter": { typicalDaysFresh: 180, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Zitrone": { typicalDaysFresh: 14, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Banane": { typicalDaysFresh: 5, spoilageSpeed: "fast", trackByDefault: "yes" },
+  "Äpfel": { typicalDaysFresh: 14, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Kokosmilch": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Gemüsebrühe": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Tomaten (Dose)": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Sojasoße": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Honig": { typicalDaysFresh: 730, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Ahornsirup": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Kurkuma": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Kreuzkümmel": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Paprikapulver": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Ingwer": { typicalDaysFresh: 14, spoilageSpeed: "medium", trackByDefault: "yes" },
+  "Zimt": { typicalDaysFresh: 365, spoilageSpeed: "slow", trackByDefault: "no" },
+  "Salz": { typicalDaysFresh: 3650, spoilageSpeed: "slow", trackByDefault: "no" },
+};
+
 export async function ensureSeed(): Promise<void> {
   try {
     const [profileCount] = await db.select({ c: count() }).from(nutritionProfilesTable);
     const [ingredientCount] = await db.select({ c: count() }).from(ingredientsTable);
+    const [recipeCount] = await db.select({ c: count() }).from(recipesTable);
+    const [spoilageCount] = await db.select({ c: count() }).from(spoilageDefaultsTable);
 
     const needProfiles = (profileCount?.c ?? 0) < nutritionProfiles.length;
     const needIngredients = (ingredientCount?.c ?? 0) < ingredients.length;
+    const needRecipes = (recipeCount?.c ?? 0) < recipeData.length;
+    const needSpoilage = (spoilageCount?.c ?? 0) < Object.keys(spoilageDefaults).length;
 
-    if (!needProfiles && !needIngredients) {
+    if (!needProfiles && !needIngredients && !needRecipes && !needSpoilage) {
       logger.info("Seed data already present, skipping");
       return;
     }
 
     logger.info(
-      { needProfiles, needIngredients },
+      { needProfiles, needIngredients, needRecipes, needSpoilage },
       "Seeding missing data...",
     );
 
@@ -143,6 +412,76 @@ export async function ensureSeed(): Promise<void> {
           await tx.insert(ingredientsTable).values(ingredient).onConflictDoNothing();
         }
         logger.info({ count: ingredients.length }, "Seeded ingredients");
+      }
+
+      if (needRecipes) {
+        const allIngredients = await tx.select().from(ingredientsTable);
+        const ingredientMap = new Map(allIngredients.map(i => [i.name, i.id]));
+
+        for (const recipe of recipeData) {
+          const existing = await tx
+            .select({ id: recipesTable.id })
+            .from(recipesTable)
+            .where(and(eq(recipesTable.title, recipe.title), eq(recipesTable.isPublic, true)))
+            .limit(1);
+
+          if (existing.length > 0) continue;
+
+          const [inserted] = await tx
+            .insert(recipesTable)
+            .values({
+              title: recipe.title,
+              description: recipe.description,
+              prepTime: recipe.prepTime,
+              cookTime: recipe.cookTime,
+              servings: recipe.servings,
+              instructions: recipe.instructions,
+              tags: recipe.tags,
+              energyType: recipe.energyType,
+              isPublic: recipe.isPublic,
+              aiGenerated: false,
+            })
+            .returning();
+
+          const recipeIngredientValues = recipe.ingredients.map(ing => ({
+            recipeId: inserted.id,
+            ingredientId: ingredientMap.get(ing.name) ?? null,
+            customName: ingredientMap.get(ing.name) ? null : ing.name,
+            amount: ing.amount,
+            unit: ing.unit,
+            optional: false,
+          }));
+
+          if (recipeIngredientValues.length > 0) {
+            await tx.insert(recipeIngredientsTable).values(recipeIngredientValues);
+          }
+        }
+        logger.info({ count: recipeData.length }, "Seeded recipes with ingredients");
+      }
+
+      if (needSpoilage) {
+        const allIngredients = await tx.select().from(ingredientsTable);
+        const ingredientMap = new Map(allIngredients.map(i => [i.name, i.id]));
+
+        const spoilageValues = Object.entries(spoilageDefaults)
+          .map(([name, data]) => {
+            const ingId = ingredientMap.get(name);
+            if (!ingId) return null;
+            return {
+              ingredientId: ingId,
+              typicalDaysFresh: data.typicalDaysFresh,
+              spoilageSpeed: data.spoilageSpeed,
+              trackByDefault: data.trackByDefault,
+            };
+          })
+          .filter((v): v is NonNullable<typeof v> => v !== null);
+
+        if (spoilageValues.length > 0) {
+          for (const val of spoilageValues) {
+            await tx.insert(spoilageDefaultsTable).values(val).onConflictDoNothing();
+          }
+          logger.info({ count: spoilageValues.length }, "Seeded spoilage defaults");
+        }
       }
     });
 
