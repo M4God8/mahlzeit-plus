@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Link } from "wouter";
+import { useState, useMemo, useCallback } from "react";
+import { Link, useSearch, useLocation } from "wouter";
 import { useListRecipes } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,14 +14,48 @@ const TIME_FILTERS = [
   { label: "bis 60 Min", value: 60 },
 ] as const;
 
+function useUrlFilterState() {
+  const searchString = useSearch();
+  const [, navigate] = useLocation();
+
+  const params = useMemo(() => new URLSearchParams(searchString), [searchString]);
+
+  const search = params.get("search") ?? "";
+  const energyType = params.get("energyType") ?? "";
+  const maxTime = params.get("maxTime") ? parseInt(params.get("maxTime")!, 10) : undefined;
+  const selectedTag = params.get("tag") ?? "";
+
+  const setFilter = useCallback((key: string, value: string | undefined) => {
+    const next = new URLSearchParams(searchString);
+    if (value) {
+      next.set(key, value);
+    } else {
+      next.delete(key);
+    }
+    const qs = next.toString();
+    navigate(qs ? `/rezepte?${qs}` : "/rezepte", { replace: true });
+  }, [searchString, navigate]);
+
+  return {
+    search,
+    energyType,
+    maxTime,
+    selectedTag,
+    setSearch: (v: string) => setFilter("search", v || undefined),
+    setEnergyType: (v: string) => setFilter("energyType", v || undefined),
+    setMaxTime: (v: number | undefined) => setFilter("maxTime", v?.toString()),
+    setSelectedTag: (v: string) => setFilter("tag", v || undefined),
+  };
+}
+
 export default function RecipeList() {
-  const [search, setSearch] = useState("");
-  const [energyType, setEnergyType] = useState<string>("");
-  const [maxTime, setMaxTime] = useState<number | undefined>(undefined);
-  const [selectedTag, setSelectedTag] = useState<string>("");
+  const {
+    search, energyType, maxTime, selectedTag,
+    setSearch, setEnergyType, setMaxTime, setSelectedTag,
+  } = useUrlFilterState();
   const [showImportModal, setShowImportModal] = useState(false);
 
-  const { data: allRecipes, isLoading: allLoading } = useListRecipes({});
+  const { data: allRecipes } = useListRecipes({});
 
   const { data: recipes, isLoading, refetch } = useListRecipes({ 
     search: search || undefined,
