@@ -1,11 +1,11 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useZxing } from "react-zxing";
 import { useScannerLookup, useGetScanHistory } from "@workspace/api-client-react";
 import type { ScannedProduct } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, ScanBarcode, History, ChevronLeft, X, AlertCircle, CheckCircle2, XCircle, Info, Sparkles, ShoppingBasket, ChefHat } from "lucide-react";
+import { Loader2, ScanBarcode, History, ChevronLeft, X, AlertCircle, CheckCircle2, XCircle, Info, Sparkles, ShoppingBasket, ChefHat, Flashlight, FlashlightOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import ScannerRecipeModal from "./ScannerRecipeModal";
@@ -264,6 +264,8 @@ function HistoryItem({ product, onClick }: { product: ScannedProduct; onClick: (
 
 function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [torchOn, setTorchOn] = useState(false);
+  const [torchSupported, setTorchSupported] = useState(false);
 
   const { ref } = useZxing({
     onDecodeResult(result) {
@@ -290,6 +292,39 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
     timeBetweenDecodingAttempts: 500,
   });
 
+  useEffect(() => {
+    const video = ref.current;
+    if (!video) return;
+    const checkTorch = () => {
+      const stream = video.srcObject as MediaStream | null;
+      if (!stream) return;
+      const track = stream.getVideoTracks()[0];
+      if (!track) return;
+      const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+      if (caps?.torch) {
+        setTorchSupported(true);
+      }
+    };
+    const timer = setTimeout(checkTorch, 1000);
+    return () => clearTimeout(timer);
+  }, [ref]);
+
+  const toggleTorch = async () => {
+    const video = ref.current;
+    if (!video) return;
+    const stream = video.srcObject as MediaStream | null;
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+    const newVal = !torchOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: newVal } as MediaTrackConstraintSet] });
+      setTorchOn(newVal);
+    } catch (e) {
+      console.warn("[Scanner] Torch toggle failed:", e);
+    }
+  };
+
   if (cameraError) {
     return (
       <div className="w-full aspect-square rounded-2xl bg-muted/50 flex flex-col items-center justify-center p-6 text-center border border-border/50">
@@ -313,6 +348,18 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
           <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-xl" />
         </div>
       </div>
+      {torchSupported && (
+        <button
+          onClick={toggleTorch}
+          className={cn(
+            "absolute top-3 right-3 w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+            torchOn ? "bg-yellow-400 text-black" : "bg-black/50 text-white hover:bg-black/70"
+          )}
+          aria-label={torchOn ? "Taschenlampe aus" : "Taschenlampe an"}
+        >
+          {torchOn ? <FlashlightOff className="w-5 h-5" /> : <Flashlight className="w-5 h-5" />}
+        </button>
+      )}
       <p className="absolute bottom-4 inset-x-0 text-center text-white/80 text-sm">
         Barcode in den Rahmen halten
       </p>
