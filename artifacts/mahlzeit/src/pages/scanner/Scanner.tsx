@@ -177,12 +177,40 @@ function HistoryItem({ product, onClick }: { product: ScannedProduct; onClick: (
 }
 
 function BarcodeScanner({ onDetected }: { onDetected: (code: string) => void }) {
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   const { ref } = useZxing({
     onDecodeResult(result) {
       onDetected(result.getText());
     },
+    onError(err) {
+      console.error("[Scanner] ZXing error:", err);
+      if (err instanceof DOMException) {
+        if (err.name === "NotAllowedError") {
+          setCameraError("Kamera-Zugriff wurde verweigert. Bitte erlaube den Zugriff in den Browser-Einstellungen.");
+        } else if (err.name === "NotFoundError") {
+          setCameraError("Keine Kamera gefunden. Bitte nutze die manuelle Eingabe unten.");
+        } else if (err.name === "NotReadableError") {
+          setCameraError("Kamera wird von einer anderen App verwendet. Bitte schließe andere Kamera-Apps.");
+        } else {
+          setCameraError(`Kamera-Fehler: ${err.message}`);
+        }
+      }
+    },
     timeBetweenDecodingAttempts: 500,
   });
+
+  if (cameraError) {
+    return (
+      <div className="w-full aspect-square rounded-2xl bg-muted/50 flex flex-col items-center justify-center p-6 text-center border border-border/50">
+        <AlertCircle className="w-10 h-10 text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground mb-3">{cameraError}</p>
+        <Button variant="outline" size="sm" onClick={() => setCameraError(null)}>
+          Erneut versuchen
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
@@ -293,7 +321,13 @@ export default function Scanner() {
               <div className="space-y-4">
                 <div className="flex items-center gap-2 p-4 bg-destructive/10 rounded-xl">
                   <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
-                  <p className="text-sm text-destructive">Produkt nicht gefunden. Versuche einen anderen Barcode.</p>
+                  <p className="text-sm text-destructive">
+                    {(lookupError as { status?: number })?.status === 502
+                      ? "Externer Dienst nicht erreichbar — bitte erneut versuchen."
+                      : (lookupError as { status?: number })?.status === 404
+                        ? "Produkt nicht in der Datenbank gefunden. Versuche einen anderen Barcode."
+                        : "Fehler beim Abrufen des Produkts. Bitte erneut versuchen."}
+                  </p>
                   <Button variant="ghost" size="sm" className="ml-auto" onClick={reset}>
                     <X className="w-4 h-4" />
                   </Button>

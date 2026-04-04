@@ -42,19 +42,26 @@ export type OffResult = OffProduct | null | "upstream_error";
 export async function fetchProductFromOff(barcode: string): Promise<OffResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const url = `${OFF_BASE}/${encodeURIComponent(barcode)}?fields=product_name,brands,image_url,ingredients_text,nutriments,labels,labels_tags,nova_group`;
+
+  console.log(`[OFF] Fetching barcode=${barcode} url=${url}`);
 
   try {
-    const res = await fetch(
-      `${OFF_BASE}/${encodeURIComponent(barcode)}?fields=product_name,brands,image_url,ingredients_text,nutriments,labels,labels_tags,nova_group`,
-      {
+    const res = await fetch(url, {
         signal: controller.signal,
         headers: { "User-Agent": "MahlzeitPlus/1.0 (https://mahlzeit.app)" },
       }
     );
 
-    if (!res.ok) return "upstream_error";
+    console.log(`[OFF] Response status=${res.status} for barcode=${barcode}`);
+
+    if (!res.ok) {
+      console.error(`[OFF] Upstream error: HTTP ${res.status} for barcode=${barcode}`);
+      return "upstream_error";
+    }
 
     const json = (await res.json()) as OffApiResponse;
+    console.log(`[OFF] API status=${json.status} product=${json.product?.product_name ?? "null"} for barcode=${barcode}`);
     if (json.status !== 1 || !json.product) return null;
 
     const p = json.product;
@@ -84,7 +91,8 @@ export async function fetchProductFromOff(barcode: string): Promise<OffResult> {
     };
   } catch (err) {
     const isAbort = err instanceof DOMException && err.name === "AbortError";
-    return isAbort ? "upstream_error" : "upstream_error";
+    console.error(`[OFF] Fetch error for barcode=${barcode}: ${isAbort ? "timeout" : (err as Error).message}`);
+    return "upstream_error";
   } finally {
     clearTimeout(timer);
   }

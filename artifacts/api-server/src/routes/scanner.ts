@@ -38,7 +38,10 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const barcode = req.params["barcode"] as string;
 
+  console.log(`[Scanner] Lookup request barcode=${barcode} userId=${userId}`);
+
   if (!barcode || !/^\d{8,14}$/.test(barcode)) {
+    console.warn(`[Scanner] Invalid barcode format: ${barcode}`);
     res.status(400).json({ error: "Ungültiger Barcode" });
     return;
   }
@@ -56,6 +59,7 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
     .limit(1);
 
   if (cached) {
+    console.log(`[Scanner] Cache hit for barcode=${barcode}: ${cached.productName}`);
     res.json(cached);
     return;
   }
@@ -63,12 +67,14 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
   const offResult = await fetchProductFromOff(barcode);
 
   if (offResult === "upstream_error") {
+    console.error(`[Scanner] Upstream error for barcode=${barcode}`);
     res.status(502).json({ error: "Externer Dienst nicht erreichbar — bitte erneut versuchen" });
     return;
   }
 
   if (offResult === null) {
-    res.status(404).json({ error: "Produkt nicht gefunden" });
+    console.warn(`[Scanner] Product not found for barcode=${barcode}`);
+    res.status(404).json({ error: "Produkt nicht in der Datenbank gefunden. Versuche einen anderen Barcode." });
     return;
   }
 
@@ -95,6 +101,7 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
     })
     .returning();
 
+  console.log(`[Scanner] Saved product barcode=${barcode} name=${offResult.productName} score=${score.total}`);
   res.json(inserted);
 });
 
