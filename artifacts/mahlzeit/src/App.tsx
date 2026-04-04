@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ClerkProvider, SignIn, SignUp, Show, useClerk, useUser } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClientProvider, useQueryClient, useQuery } from "@tanstack/react-query";
@@ -26,7 +26,6 @@ import NotFound from "@/pages/not-found";
 
 import { BottomNav } from "@/components/layout/BottomNav";
 import { ChatWidget } from "@/components/chat/ChatWidget";
-import IntroTour, { hasSeenIntroTour } from "@/components/IntroTour";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -135,8 +134,6 @@ function AuthErrorFallback() {
 
 function HomeRedirect() {
   const { data: hasSettings, isPending, isError } = useHasUserSettings();
-  const [, setLocation] = useLocation();
-  const [showTour, setShowTour] = useState(() => !hasSeenIntroTour());
 
   return (
     <>
@@ -147,8 +144,6 @@ function HomeRedirect() {
           <div className="min-h-[100dvh] flex items-center justify-center bg-background">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : hasSettings && showTour ? (
-          <IntroTour onComplete={() => { setShowTour(false); setLocation("/plan"); }} />
         ) : hasSettings ? (
           <Redirect to="/heute" />
         ) : (
