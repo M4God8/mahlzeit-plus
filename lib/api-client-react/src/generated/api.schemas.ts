@@ -132,6 +132,8 @@ export interface MealEntry {
   customNote?: string | null;
   /** @nullable */
   timeSlot?: string | null;
+  /** @nullable */
+  overrideCookTime?: number | null;
   recipe?: Recipe | null;
 }
 
@@ -181,6 +183,8 @@ export interface MealEntryInput {
   recipeId?: number | null;
   /** @nullable */
   customNote?: string | null;
+  /** @nullable */
+  overrideCookTime?: number | null;
 }
 
 export interface TodayMealEntry {
@@ -198,6 +202,8 @@ export interface TodayMealEntry {
   recipeId?: number | null;
   /** @nullable */
   energyType?: string | null;
+  /** @nullable */
+  overrideCookTime?: number | null;
 }
 
 export interface TodaySummary {

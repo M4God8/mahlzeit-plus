@@ -1314,6 +1314,8 @@ components:
           type: ["string", "null"]
         timeSlot:
           type: ["string", "null"]
+        overrideCookTime:
+          type: ["integer", "null"]
         recipe:
           oneOf:
             - $ref: "#/components/schemas/Recipe"
@@ -1432,6 +1434,8 @@ components:
           type: ["integer", "null"]
         customNote:
           type: ["string", "null"]
+        overrideCookTime:
+          type: ["integer", "null"]
       required:
         - mealType
 
@@ -1454,6 +1458,8 @@ components:
           type: ["integer", "null"]
         energyType:
           type: ["string", "null"]
+        overrideCookTime:
+          type: ["integer", "null"]
       required:
         - id
         - mealType

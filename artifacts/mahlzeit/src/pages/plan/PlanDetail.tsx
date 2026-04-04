@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import {
   useGetMealPlan,
@@ -13,9 +13,10 @@ import {
   useListRecipes,
   useGenerateShoppingList,
   useAiGeneratePlan,
+  useAiGenerateRecipe,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { MealPlanDetail, MealPlanDay, MealEntry, Recipe, AiPlanOutput } from "@workspace/api-client-react";
+import type { MealPlanDetail, MealPlanDay, MealEntry, Recipe, AiPlanOutput, AiRecipeOutput } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,8 +51,10 @@ import {
   X,
   ShoppingCart,
   Sparkles,
+  Clock,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
@@ -155,6 +158,72 @@ function SwapDayPicker({ open, onClose, plan, sourceDayNumber, onSwap }: SwapDay
   );
 }
 
+const COOK_TIME_STEPS = [10, 15, 30, 45, 60, 90];
+
+function CookTimeSliderModal({ open, onClose, onSelect, currentValue }: {
+  open: boolean;
+  onClose: () => void;
+  onSelect: (minutes: number | null) => void;
+  currentValue: number | null;
+}) {
+  const [sliderIdx, setSliderIdx] = useState(2);
+
+  useEffect(() => {
+    const idx = COOK_TIME_STEPS.indexOf(currentValue ?? 30);
+    setSliderIdx(idx >= 0 ? idx : 2);
+  }, [currentValue, open]);
+
+  const selectedMinutes = COOK_TIME_STEPS[sliderIdx] ?? 30;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="rounded-2xl max-w-xs mx-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 font-display text-lg">
+            <Clock className="w-4 h-4 text-primary" />
+            Kochzeit anpassen
+          </DialogTitle>
+        </DialogHeader>
+        <div className="py-4 space-y-6">
+          <div className="text-center">
+            <span className="font-mono text-4xl font-bold text-primary">{selectedMinutes}</span>
+            <span className="text-lg text-muted-foreground ml-1">Min</span>
+          </div>
+          <Slider
+            value={[sliderIdx]}
+            min={0}
+            max={COOK_TIME_STEPS.length - 1}
+            step={1}
+            onValueChange={(v) => setSliderIdx(v[0])}
+            className="py-2"
+            data-testid="slider-cooktime"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground font-mono px-1">
+            {COOK_TIME_STEPS.map((m) => (
+              <span key={m}>{m}</span>
+            ))}
+          </div>
+          <Button
+            className="w-full rounded-full"
+            onClick={() => onSelect(selectedMinutes)}
+            data-testid="btn-cooktime-confirm"
+          >
+            Übernehmen
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full text-sm text-muted-foreground rounded-full"
+            onClick={() => onSelect(null)}
+            data-testid="btn-cooktime-reset"
+          >
+            Standard verwenden
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function PlanDetail() {
   const [, params] = useRoute("/plan/:id");
   const [, setLocation] = useLocation();
@@ -236,6 +305,14 @@ export default function PlanDetail() {
   const [swapOpen, setSwapOpen] = useState(false);
   const [swapSourceDay, setSwapSourceDay] = useState<number | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [cookTimeModalOpen, setCookTimeModalOpen] = useState(false);
+  const [cookTimeTarget, setCookTimeTarget] = useState<{ dayId: number; entries: MealEntry[] } | null>(null);
+  const [alternativeModalOpen, setAlternativeModalOpen] = useState(false);
+  const [alternativeTarget, setAlternativeTarget] = useState<{ dayId: number; entryId: number; mealType: string } | null>(null);
+  const [alternativeGenerating, setAlternativeGenerating] = useState(false);
+  const [generatedAlternative, setGeneratedAlternative] = useState<AiRecipeOutput | null>(null);
+
+  const aiGenerateRecipeMutation = useAiGenerateRecipe();
 
   const invalidatePlan = () => {
     queryClient.invalidateQueries({ queryKey: [`/api/meal-plans/${planId}`] });
@@ -263,6 +340,90 @@ export default function PlanDetail() {
       );
     }
     setPickerTarget(null);
+  };
+
+  const handleSetCookTimeOverride = (minutes: number | null) => {
+    if (!cookTimeTarget) return;
+    const promises = cookTimeTarget.entries.map(
+      (entry) =>
+        new Promise<void>((resolve) => {
+          updateEntry.mutate(
+            {
+              id: planId,
+              dayId: cookTimeTarget.dayId,
+              entryId: entry.id,
+              data: { mealType: entry.mealType, recipeId: entry.recipeId ?? null, customNote: entry.customNote ?? null, overrideCookTime: minutes },
+            },
+            { onSettled: () => resolve() }
+          );
+        })
+    );
+    Promise.all(promises).then(() => {
+      invalidatePlan();
+      toast({ title: minutes ? `Kochzeit auf ${minutes} Min angepasst` : "Kochzeit-Override entfernt" });
+      setCookTimeModalOpen(false);
+      setCookTimeTarget(null);
+    });
+  };
+
+  const MEAL_TYPE_LABEL: Record<string, string> = {
+    breakfast: "Frühstück",
+    lunch: "Mittagessen",
+    dinner: "Abendessen",
+    snack: "Snack",
+  };
+
+  const handleAlternativeWithTime = (minutes: number) => {
+    if (!alternativeTarget || !plan) return;
+    const day = plan.days.find(d => d.id === alternativeTarget.dayId);
+    const entry = day?.entries?.find(e => e.id === alternativeTarget.entryId);
+    if (!entry) return;
+
+    setAlternativeGenerating(true);
+    setGeneratedAlternative(null);
+
+    updateEntry.mutate(
+      {
+        id: planId,
+        dayId: alternativeTarget.dayId,
+        entryId: alternativeTarget.entryId,
+        data: {
+          mealType: entry.mealType,
+          recipeId: entry.recipeId ?? null,
+          customNote: entry.customNote ?? null,
+          overrideCookTime: minutes,
+        },
+      },
+      {
+        onSuccess: () => {
+          invalidatePlan();
+          const currentName = entry.recipe?.title ?? entry.customNote ?? "";
+          const mealLabel = MEAL_TYPE_LABEL[entry.mealType] ?? entry.mealType;
+          aiGenerateRecipeMutation.mutate(
+            {
+              data: {
+                prompt: `Eine Alternative für ${mealLabel}${currentName ? ` (statt "${currentName}")` : ""}. Maximale Zubereitungszeit: ${minutes} Minuten.`,
+              },
+            },
+            {
+              onSuccess: (data) => {
+                setGeneratedAlternative(data);
+                setAlternativeGenerating(false);
+                toast({ title: "Alternative generiert!" });
+              },
+              onError: () => {
+                setAlternativeGenerating(false);
+                toast({ title: "Fehler bei KI-Generierung", variant: "destructive" });
+              },
+            }
+          );
+        },
+        onError: () => {
+          setAlternativeGenerating(false);
+          toast({ title: "Fehler", variant: "destructive" });
+        },
+      }
+    );
   };
 
   const handleRemoveEntry = (dayId: number, entryId: number) => {
@@ -438,19 +599,39 @@ export default function PlanDetail() {
           {plan.days.sort((a, b) => a.dayNumber - b.dayNumber).map((day) => (
             <Card key={day.id} className="overflow-hidden border-border/50 shadow-sm">
               <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border/30">
-                <span className="font-display font-bold text-base">
-                  {DAY_NAMES[day.dayNumber - 1] ?? `Tag ${day.dayNumber}`}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs rounded-full h-7 px-3 text-muted-foreground"
-                  onClick={() => { setSwapSourceDay(day.dayNumber); setSwapOpen(true); }}
-                  data-testid={`btn-swap-day-${day.dayNumber}`}
-                >
-                  <ArrowLeftRight className="w-3 h-3 mr-1" />
-                  Tauschen
-                </Button>
+                <div className="flex items-center gap-2">
+                  <span className="font-display font-bold text-base">
+                    {DAY_NAMES[day.dayNumber - 1] ?? `Tag ${day.dayNumber}`}
+                  </span>
+                  {day.entries?.some(e => e.overrideCookTime) && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 gap-0.5 border-primary/30 text-primary">
+                      <Clock className="w-2.5 h-2.5" />
+                      {day.entries.find(e => e.overrideCookTime)?.overrideCookTime} Min
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs rounded-full h-7 px-2 text-muted-foreground"
+                    onClick={() => { setCookTimeTarget({ dayId: day.id, entries: day.entries ?? [] }); setCookTimeModalOpen(true); }}
+                    data-testid={`btn-time-override-${day.dayNumber}`}
+                  >
+                    <Clock className="w-3 h-3 mr-1" />
+                    Zeit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs rounded-full h-7 px-2 text-muted-foreground"
+                    onClick={() => { setSwapSourceDay(day.dayNumber); setSwapOpen(true); }}
+                    data-testid={`btn-swap-day-${day.dayNumber}`}
+                  >
+                    <ArrowLeftRight className="w-3 h-3 mr-1" />
+                    Tauschen
+                  </Button>
+                </div>
               </div>
               <CardContent className="p-3 space-y-2">
                 {MEAL_TYPES.map(({ key, label }) => {
@@ -481,15 +662,26 @@ export default function PlanDetail() {
                           {entry ? <ChefHat className="w-3.5 h-3.5 text-primary" /> : <Plus className="w-3.5 h-3.5" />}
                         </Button>
                         {entry && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="w-7 h-7 rounded-full text-muted-foreground hover:text-destructive"
-                            onClick={() => handleRemoveEntry(day.id, entry.id)}
-                            data-testid={`btn-remove-${day.dayNumber}-${key}`}
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </Button>
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-7 h-7 rounded-full text-muted-foreground hover:text-primary"
+                              onClick={() => { setAlternativeTarget({ dayId: day.id, entryId: entry.id, mealType: entry.mealType }); setAlternativeModalOpen(true); }}
+                              data-testid={`btn-alt-${day.dayNumber}-${key}`}
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-7 h-7 rounded-full text-muted-foreground hover:text-destructive"
+                              onClick={() => handleRemoveEntry(day.id, entry.id)}
+                              data-testid={`btn-remove-${day.dayNumber}-${key}`}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -608,6 +800,97 @@ export default function PlanDetail() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <CookTimeSliderModal
+        open={cookTimeModalOpen}
+        onClose={() => { setCookTimeModalOpen(false); setCookTimeTarget(null); }}
+        onSelect={handleSetCookTimeOverride}
+        currentValue={cookTimeTarget?.entries?.find(e => e.overrideCookTime)?.overrideCookTime ?? null}
+      />
+
+      <Dialog open={alternativeModalOpen} onOpenChange={(v) => { if (!v) { setAlternativeModalOpen(false); setAlternativeTarget(null); setGeneratedAlternative(null); setAlternativeGenerating(false); } }}>
+        <DialogContent className="rounded-2xl max-w-sm mx-auto max-h-[80dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg">Alternative generieren</DialogTitle>
+          </DialogHeader>
+          {!generatedAlternative && !alternativeGenerating && (
+            <div className="space-y-2 py-2">
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-xl justify-start gap-3 text-sm"
+                onClick={() => handleAlternativeWithTime(15)}
+                data-testid="btn-alt-quick"
+              >
+                <span className="text-lg">⚡</span>
+                Schnelle Version (15 Min)
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full h-12 rounded-xl justify-start gap-3 text-sm"
+                onClick={() => handleAlternativeWithTime(60)}
+                data-testid="btn-alt-leisurely"
+              >
+                <span className="text-lg">🍳</span>
+                Mit mehr Zeit (60 Min)
+              </Button>
+            </div>
+          )}
+          {alternativeGenerating && (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">KI generiert Alternative…</p>
+            </div>
+          )}
+          {generatedAlternative && (
+            <div className="space-y-3 py-2 animate-in fade-in">
+              <div className="border border-primary/20 rounded-xl p-4 bg-primary/5 space-y-2">
+                <h4 className="font-display font-bold text-lg">{generatedAlternative.name}</h4>
+                <p className="text-sm text-muted-foreground">{generatedAlternative.description}</p>
+                <div className="flex gap-2 text-xs text-muted-foreground">
+                  <span className="font-mono">{(generatedAlternative.prepTime ?? 0) + (generatedAlternative.cookTime ?? 0)} Min</span>
+                  <span>·</span>
+                  <span>{generatedAlternative.servings} Portionen</span>
+                </div>
+              </div>
+              <Button
+                className="w-full rounded-full"
+                onClick={() => {
+                  if (!alternativeTarget) return;
+                  const day = plan?.days.find(d => d.id === alternativeTarget.dayId);
+                  const entry = day?.entries?.find(e => e.id === alternativeTarget.entryId);
+                  if (!entry) return;
+                  updateEntry.mutate(
+                    {
+                      id: planId,
+                      dayId: alternativeTarget.dayId,
+                      entryId: alternativeTarget.entryId,
+                      data: {
+                        mealType: entry.mealType,
+                        customNote: `${generatedAlternative.name}: ${generatedAlternative.description}`,
+                        overrideCookTime: entry.overrideCookTime ?? null,
+                      },
+                    },
+                    {
+                      onSuccess: () => {
+                        invalidatePlan();
+                        toast({ title: "Alternative übernommen!" });
+                        setAlternativeModalOpen(false);
+                        setAlternativeTarget(null);
+                        setGeneratedAlternative(null);
+                      },
+                      onError: () => toast({ title: "Fehler", variant: "destructive" }),
+                    }
+                  );
+                }}
+                data-testid="btn-accept-alternative"
+              >
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Übernehmen
+              </Button>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

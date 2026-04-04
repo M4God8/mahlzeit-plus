@@ -134,7 +134,7 @@ async function getUserContext(userId: string): Promise<UserContext> {
 function buildContextBlock(ctx: UserContext): string {
   const lines: string[] = [];
   lines.push(`Haushaltsgröße: ${ctx.householdSize} Person(en)`);
-  lines.push(`Maximale Kochzeit: ${ctx.cookTimeLimit} Minuten`);
+  lines.push(`Typische Kochzeit: ${ctx.cookTimeLimit} Min. Der Nutzer kann einzelne Tage abweichen — plane flexibel.`);
   lines.push(`Budget: ${ctx.budgetLevel === "low" ? "sparsam" : ctx.budgetLevel === "high" ? "großzügig" : "mittel"} (${ctx.budgetEuro}€/Woche)`);
   lines.push(`Budget des Nutzers: ${ctx.budgetEuro}€/Woche. Plane Mahlzeiten die darunter oder max. 10% darüber liegen. Bei leichter Überschreitung (bis 10%): trotzdem vorschlagen mit kurzem Hinweis ("Liegt leicht über deinem Budget…"). Nie hart ablehnen — bei deutlicher Überschreitung bevorzuge günstigere Alternativen, zeige teurere Option aber als Alternativ-Vorschlag.`);
   if (ctx.bioPreferred) lines.push("Bio-Produkte werden bevorzugt.");

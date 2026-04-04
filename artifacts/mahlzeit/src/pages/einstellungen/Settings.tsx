@@ -200,7 +200,8 @@ export default function Settings() {
               </div>
 
               <div className="space-y-3">
-                <Label>Max. Kochzeit (Minuten)</Label>
+                <Label>Typische Kochzeit (Werktags)</Label>
+                <p className="text-xs text-muted-foreground -mt-1">Dein Standard für die KI-Planung. Du kannst einzelne Tage jederzeit anpassen.</p>
                 <RadioGroup value={cookTimeLimit.toString()} onValueChange={v => setCookTimeLimit(parseInt(v))} className="flex gap-4">
                   {[15, 30, 60].map(time => (
                     <div key={time} className="flex items-center space-x-2">

@@ -26,6 +26,7 @@ export const mealEntriesTable = pgTable("meal_entries", {
   recipeId: integer("recipe_id").references(() => recipesTable.id),
   customNote: text("custom_note"),
   timeSlot: time("time_slot"),
+  overrideCookTime: integer("override_cook_time"),
 });
 
 export const insertMealPlanSchema = createInsertSchema(mealPlansTable).omit({ id: true, createdAt: true });

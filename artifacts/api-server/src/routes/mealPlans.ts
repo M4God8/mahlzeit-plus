@@ -20,6 +20,7 @@ interface MealEntryRow {
   recipeId: number | null;
   customNote: string | null;
   timeSlot: string | null;
+  overrideCookTime: number | null;
   recipe: {
     id: number;
     userId: string | null;
@@ -65,6 +66,7 @@ async function getMealPlanWithDays(planId: number): Promise<MealPlanDetail | nul
           recipeId: mealEntriesTable.recipeId,
           customNote: mealEntriesTable.customNote,
           timeSlot: mealEntriesTable.timeSlot,
+          overrideCookTime: mealEntriesTable.overrideCookTime,
           recipeTitle: recipesTable.title,
           recipePrepTime: recipesTable.prepTime,
           recipeCookTime: recipesTable.cookTime,
@@ -93,6 +95,7 @@ async function getMealPlanWithDays(planId: number): Promise<MealPlanDetail | nul
           recipeId: e.recipeId,
           customNote: e.customNote,
           timeSlot: e.timeSlot ? String(e.timeSlot) : null,
+          overrideCookTime: e.overrideCookTime,
           recipe: e.recipeTitle ? {
             id: e.recipeId!,
             userId: e.recipeUserId,
@@ -387,6 +390,7 @@ router.post("/meal-plans/:id/copy", requireAuth, async (req, res): Promise<void>
             mealType: e.mealType,
             recipeId: e.recipeId,
             customNote: e.customNote,
+            overrideCookTime: e.overrideCookTime,
           }))
         );
       }
@@ -466,6 +470,7 @@ const mealEntryInputSchema = z.object({
   mealType: z.string().min(1),
   recipeId: z.number().int().nullable().optional(),
   customNote: z.string().nullable().optional(),
+  overrideCookTime: z.number().int().nullable().optional(),
 });
 
 router.post("/meal-plans/:id/days/:dayId/entries", requireAuth, async (req, res): Promise<void> => {
@@ -495,6 +500,7 @@ router.post("/meal-plans/:id/days/:dayId/entries", requireAuth, async (req, res)
       mealType: parsed.data.mealType,
       recipeId: parsed.data.recipeId ?? null,
       customNote: parsed.data.customNote ?? null,
+      overrideCookTime: parsed.data.overrideCookTime ?? null,
     }).returning();
 
     let recipe = null;
@@ -519,6 +525,7 @@ router.post("/meal-plans/:id/days/:dayId/entries", requireAuth, async (req, res)
       recipeId: entry.recipeId,
       customNote: entry.customNote,
       timeSlot: entry.timeSlot ? String(entry.timeSlot) : null,
+      overrideCookTime: entry.overrideCookTime,
       recipe,
     });
   } catch (err) {
@@ -557,6 +564,7 @@ router.put("/meal-plans/:id/days/:dayId/entries/:entryId", requireAuth, async (r
       mealType: parsed.data.mealType,
       recipeId: parsed.data.recipeId ?? null,
       customNote: parsed.data.customNote ?? null,
+      overrideCookTime: parsed.data.overrideCookTime ?? null,
     }).where(eq(mealEntriesTable.id, entryId)).returning();
 
     let recipe = null;
@@ -581,6 +589,7 @@ router.put("/meal-plans/:id/days/:dayId/entries/:entryId", requireAuth, async (r
       recipeId: updated.recipeId,
       customNote: updated.customNote,
       timeSlot: updated.timeSlot ? String(updated.timeSlot) : null,
+      overrideCookTime: updated.overrideCookTime,
       recipe,
     });
   } catch (err) {

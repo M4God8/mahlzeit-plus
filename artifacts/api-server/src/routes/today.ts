@@ -17,6 +17,7 @@ interface TodayMealEntry {
   customNote: string | null;
   recipeId: number | null;
   energyType: string | null;
+  overrideCookTime: number | null;
 }
 
 router.get("/today", requireAuth, async (req, res): Promise<void> => {
@@ -74,6 +75,7 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
         mealType: mealEntriesTable.mealType,
         recipeId: mealEntriesTable.recipeId,
         customNote: mealEntriesTable.customNote,
+        overrideCookTime: mealEntriesTable.overrideCookTime,
         recipeTitle: recipesTable.title,
         recipeCookTime: recipesTable.cookTime,
         recipePrepTime: recipesTable.prepTime,
@@ -99,6 +101,7 @@ router.get("/today", requireAuth, async (req, res): Promise<void> => {
         customNote: e.customNote,
         recipeId: e.recipeId,
         energyType: e.recipeEnergyType ?? null,
+        overrideCookTime: e.overrideCookTime,
       })),
       hasPlan: true,
     });

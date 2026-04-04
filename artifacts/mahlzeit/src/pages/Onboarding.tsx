@@ -213,7 +213,8 @@ export default function Onboarding() {
                 </div>
 
                 <div className="space-y-3 pt-4">
-                  <Label className="text-base">Maximale Kochzeit (Werktags)</Label>
+                  <Label className="text-base">Typische Kochzeit (Werktags)</Label>
+                  <p className="text-xs text-muted-foreground -mt-1">Dein Standard für die KI-Planung. Du kannst einzelne Tage jederzeit anpassen.</p>
                   <RadioGroup value={cookTimeLimit.toString()} onValueChange={v => setCookTimeLimit(parseInt(v))} className="grid grid-cols-3 gap-2">
                     {[15, 30, 60].map((time) => (
                       <div key={time} className="relative">
