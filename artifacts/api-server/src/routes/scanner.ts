@@ -71,7 +71,7 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const barcode = (req.params["barcode"] as string).trim();
 
-  console.log(`[Scanner] Lookup request barcode=${barcode} len=${barcode.length} raw=${JSON.stringify(req.params["barcode"])} userId=${userId}`);
+  console.log(`[Scanner] Lookup request barcode=${barcode} userId=${userId}`);
 
   if (!barcode || !/^\d{8,14}$/.test(barcode)) {
     console.warn(`[Scanner] Invalid barcode format: ${barcode}`);
