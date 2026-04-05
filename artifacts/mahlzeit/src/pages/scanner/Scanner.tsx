@@ -1,6 +1,5 @@
-import { useState, useCallback, useRef, useMemo } from "react";
-import { useZxing } from "react-zxing";
-import { DecodeHintType, BarcodeFormat } from "@zxing/library";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
 import { useScannerLookup, useGetScanHistory } from "@workspace/api-client-react";
 import type { ScannedProduct } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -265,59 +264,128 @@ function HistoryItem({ product, onClick }: { product: ScannedProduct; onClick: (
 
 function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [torchAvailable, setTorchAvailable] = useState(false);
+  const [torchIsOn, setTorchIsOn] = useState(false);
+  const [retryToken, setRetryToken] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
+  const onDetectedRef = useRef(onDetected);
+  onDetectedRef.current = onDetected;
 
-  const hints = useMemo(() => {
-    const map = new Map();
-    map.set(DecodeHintType.POSSIBLE_FORMATS, [
+  useEffect(() => {
+    let cancelled = false;
+
+    const hints = new Map();
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
       BarcodeFormat.EAN_13,
       BarcodeFormat.EAN_8,
       BarcodeFormat.CODE_128,
       BarcodeFormat.UPC_A,
       BarcodeFormat.UPC_E,
     ]);
-    map.set(DecodeHintType.TRY_HARDER, true);
-    return map;
+    hints.set(DecodeHintType.TRY_HARDER, true);
+
+    const reader = new BrowserMultiFormatReader(hints, 200);
+    readerRef.current = reader;
+
+    async function startCamera() {
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+      } catch (err) {
+        if (cancelled) return;
+        console.error("[Scanner] Camera error:", err);
+        if (err instanceof DOMException) {
+          if (err.name === "NotAllowedError") {
+            setCameraError("Kamera-Zugriff wurde verweigert. Bitte erlaube den Zugriff in den Browser-Einstellungen.");
+          } else if (err.name === "NotFoundError") {
+            setCameraError("Keine Kamera gefunden. Bitte nutze die manuelle Eingabe unten.");
+          } else if (err.name === "NotReadableError") {
+            setCameraError("Kamera wird von einer anderen App verwendet. Bitte schließe andere Kamera-Apps.");
+          } else if (err.name === "OverconstrainedError") {
+            setCameraError("Kamera-Einstellungen werden nicht unterstützt. Bitte nutze die manuelle Eingabe.");
+          } else {
+            setCameraError(`Kamera-Fehler: ${(err as DOMException).message}`);
+          }
+        } else {
+          setCameraError("Kamera konnte nicht gestartet werden. Bitte nutze die manuelle Eingabe.");
+        }
+        return;
+      }
+
+      if (cancelled) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      streamRef.current = stream;
+
+      const video = videoRef.current;
+      if (!video) return;
+      video.srcObject = stream;
+      try {
+        await video.play();
+      } catch {}
+
+      const track = stream.getVideoTracks()[0];
+      if (track) {
+        try {
+          const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+          if (caps?.torch) {
+            setTorchAvailable(true);
+          }
+        } catch {}
+      }
+
+      reader.decodeContinuously(video, (result, error) => {
+        if (cancelled) return;
+        if (result) {
+          onDetectedRef.current(result.getText());
+        }
+      });
+    }
+
+    startCamera();
+
+    return () => {
+      cancelled = true;
+      readerRef.current?.reset();
+      readerRef.current = null;
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      const video = videoRef.current;
+      if (video) video.srcObject = null;
+    };
+  }, [retryToken]);
+
+  const handleRetry = useCallback(() => {
+    setCameraError(null);
+    setTorchAvailable(false);
+    setTorchIsOn(false);
+    setRetryToken((t) => t + 1);
   }, []);
 
-  const {
-    ref,
-    torch: { on: torchOn, off: torchOff, isOn: torchIsOn, isAvailable: torchAvailable },
-  } = useZxing({
-    onDecodeResult(result) {
-      onDetected(result.getText());
-    },
-    onError(err) {
-      console.error("[Scanner] ZXing error:", err);
-      if (err instanceof DOMException) {
-        if (err.name === "NotAllowedError") {
-          setCameraError("Kamera-Zugriff wurde verweigert. Bitte erlaube den Zugriff in den Browser-Einstellungen.");
-        } else if (err.name === "NotFoundError") {
-          setCameraError("Keine Kamera gefunden. Bitte nutze die manuelle Eingabe unten.");
-        } else if (err.name === "NotReadableError") {
-          setCameraError("Kamera wird von einer anderen App verwendet. Bitte schließe andere Kamera-Apps.");
-        } else {
-          setCameraError(`Kamera-Fehler: ${err.message}`);
-        }
-      }
-    },
-    hints,
-    constraints: {
-      video: {
-        facingMode: "environment",
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-      },
-      audio: false,
-    },
-    timeBetweenDecodingAttempts: 150,
-  });
+  const toggleTorch = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const next = !torchIsOn;
+    try {
+      await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
+      setTorchIsOn(next);
+    } catch (e) {
+      console.warn("[Scanner] Torch toggle failed:", e);
+    }
+  }, [torchIsOn]);
 
   if (cameraError) {
     return (
       <div className="w-full aspect-square rounded-2xl bg-muted/50 flex flex-col items-center justify-center p-6 text-center border border-border/50">
         <AlertCircle className="w-10 h-10 text-muted-foreground mb-3" />
         <p className="text-sm text-muted-foreground mb-3">{cameraError}</p>
-        <Button variant="outline" size="sm" onClick={() => setCameraError(null)}>
+        <Button variant="outline" size="sm" onClick={handleRetry}>
           Erneut versuchen
         </Button>
       </div>
@@ -326,7 +394,7 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
 
   return (
     <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
-      <video ref={ref} className="w-full h-full object-cover" playsInline muted autoPlay />
+      <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div className="w-56 h-56 border-2 border-white/70 rounded-xl">
           <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-xl" />
@@ -337,7 +405,7 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
       </div>
       {torchAvailable && (
         <button
-          onClick={() => (torchIsOn ? torchOff() : torchOn())}
+          onClick={toggleTorch}
           className={cn(
             "absolute top-3 right-3 w-10 h-10 rounded-full flex items-center justify-center transition-colors",
             torchIsOn ? "bg-yellow-400 text-black" : "bg-black/50 text-white hover:bg-black/70"
