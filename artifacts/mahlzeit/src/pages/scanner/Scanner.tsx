@@ -290,12 +290,20 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
     readerRef.current = reader;
 
     async function startCamera() {
-      let stream: MediaStream;
+      const video = videoRef.current;
+      if (!video) return;
+
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
-          audio: false,
-        });
+        await reader.decodeFromConstraints(
+          { video: { facingMode: "environment" }, audio: false },
+          video,
+          (result, error) => {
+            if (cancelled) return;
+            if (result) {
+              onDetectedRef.current(result.getText());
+            }
+          }
+        );
       } catch (err) {
         if (cancelled) return;
         console.error("[Scanner] Camera error:", err);
@@ -317,35 +325,17 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
         return;
       }
 
-      if (cancelled) {
-        stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
-      streamRef.current = stream;
-
-      const video = videoRef.current;
-      if (!video) return;
-      video.srcObject = stream;
-      try {
-        await video.play();
-      } catch {}
-
-      const track = stream.getVideoTracks()[0];
-      if (track) {
-        try {
-          const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
-          if (caps?.torch) {
-            setTorchAvailable(true);
-          }
-        } catch {}
-      }
-
-      reader.decodeContinuously(video, (result, error) => {
-        if (cancelled) return;
-        if (result) {
-          onDetectedRef.current(result.getText());
+      const stream = video.srcObject as MediaStream;
+      if (stream) {
+        streamRef.current = stream;
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          try {
+            const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+            if (caps?.torch) setTorchAvailable(true);
+          } catch {}
         }
-      });
+      }
     }
 
     startCamera();
