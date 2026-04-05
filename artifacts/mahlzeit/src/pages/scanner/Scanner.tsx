@@ -302,8 +302,6 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
-        video.srcObject = stream;
-        await video.play();
         streamRef.current = stream;
 
         const track = stream.getVideoTracks()[0];
