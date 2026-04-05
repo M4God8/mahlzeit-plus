@@ -7,7 +7,7 @@ import {
   ingredientsTable,
   aiGenerationsTable,
 } from "@workspace/db";
-import { eq, ilike, and, or, sql } from "drizzle-orm";
+import { eq, ilike, and, or, sql, type SQL } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { AiGenerateRecipeResponse } from "@workspace/api-zod";
@@ -103,11 +103,15 @@ function toIngredientRow(recipeId: number, ing: IngredientInput) {
 router.get("/recipes", requireAuth, async (req, res): Promise<void> => {
   try {
     const userId = req.userId!;
-    const { energyType, search, tags, maxTime } = req.query as { energyType?: string; search?: string; tags?: string; maxTime?: string };
+    const { energyType, search, tags, maxTime, mine } = req.query as { energyType?: string; search?: string; tags?: string; maxTime?: string; mine?: string };
 
-    const conditions = [
-      or(eq(recipesTable.isPublic, true), eq(recipesTable.userId, userId)),
-    ];
+    const conditions: SQL[] = [];
+
+    if (mine === "true") {
+      conditions.push(eq(recipesTable.userId, userId));
+    } else {
+      conditions.push(or(eq(recipesTable.isPublic, true), eq(recipesTable.userId, userId))!);
+    }
 
     if (energyType) {
       conditions.push(eq(recipesTable.energyType, energyType));

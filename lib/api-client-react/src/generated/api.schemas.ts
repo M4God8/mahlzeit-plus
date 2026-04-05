@@ -793,6 +793,10 @@ export type ListRecipesParams = {
    * Maximum total cook time (prepTime + cookTime) in minutes
    */
   maxTime?: number;
+  /**
+   * When true, only return recipes created by the authenticated user
+   */
+  mine?: boolean;
 };
 
 export type ImportRecipeScreenshotBody = {

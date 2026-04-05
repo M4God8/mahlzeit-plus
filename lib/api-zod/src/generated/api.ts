@@ -141,6 +141,7 @@ export const ListRecipesQueryParams = zod.object({
   search: zod.coerce.string().optional(),
   tags: zod.coerce.string().optional(),
   maxTime: zod.coerce.number().optional(),
+  mine: zod.coerce.boolean().optional(),
 });
 
 export const ListRecipesResponseItem = zod.object({
