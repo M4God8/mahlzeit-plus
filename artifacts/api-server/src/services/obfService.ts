@@ -49,9 +49,14 @@ export async function fetchProductFromObf(barcode: string): Promise<ObfResult> {
       return null;
     }
 
-    if (!res.ok) {
-      console.error(`[OBF] Upstream error: HTTP ${res.status} for barcode=${barcode}`);
+    if (res.status >= 500) {
+      console.error(`[OBF] Server error: HTTP ${res.status} for barcode=${barcode}`);
       return "upstream_error";
+    }
+
+    if (!res.ok) {
+      console.warn(`[OBF] Client error: HTTP ${res.status} for barcode=${barcode} — not retrying`);
+      return null;
     }
 
     const json = (await res.json()) as ObfApiResponse;

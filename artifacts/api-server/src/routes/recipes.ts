@@ -332,6 +332,11 @@ router.post(
         };
       }));
 
+      if (!process.env.ANTHROPIC_API_KEY) {
+        res.status(503).json({ error: "KI-Dienst nicht verfügbar. Bitte später erneut versuchen." });
+        return;
+      }
+
       const systemPrompt = `Du bist ein Rezept-Erkennungs-Assistent. Du analysierst Screenshots von Rezepten (z.B. von TikTok, Instagram, Kochseiten) und extrahierst alle Rezeptdaten.
 Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.
 Wenn du ein Feld nicht sicher erkennen kannst, setze den Wert auf "?" (bei Strings) oder 0 (bei Zahlen).

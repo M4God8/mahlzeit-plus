@@ -65,9 +65,14 @@ async function singleFetch(barcode: string, attempt: number): Promise<OffResult>
       return null;
     }
 
-    if (!res.ok) {
-      console.error(`[OFF] Upstream error: HTTP ${res.status} for barcode=${barcode} (attempt ${attempt}/${MAX_RETRIES})`);
+    if (res.status >= 500) {
+      console.error(`[OFF] Server error: HTTP ${res.status} for barcode=${barcode} (attempt ${attempt}/${MAX_RETRIES})`);
       return "upstream_error";
+    }
+
+    if (!res.ok) {
+      console.warn(`[OFF] Client error: HTTP ${res.status} for barcode=${barcode} (attempt ${attempt}/${MAX_RETRIES}) — not retrying`);
+      return null;
     }
 
     const json = (await res.json()) as OffApiResponse;
