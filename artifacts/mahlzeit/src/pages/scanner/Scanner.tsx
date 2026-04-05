@@ -314,8 +314,8 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
           } catch {}
         }
 
-        await reader.decodeFromVideoDevice(
-          null,
+        await reader.decodeFromStream(
+          stream,
           video,
           (result, error) => {
             if (cancelled) return;
