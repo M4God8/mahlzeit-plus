@@ -21,6 +21,7 @@ import RecipeDetail from "@/pages/rezepte/RecipeDetail";
 import Onboarding from "@/pages/Onboarding";
 import KiKueche from "@/pages/ki/KiKueche";
 import ScannerPage from "@/pages/scanner/Scanner";
+import KameraTest from "@/pages/scanner/KameraTest";
 import AdminPage from "@/pages/admin/Admin";
 import MonthlyReview from "@/pages/rueckblick/MonthlyReview";
 import NotFound from "@/pages/not-found";
@@ -279,6 +280,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/rezepte/:id" component={() => <ProtectedRoute component={RecipeDetail} />} />
           <Route path="/ki" component={() => <ProtectedRoute component={KiKueche} />} />
           <Route path="/scanner" component={() => <ProtectedRoute component={ScannerPage} />} />
+          <Route path="/kamera-test" component={() => <ProtectedRoute component={KameraTest} />} />
           <Route path="/einstellungen" component={() => <ProtectedRoute component={Settings} />} />
           <Route path="/rueckblick" component={() => <ProtectedRoute component={MonthlyReview} />} />
 
