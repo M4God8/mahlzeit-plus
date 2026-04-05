@@ -172,11 +172,13 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
     const entryInfos: EntryInfo[] = [];
     const recipeIds = new Set<number>();
     for (const entry of entries) {
+      if (entry.repeatedFromEntryId !== null) continue;
       if (entry.recipeId !== null) {
         recipeIds.add(entry.recipeId);
+        const baseServings = entry.overrideServings ?? householdSize;
         entryInfos.push({
           recipeId: entry.recipeId,
-          servingsMultiplier: entry.overrideServings ?? householdSize,
+          servingsMultiplier: baseServings * (entry.repeatDays ?? 1),
         });
       }
     }

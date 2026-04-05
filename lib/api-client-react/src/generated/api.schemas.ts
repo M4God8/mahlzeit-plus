@@ -136,6 +136,13 @@ export interface MealEntry {
   overrideCookTime?: number | null;
   /** @nullable */
   overrideServings?: number | null;
+  /**
+   * @minimum 1
+   * @maximum 3
+   */
+  repeatDays?: number;
+  /** @nullable */
+  repeatedFromEntryId?: number | null;
   recipe?: Recipe | null;
 }
 
@@ -187,6 +194,13 @@ export interface MealEntryInput {
   customNote?: string | null;
   /** @nullable */
   overrideCookTime?: number | null;
+  /** @nullable */
+  overrideServings?: number | null;
+  /**
+   * @minimum 1
+   * @maximum 3
+   */
+  repeatDays?: number;
 }
 
 export interface TodayMealEntry {
@@ -355,6 +369,11 @@ export interface AiGenerateRecipeInput {
 export interface AiGeneratePlanInput {
   preferences: string;
   weeksCount?: number;
+  /**
+   * @minimum 1
+   * @maximum 30
+   */
+  cycleLengthDays?: number;
 }
 
 export interface UpdateServingsInput {

@@ -1714,6 +1714,13 @@ components:
           type: ["integer", "null"]
         overrideServings:
           type: ["integer", "null"]
+        repeatDays:
+          type: integer
+          default: 1
+          minimum: 1
+          maximum: 3
+        repeatedFromEntryId:
+          type: ["integer", "null"]
         recipe:
           oneOf:
             - $ref: "#/components/schemas/Recipe"
@@ -1834,6 +1841,13 @@ components:
           type: ["string", "null"]
         overrideCookTime:
           type: ["integer", "null"]
+        overrideServings:
+          type: ["integer", "null"]
+        repeatDays:
+          type: integer
+          default: 1
+          minimum: 1
+          maximum: 3
       required:
         - mealType
 
@@ -2168,6 +2182,11 @@ components:
           type: string
         weeksCount:
           type: integer
+        cycleLengthDays:
+          type: integer
+          default: 7
+          minimum: 1
+          maximum: 30
       required:
         - preferences
 

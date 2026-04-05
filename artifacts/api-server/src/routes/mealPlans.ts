@@ -6,7 +6,7 @@ import {
   mealEntriesTable,
   recipesTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "../middlewares/requireAuth";
 import type { MealPlan } from "@workspace/db";
@@ -22,6 +22,8 @@ interface MealEntryRow {
   timeSlot: string | null;
   overrideCookTime: number | null;
   overrideServings: number | null;
+  repeatDays: number;
+  repeatedFromEntryId: number | null;
   recipe: {
     id: number;
     userId: string | null;
@@ -69,6 +71,8 @@ async function getMealPlanWithDays(planId: number): Promise<MealPlanDetail | nul
           timeSlot: mealEntriesTable.timeSlot,
           overrideCookTime: mealEntriesTable.overrideCookTime,
           overrideServings: mealEntriesTable.overrideServings,
+          repeatDays: mealEntriesTable.repeatDays,
+          repeatedFromEntryId: mealEntriesTable.repeatedFromEntryId,
           recipeTitle: recipesTable.title,
           recipePrepTime: recipesTable.prepTime,
           recipeCookTime: recipesTable.cookTime,
@@ -99,6 +103,8 @@ async function getMealPlanWithDays(planId: number): Promise<MealPlanDetail | nul
           timeSlot: e.timeSlot ? String(e.timeSlot) : null,
           overrideCookTime: e.overrideCookTime,
           overrideServings: e.overrideServings,
+          repeatDays: e.repeatDays,
+          repeatedFromEntryId: e.repeatedFromEntryId,
           recipe: e.recipeTitle ? {
             id: e.recipeId!,
             userId: e.recipeUserId,
@@ -383,20 +389,35 @@ router.post("/meal-plans/:id/copy", requireAuth, async (req, res): Promise<void>
       .returning();
 
     const originalDays = await db.select().from(mealPlanDaysTable).where(eq(mealPlanDaysTable.mealPlanId, planId));
+    const dayIdMap = new Map<number, number>();
     for (const day of originalDays) {
       const [newDay] = await db.insert(mealPlanDaysTable).values({ mealPlanId: newPlan.id, dayNumber: day.dayNumber }).returning();
+      dayIdMap.set(day.id, newDay.id);
+    }
+    for (const day of originalDays) {
+      const newDayId = dayIdMap.get(day.id)!;
       const originalEntries = await db.select().from(mealEntriesTable).where(eq(mealEntriesTable.mealPlanDayId, day.id));
-      if (originalEntries.length > 0) {
-        await db.insert(mealEntriesTable).values(
-          originalEntries.map(e => ({
-            mealPlanDayId: newDay.id,
+      const sourceEntries = originalEntries.filter(e => !e.repeatedFromEntryId);
+      for (const e of sourceEntries) {
+        const [newEntry] = await db.insert(mealEntriesTable).values({
+          mealPlanDayId: newDayId,
+          mealType: e.mealType,
+          recipeId: e.recipeId,
+          customNote: e.customNote,
+          overrideCookTime: e.overrideCookTime,
+          overrideServings: e.overrideServings,
+          repeatDays: e.repeatDays,
+          repeatedFromEntryId: null,
+        }).returning();
+        if (e.repeatDays > 1) {
+          await createFollowerEntries(newEntry.id, day.dayNumber, newPlan.id, e.repeatDays, {
             mealType: e.mealType,
             recipeId: e.recipeId,
             customNote: e.customNote,
             overrideCookTime: e.overrideCookTime,
             overrideServings: e.overrideServings,
-          }))
-        );
+          });
+        }
       }
     }
 
@@ -476,7 +497,85 @@ const mealEntryInputSchema = z.object({
   customNote: z.string().nullable().optional(),
   overrideCookTime: z.number().int().nullable().optional(),
   overrideServings: z.number().int().nullable().optional(),
+  repeatDays: z.number().int().min(1).max(3).optional(),
 });
+
+async function getRecipeForEntry(recipeId: number | null) {
+  if (!recipeId) return null;
+  const [r] = await db.select().from(recipesTable).where(eq(recipesTable.id, recipeId));
+  if (!r) return null;
+  return {
+    id: r.id, userId: r.userId, title: r.title, description: r.description,
+    prepTime: r.prepTime, cookTime: r.cookTime, servings: r.servings,
+    instructions: r.instructions, tags: r.tags, aiGenerated: r.aiGenerated,
+    energyType: r.energyType, isPublic: r.isPublic,
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    ingredients: [] as never[],
+  };
+}
+
+function formatEntryResponse(entry: typeof mealEntriesTable.$inferSelect, recipe: Awaited<ReturnType<typeof getRecipeForEntry>>) {
+  return {
+    id: entry.id,
+    mealPlanDayId: entry.mealPlanDayId,
+    mealType: entry.mealType,
+    recipeId: entry.recipeId,
+    customNote: entry.customNote,
+    timeSlot: entry.timeSlot ? String(entry.timeSlot) : null,
+    overrideCookTime: entry.overrideCookTime,
+    overrideServings: entry.overrideServings,
+    repeatDays: entry.repeatDays,
+    repeatedFromEntryId: entry.repeatedFromEntryId,
+    recipe,
+  };
+}
+
+async function createFollowerEntries(
+  sourceEntryId: number,
+  sourceDayNumber: number,
+  planId: number,
+  repeatDays: number,
+  data: { mealType: string; recipeId: number | null; customNote: string | null; overrideCookTime: number | null; overrideServings: number | null }
+) {
+  if (repeatDays <= 1) return;
+  const allDays = await db.select().from(mealPlanDaysTable)
+    .where(eq(mealPlanDaysTable.mealPlanId, planId));
+  const sortedDays = allDays.sort((a, b) => a.dayNumber - b.dayNumber);
+
+  for (let offset = 1; offset < repeatDays; offset++) {
+    const targetDayNumber = sourceDayNumber + offset;
+    const targetDay = sortedDays.find(d => d.dayNumber === targetDayNumber);
+    if (!targetDay) continue;
+
+    await db.insert(mealEntriesTable).values({
+      mealPlanDayId: targetDay.id,
+      mealType: data.mealType,
+      recipeId: data.recipeId,
+      customNote: data.customNote,
+      overrideCookTime: data.overrideCookTime,
+      overrideServings: data.overrideServings,
+      repeatDays: 1,
+      repeatedFromEntryId: sourceEntryId,
+    });
+  }
+}
+
+async function deleteFollowerEntries(sourceEntryId: number) {
+  await db.delete(mealEntriesTable).where(eq(mealEntriesTable.repeatedFromEntryId, sourceEntryId));
+}
+
+async function updateFollowerEntries(
+  sourceEntryId: number,
+  data: { mealType: string; recipeId: number | null; customNote: string | null; overrideCookTime: number | null; overrideServings: number | null }
+) {
+  await db.update(mealEntriesTable).set({
+    mealType: data.mealType,
+    recipeId: data.recipeId,
+    customNote: data.customNote,
+    overrideCookTime: data.overrideCookTime,
+    overrideServings: data.overrideServings,
+  }).where(eq(mealEntriesTable.repeatedFromEntryId, sourceEntryId));
+}
 
 router.post("/meal-plans/:id/days/:dayId/entries", requireAuth, async (req, res): Promise<void> => {
   try {
@@ -500,6 +599,8 @@ router.post("/meal-plans/:id/days/:dayId/entries", requireAuth, async (req, res)
       if (!r.isPublic && r.userId !== userId) { res.status(403).json({ error: "Kein Zugriff auf dieses Rezept" }); return; }
     }
 
+    const effectiveRepeatDays = Math.min(parsed.data.repeatDays ?? 1, plan.cycleLengthDays - day.dayNumber + 1);
+
     const [entry] = await db.insert(mealEntriesTable).values({
       mealPlanDayId: dayId,
       mealType: parsed.data.mealType,
@@ -507,34 +608,22 @@ router.post("/meal-plans/:id/days/:dayId/entries", requireAuth, async (req, res)
       customNote: parsed.data.customNote ?? null,
       overrideCookTime: parsed.data.overrideCookTime ?? null,
       overrideServings: parsed.data.overrideServings ?? null,
+      repeatDays: effectiveRepeatDays,
+      repeatedFromEntryId: null,
     }).returning();
 
-    let recipe = null;
-    if (entry.recipeId) {
-      const [r] = await db.select().from(recipesTable).where(eq(recipesTable.id, entry.recipeId));
-      if (r) {
-        recipe = {
-          id: r.id, userId: r.userId, title: r.title, description: r.description,
-          prepTime: r.prepTime, cookTime: r.cookTime, servings: r.servings,
-          instructions: r.instructions, tags: r.tags, aiGenerated: r.aiGenerated,
-          energyType: r.energyType, isPublic: r.isPublic,
-          createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
-          ingredients: [],
-        };
-      }
+    if (effectiveRepeatDays > 1) {
+      await createFollowerEntries(entry.id, day.dayNumber, planId, effectiveRepeatDays, {
+        mealType: parsed.data.mealType,
+        recipeId: parsed.data.recipeId ?? null,
+        customNote: parsed.data.customNote ?? null,
+        overrideCookTime: parsed.data.overrideCookTime ?? null,
+        overrideServings: parsed.data.overrideServings ?? null,
+      });
     }
 
-    res.status(201).json({
-      id: entry.id,
-      mealPlanDayId: entry.mealPlanDayId,
-      mealType: entry.mealType,
-      recipeId: entry.recipeId,
-      customNote: entry.customNote,
-      timeSlot: entry.timeSlot ? String(entry.timeSlot) : null,
-      overrideCookTime: entry.overrideCookTime,
-      overrideServings: entry.overrideServings,
-      recipe,
-    });
+    const recipe = await getRecipeForEntry(entry.recipeId);
+    res.status(201).json(formatEntryResponse(entry, recipe));
   } catch (err) {
     req.log.error({ err }, "Failed to add meal entry");
     res.status(500).json({ error: "Internal server error" });
@@ -561,46 +650,42 @@ router.put("/meal-plans/:id/days/:dayId/entries/:entryId", requireAuth, async (r
     const [entry] = await db.select().from(mealEntriesTable).where(and(eq(mealEntriesTable.id, entryId), eq(mealEntriesTable.mealPlanDayId, dayId)));
     if (!entry) { res.status(404).json({ error: "Eintrag nicht gefunden" }); return; }
 
+    if (entry.repeatedFromEntryId) {
+      res.status(400).json({ error: "Folgetag-Eintrag kann nicht direkt bearbeitet werden", sourceEntryId: entry.repeatedFromEntryId });
+      return;
+    }
+
     if (parsed.data.recipeId) {
       const [r] = await db.select().from(recipesTable).where(eq(recipesTable.id, parsed.data.recipeId)).limit(1);
       if (!r) { res.status(404).json({ error: "Rezept nicht gefunden" }); return; }
       if (!r.isPublic && r.userId !== userId) { res.status(403).json({ error: "Kein Zugriff auf dieses Rezept" }); return; }
     }
 
-    const [updated] = await db.update(mealEntriesTable).set({
+    const requestedRepeatDays = parsed.data.repeatDays ?? entry.repeatDays;
+    const effectiveRepeatDays = Math.min(requestedRepeatDays, plan.cycleLengthDays - day.dayNumber + 1);
+    const repeatChanged = effectiveRepeatDays !== entry.repeatDays;
+    const entryData = {
       mealType: parsed.data.mealType,
       recipeId: parsed.data.recipeId ?? null,
       customNote: parsed.data.customNote ?? null,
       overrideCookTime: parsed.data.overrideCookTime ?? null,
       overrideServings: parsed.data.overrideServings ?? null,
+    };
+
+    const [updated] = await db.update(mealEntriesTable).set({
+      ...entryData,
+      repeatDays: effectiveRepeatDays,
     }).where(eq(mealEntriesTable.id, entryId)).returning();
 
-    let recipe = null;
-    if (updated.recipeId) {
-      const [r] = await db.select().from(recipesTable).where(eq(recipesTable.id, updated.recipeId));
-      if (r) {
-        recipe = {
-          id: r.id, userId: r.userId, title: r.title, description: r.description,
-          prepTime: r.prepTime, cookTime: r.cookTime, servings: r.servings,
-          instructions: r.instructions, tags: r.tags, aiGenerated: r.aiGenerated,
-          energyType: r.energyType, isPublic: r.isPublic,
-          createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
-          ingredients: [],
-        };
+    if (repeatChanged || effectiveRepeatDays > 1) {
+      await deleteFollowerEntries(entryId);
+      if (effectiveRepeatDays > 1) {
+        await createFollowerEntries(entryId, day.dayNumber, planId, effectiveRepeatDays, entryData);
       }
     }
 
-    res.json({
-      id: updated.id,
-      mealPlanDayId: updated.mealPlanDayId,
-      mealType: updated.mealType,
-      recipeId: updated.recipeId,
-      customNote: updated.customNote,
-      timeSlot: updated.timeSlot ? String(updated.timeSlot) : null,
-      overrideCookTime: updated.overrideCookTime,
-      overrideServings: updated.overrideServings,
-      recipe,
-    });
+    const recipe = await getRecipeForEntry(updated.recipeId);
+    res.json(formatEntryResponse(updated, recipe));
   } catch (err) {
     req.log.error({ err }, "Failed to update meal entry");
     res.status(500).json({ error: "Internal server error" });
@@ -624,6 +709,7 @@ router.delete("/meal-plans/:id/days/:dayId/entries/:entryId", requireAuth, async
     const [entry] = await db.select().from(mealEntriesTable).where(and(eq(mealEntriesTable.id, entryId), eq(mealEntriesTable.mealPlanDayId, dayId)));
     if (!entry) { res.status(404).json({ error: "Eintrag nicht gefunden" }); return; }
 
+    await deleteFollowerEntries(entryId);
     await db.delete(mealEntriesTable).where(eq(mealEntriesTable.id, entryId));
     res.status(204).send();
   } catch (err) {
@@ -662,15 +748,8 @@ router.patch("/meal-plans/:id/days/:dayId/entries/:entryId/servings", requireAut
       .where(eq(mealEntriesTable.id, entryId))
       .returning();
 
-    res.json({
-      id: updated.id,
-      mealPlanDayId: updated.mealPlanDayId,
-      mealType: updated.mealType,
-      recipeId: updated.recipeId,
-      customNote: updated.customNote,
-      timeSlot: updated.timeSlot ? String(updated.timeSlot) : null,
-      overrideServings: updated.overrideServings,
-    });
+    const recipe = await getRecipeForEntry(updated.recipeId);
+    res.json(formatEntryResponse(updated, recipe));
   } catch (err) {
     req.log.error({ err }, "Failed to update servings override");
     res.status(500).json({ error: "Internal server error" });

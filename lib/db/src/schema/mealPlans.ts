@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, time } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, boolean, timestamp, time, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { recipesTable } from "./recipes";
@@ -28,6 +28,8 @@ export const mealEntriesTable = pgTable("meal_entries", {
   timeSlot: time("time_slot"),
   overrideCookTime: integer("override_cook_time"),
   overrideServings: integer("override_servings"),
+  repeatDays: integer("repeat_days").notNull().default(1),
+  repeatedFromEntryId: integer("repeated_from_entry_id").references((): AnyPgColumn => mealEntriesTable.id, { onDelete: "cascade" }),
 });
 
 export const insertMealPlanSchema = createInsertSchema(mealPlansTable).omit({ id: true, createdAt: true });

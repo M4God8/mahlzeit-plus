@@ -337,23 +337,32 @@ router.post("/ai/generate-plan", requireAuth, async (req, res) => {
   const userId = req.userId!;
   const body = AiGeneratePlanBody.parse(req.body);
   const ctx = await getUserContext(userId);
+  const cycleLengthDays = body.cycleLengthDays ?? 7;
+
+  const dayNames: string[] = [];
+  const baseNames = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
+  for (let i = 0; i < cycleLengthDays; i++) {
+    dayNames.push(i < 7 ? baseNames[i]! : `Tag ${i + 1}`);
+  }
 
   const systemPrompt = `Du bist ein Ernährungsberater für bewusstes und natürliches Essen. 
-Du erstellst ausgewogene Wochenspeisepläne auf Deutsch.
+Du erstellst ausgewogene Speisepläne auf Deutsch.
 Antworte IMMER mit einem validen JSON-Objekt ohne Markdown-Formatierung oder erklärenden Text.
+Nutzer kocht oft für mehrere Tage vor. Plane Gerichte die sich gut aufwärmen lassen.
 
 Nutzerprofil:
 ${buildContextBlock(ctx)}`;
 
-  const prompt = `Erstelle einen Wochenspeiseplan (7 Tage: Montag bis Sonntag) mit je 3 Mahlzeiten (Frühstück, Mittagessen, Abendessen).
+  const prompt = `Erstelle einen Speiseplan mit EXAKT ${cycleLengthDays} Tagen (${dayNames.join(", ")}) mit je 3 Mahlzeiten (Frühstück, Mittagessen, Abendessen).
+Gib EXAKT ${cycleLengthDays} Tage zurück — nicht mehr, nicht weniger.
 Nutzerpräferenzen: "${body.preferences}"
 
 Antworte mit folgendem JSON:
 {
-  "weekTitle": "Wochenplan: Kurze Beschreibung",
+  "weekTitle": "Speiseplan: Kurze Beschreibung",
   "days": [
     {
-      "day": "Montag",
+      "day": "${dayNames[0]}",
       "meals": [
         {"mealType": "Frühstück", "suggestion": "Haferporridge", "description": "Mit Beeren und Nüssen"},
         {"mealType": "Mittagessen", "suggestion": "Gemüsesuppe", "description": "Saisonal und frisch"},
@@ -364,21 +373,44 @@ Antworte mit folgendem JSON:
   "notes": "Allgemeine Hinweise zum Plan"
 }`;
 
-  const { data, inputTokens, outputTokens } = await safeKiCall(AiGeneratePlanResponse, prompt, systemPrompt);
-  const costEur = (inputTokens * 0.000003 + outputTokens * 0.000015).toFixed(6);
+  const result = await safeKiCall(AiGeneratePlanResponse, prompt, systemPrompt);
+  const costEur = (result.inputTokens * 0.000003 + result.outputTokens * 0.000015).toFixed(6);
+
+  const planData = result.data as { weekTitle: string; days: { day: string; meals: { mealType: string; suggestion: string; description: string }[] }[]; notes?: string };
+
+  if (planData.days.length > cycleLengthDays) {
+    return res.status(500).json({ error: `AI-Plan hat ${planData.days.length} Tage statt ${cycleLengthDays}. Bitte erneut versuchen.` });
+  }
+
+  if (planData.days.length < cycleLengthDays) {
+    for (let i = planData.days.length; i < cycleLengthDays; i++) {
+      planData.days.push({
+        day: dayNames[i] ?? `Tag ${i + 1}`,
+        meals: [
+          { mealType: "leer", suggestion: "Kein Vorschlag", description: "Bitte manuell planen" },
+          { mealType: "leer", suggestion: "Kein Vorschlag", description: "Bitte manuell planen" },
+          { mealType: "leer", suggestion: "Kein Vorschlag", description: "Bitte manuell planen" },
+        ],
+      });
+    }
+  }
+
+  if (planData.days.length !== cycleLengthDays) {
+    return res.status(500).json({ error: `AI-Plan hat ${planData.days.length} Tage statt ${cycleLengthDays}. Bitte erneut versuchen.` });
+  }
 
   await db.insert(aiGenerationsTable).values({
     userId,
     type: "generate-plan",
     input: body.preferences,
-    output: data as Record<string, unknown>,
+    output: planData as Record<string, unknown>,
     model: MODEL,
-    inputTokens,
-    outputTokens,
+    inputTokens: result.inputTokens,
+    outputTokens: result.outputTokens,
     costEur,
   });
 
-  res.json(data);
+  res.json(planData);
 });
 
 router.post("/ai/adjust-recipe", requireAuth, async (req, res) => {

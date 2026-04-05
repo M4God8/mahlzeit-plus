@@ -52,7 +52,15 @@ import {
   ShoppingCart,
   Sparkles,
   Clock,
+  Link,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
@@ -70,7 +78,7 @@ type MealTypeKey = typeof MEAL_TYPES[number]["key"];
 const DAY_NAMES = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So", "Tag 8", "Tag 9", "Tag 10", "Tag 11", "Tag 12", "Tag 13", "Tag 14"];
 
 function getMealEntry(day: MealPlanDay, mealType: string): MealEntry | undefined {
-  return day.entries?.find(e => e.mealType === mealType);
+  return day.entries?.find(e => e.mealType === mealType && !e.repeatedFromEntryId && e.mealType !== "leer");
 }
 
 
@@ -228,18 +236,52 @@ export default function PlanDetail() {
     setMaterializingPlan(true);
     try {
       const sortedDays = [...plan.days].sort((a, b) => a.dayNumber - b.dayNumber);
+
+      for (const day of sortedDays) {
+        const allEntries = (day.entries ?? []) as MealEntry[];
+        const followers = allEntries.filter((e) => e.repeatedFromEntryId);
+        for (const follower of followers) {
+          await new Promise<void>((resolve) => {
+            deleteEntry.mutate(
+              { id: planId, dayId: day.id, entryId: follower.id },
+              { onSettled: () => resolve() }
+            );
+          });
+        }
+        const sources = allEntries.filter((e) => !e.repeatedFromEntryId);
+        for (const src of sources) {
+          await new Promise<void>((resolve) => {
+            deleteEntry.mutate(
+              { id: planId, dayId: day.id, entryId: src.id },
+              { onSettled: () => resolve() }
+            );
+          });
+        }
+      }
+
       for (let i = 0; i < Math.min(generatedAiPlan.days.length, sortedDays.length); i++) {
         const aiDay = generatedAiPlan.days[i]!;
         const planDay = sortedDays[i]!;
         for (const meal of aiDay.meals) {
-          const mealType = MEAL_TYPE_MAP[meal.mealType] ?? "lunch";
-          const customNote = `${meal.suggestion}: ${meal.description}`;
-          await new Promise<void>((resolve) => {
-            addEntry.mutate(
-              { id: planId, dayId: planDay.id, data: { mealType, customNote, recipeId: null } },
-              { onSettled: () => resolve() }
-            );
-          });
+          const isPlaceholder = meal.mealType === "leer" || meal.suggestion === "Kein Vorschlag";
+          if (isPlaceholder) {
+            const customNote = meal.description || "Bitte manuell planen";
+            await new Promise<void>((resolve) => {
+              addEntry.mutate(
+                { id: planId, dayId: planDay.id, data: { mealType: "leer", customNote, recipeId: null } },
+                { onSettled: () => resolve() }
+              );
+            });
+          } else {
+            const mealType = MEAL_TYPE_MAP[meal.mealType] ?? "lunch";
+            const customNote = `${meal.suggestion}: ${meal.description}`;
+            await new Promise<void>((resolve) => {
+              addEntry.mutate(
+                { id: planId, dayId: planDay.id, data: { mealType, customNote, recipeId: null } },
+                { onSettled: () => resolve() }
+              );
+            });
+          }
         }
       }
       toast({ title: "Plan eingefügt!", description: "KI-Vorschläge wurden als Notizen in deinen Plan eingefügt." });
@@ -324,6 +366,42 @@ export default function PlanDetail() {
     lunch: "Mittagessen",
     dinner: "Abendessen",
     snack: "Snack",
+    leer: "Platzhalter",
+  };
+
+  const handleRepeatDaysChange = (dayId: number, entry: MealEntry, newRepeatDays: number) => {
+    updateEntry.mutate(
+      {
+        id: planId,
+        dayId,
+        entryId: entry.id,
+        data: {
+          mealType: entry.mealType,
+          recipeId: entry.recipeId ?? null,
+          customNote: entry.customNote ?? null,
+          overrideCookTime: entry.overrideCookTime ?? null,
+          overrideServings: entry.overrideServings ?? undefined,
+          repeatDays: newRepeatDays,
+        },
+      },
+      {
+        onSuccess: () => {
+          invalidatePlan();
+          toast({ title: `Wiederholung auf ${newRepeatDays} Tag(e) gesetzt` });
+        },
+        onError: () => toast({ title: "Fehler", variant: "destructive" }),
+      }
+    );
+  };
+
+  const findSourceDayNumber = (sourceEntryId: number): number | null => {
+    if (!plan) return null;
+    for (const day of plan.days) {
+      if (day.entries?.some((e: MealEntry) => e.id === sourceEntryId)) {
+        return day.dayNumber;
+      }
+    }
+    return null;
   };
 
   const handleAlternativeWithTime = (minutes: number) => {
@@ -550,7 +628,7 @@ export default function PlanDetail() {
 
         <div className="space-y-4">
           {plan.days.sort((a, b) => a.dayNumber - b.dayNumber).map((day) => (
-            <Card key={day.id} className="overflow-hidden border-border/50 shadow-sm">
+            <Card key={day.id} id={`day-${day.dayNumber}`} className="overflow-hidden border-border/50 shadow-sm">
               <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border/30">
                 <div className="flex items-center gap-2">
                   <span className="font-display font-bold text-base">
@@ -636,10 +714,88 @@ export default function PlanDetail() {
                             </Button>
                           </>
                         )}
+                        {entry && !entry.repeatedFromEntryId && entry.mealType !== "leer" && (
+                          <Select
+                            value={String(entry.repeatDays ?? 1)}
+                            onValueChange={(val) => handleRepeatDaysChange(day.id, entry, parseInt(val))}
+                          >
+                            <SelectTrigger className="w-14 h-7 text-[10px] px-1.5 rounded-full border-border/50" data-testid={`repeat-${day.dayNumber}-${key}`}>
+                              <Repeat2 className="w-3 h-3 mr-0.5" />
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1, 2, 3].filter(v => v <= (plan.cycleLengthDays - day.dayNumber + 1)).map(v => (
+                                <SelectItem key={v} value={String(v)}>{v}×</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                     </div>
                   );
                 })}
+                {(day.entries ?? [])
+                  .filter((e: MealEntry) => e.mealType === "leer" || e.repeatedFromEntryId)
+                  .filter((e: MealEntry) => !MEAL_TYPES.some(mt => mt.key === e.mealType && !e.repeatedFromEntryId))
+                  .map((entry: MealEntry) => {
+                    const isFollower = !!entry.repeatedFromEntryId;
+                    const sourceDayNum = isFollower ? findSourceDayNumber(entry.repeatedFromEntryId!) : null;
+                    const mealLabel = MEAL_TYPE_LABEL[entry.mealType] ?? entry.mealType;
+                    return (
+                      <div
+                        key={entry.id}
+                        className={`flex items-center justify-between rounded-lg px-3 py-2.5 transition-colors ${
+                          isFollower
+                            ? "bg-muted/60 border border-muted-foreground/20 cursor-pointer hover:bg-muted/80"
+                            : entry.mealType === "leer"
+                            ? "bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40"
+                            : "bg-primary/5 border border-primary/10"
+                        }`}
+                        {...(isFollower && sourceDayNum ? {
+                          onClick: () => {
+                            const el = document.getElementById(`day-${sourceDayNum}`);
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "center" });
+                              el.classList.add("ring-2", "ring-primary", "ring-offset-2");
+                              setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2"), 2000);
+                            }
+                          },
+                          role: "button",
+                          tabIndex: 0,
+                        } : {})}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase mb-0.5">{mealLabel}</div>
+                          {isFollower ? (
+                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Link className="w-3 h-3" />
+                              Fortsetzung von {DAY_NAMES[(sourceDayNum ?? 1) - 1] ?? `Tag ${sourceDayNum}`} — Tippen zum Anzeigen
+                            </div>
+                          ) : entry.mealType === "leer" ? (
+                            <div className="text-xs text-amber-600 dark:text-amber-400 italic">
+                              {entry.customNote ?? "Bitte manuell planen"}
+                            </div>
+                          ) : entry.recipe ? (
+                            <div className="text-sm font-medium truncate">{entry.recipe.title}</div>
+                          ) : (
+                            <div className="text-sm italic text-muted-foreground truncate">{entry.customNote}</div>
+                          )}
+                        </div>
+                        <div className="flex gap-1 ml-2 shrink-0">
+                          {!isFollower && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-7 h-7 rounded-full text-muted-foreground hover:text-destructive"
+                              onClick={() => handleRemoveEntry(day.id, entry.id)}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
               </CardContent>
             </Card>
           ))}
@@ -703,7 +859,7 @@ export default function PlanDetail() {
               />
             </div>
             <Button
-              onClick={() => aiGeneratePlanMutation.mutate({ data: { preferences: aiPlanPreferences } })}
+              onClick={() => aiGeneratePlanMutation.mutate({ data: { preferences: aiPlanPreferences, cycleLengthDays: plan?.cycleLengthDays ?? 7 } })}
               disabled={!aiPlanPreferences.trim() || aiGeneratePlanMutation.isPending}
               className="w-full"
               data-testid="btn-ai-generate-plan"

@@ -44,7 +44,7 @@ Tabellen in `lib/db/src/schema/`:
 - `user_settings` — Benutzereinstellungen (activeProfileIds int[], Haushaltsgröße, Budget, Kochzeit, role, blocked, premiumUntil, createdAt)
 - `ingredients` — 60 Zutaten mit Kategorien, Bio-Empfehlung und Preisfelder (price_min, price_max, price_avg, price_unit, price_updated_at)
 - `recipes` + `recipe_ingredients` — Rezepte mit Zutaten (10 Starterrezepte), source TEXT (manual|screenshot|ai_generated|tiktok|scanner_inspired), source_note TEXT
-- `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne (meal_entries hat `override_servings` nullable INTEGER für portionsweise Überschreibung)
+- `meal_plans` + `meal_plan_days` + `meal_entries` — Mahlzeitenpläne (meal_entries hat `override_servings` nullable INTEGER für portionsweise Überschreibung, `repeat_days` INT DEFAULT 1 für Meal-Repeat (1-3 Tage), `repeated_from_entry_id` nullable INT FK für Folgetag-Verkettung)
 - `ai_generations` — KI-Anfragen-Log (userId, type, input, output, model, inputTokens, outputTokens, costEur)
 - `meal_feedback` — Mahlzeit-Feedback (thumbs_up/thumbs_down)
 - `user_settings` hat zusätzlich: role (user/admin), isPremium, premiumExpiresAt, isBlocked, createdAt

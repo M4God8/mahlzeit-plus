@@ -358,6 +358,9 @@ export const CreateMealPlanBody = zod.object({
 
  * @summary Create or return an active starter meal plan with sample entries
  */
+export const createStarterMealPlanResponseDaysItemEntriesItemRepeatDaysDefault = 1;
+export const createStarterMealPlanResponseDaysItemEntriesItemRepeatDaysMax = 3;
+
 export const CreateStarterMealPlanResponse = zod.object({
   id: zod.number(),
   userId: zod.string(),
@@ -381,6 +384,14 @@ export const CreateStarterMealPlanResponse = zod.object({
           timeSlot: zod.string().nullish(),
           overrideCookTime: zod.number().nullish(),
           overrideServings: zod.number().nullish(),
+          repeatDays: zod
+            .number()
+            .min(1)
+            .max(createStarterMealPlanResponseDaysItemEntriesItemRepeatDaysMax)
+            .default(
+              createStarterMealPlanResponseDaysItemEntriesItemRepeatDaysDefault,
+            ),
+          repeatedFromEntryId: zod.number().nullish(),
           recipe: zod
             .union([
               zod.object({
@@ -423,6 +434,9 @@ export const CreateStarterMealPlanResponse = zod.object({
 /**
  * @summary Get the active meal plan with all entries
  */
+export const getActiveMealPlanResponseDaysItemEntriesItemRepeatDaysDefault = 1;
+export const getActiveMealPlanResponseDaysItemEntriesItemRepeatDaysMax = 3;
+
 export const GetActiveMealPlanResponse = zod.object({
   id: zod.number(),
   userId: zod.string(),
@@ -446,6 +460,14 @@ export const GetActiveMealPlanResponse = zod.object({
           timeSlot: zod.string().nullish(),
           overrideCookTime: zod.number().nullish(),
           overrideServings: zod.number().nullish(),
+          repeatDays: zod
+            .number()
+            .min(1)
+            .max(getActiveMealPlanResponseDaysItemEntriesItemRepeatDaysMax)
+            .default(
+              getActiveMealPlanResponseDaysItemEntriesItemRepeatDaysDefault,
+            ),
+          repeatedFromEntryId: zod.number().nullish(),
           recipe: zod
             .union([
               zod.object({
@@ -492,6 +514,9 @@ export const GetMealPlanParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const getMealPlanResponseDaysItemEntriesItemRepeatDaysDefault = 1;
+export const getMealPlanResponseDaysItemEntriesItemRepeatDaysMax = 3;
+
 export const GetMealPlanResponse = zod.object({
   id: zod.number(),
   userId: zod.string(),
@@ -515,6 +540,12 @@ export const GetMealPlanResponse = zod.object({
           timeSlot: zod.string().nullish(),
           overrideCookTime: zod.number().nullish(),
           overrideServings: zod.number().nullish(),
+          repeatDays: zod
+            .number()
+            .min(1)
+            .max(getMealPlanResponseDaysItemEntriesItemRepeatDaysMax)
+            .default(getMealPlanResponseDaysItemEntriesItemRepeatDaysDefault),
+          repeatedFromEntryId: zod.number().nullish(),
           recipe: zod
             .union([
               zod.object({
@@ -624,6 +655,9 @@ export const SwapMealPlanDaysBody = zod.object({
   dayNumberB: zod.number(),
 });
 
+export const swapMealPlanDaysResponseDaysItemEntriesItemRepeatDaysDefault = 1;
+export const swapMealPlanDaysResponseDaysItemEntriesItemRepeatDaysMax = 3;
+
 export const SwapMealPlanDaysResponse = zod.object({
   id: zod.number(),
   userId: zod.string(),
@@ -647,6 +681,14 @@ export const SwapMealPlanDaysResponse = zod.object({
           timeSlot: zod.string().nullish(),
           overrideCookTime: zod.number().nullish(),
           overrideServings: zod.number().nullish(),
+          repeatDays: zod
+            .number()
+            .min(1)
+            .max(swapMealPlanDaysResponseDaysItemEntriesItemRepeatDaysMax)
+            .default(
+              swapMealPlanDaysResponseDaysItemEntriesItemRepeatDaysDefault,
+            ),
+          repeatedFromEntryId: zod.number().nullish(),
           recipe: zod
             .union([
               zod.object({
@@ -705,11 +747,20 @@ export const AddMealEntryParams = zod.object({
   dayId: zod.coerce.number(),
 });
 
+export const addMealEntryBodyRepeatDaysDefault = 1;
+export const addMealEntryBodyRepeatDaysMax = 3;
+
 export const AddMealEntryBody = zod.object({
   mealType: zod.string(),
   recipeId: zod.number().nullish(),
   customNote: zod.string().nullish(),
   overrideCookTime: zod.number().nullish(),
+  overrideServings: zod.number().nullish(),
+  repeatDays: zod
+    .number()
+    .min(1)
+    .max(addMealEntryBodyRepeatDaysMax)
+    .default(addMealEntryBodyRepeatDaysDefault),
 });
 
 /**
@@ -721,12 +772,24 @@ export const UpdateMealEntryParams = zod.object({
   entryId: zod.coerce.number(),
 });
 
+export const updateMealEntryBodyRepeatDaysDefault = 1;
+export const updateMealEntryBodyRepeatDaysMax = 3;
+
 export const UpdateMealEntryBody = zod.object({
   mealType: zod.string(),
   recipeId: zod.number().nullish(),
   customNote: zod.string().nullish(),
   overrideCookTime: zod.number().nullish(),
+  overrideServings: zod.number().nullish(),
+  repeatDays: zod
+    .number()
+    .min(1)
+    .max(updateMealEntryBodyRepeatDaysMax)
+    .default(updateMealEntryBodyRepeatDaysDefault),
 });
+
+export const updateMealEntryResponseRepeatDaysDefault = 1;
+export const updateMealEntryResponseRepeatDaysMax = 3;
 
 export const UpdateMealEntryResponse = zod.object({
   id: zod.number(),
@@ -737,6 +800,12 @@ export const UpdateMealEntryResponse = zod.object({
   timeSlot: zod.string().nullish(),
   overrideCookTime: zod.number().nullish(),
   overrideServings: zod.number().nullish(),
+  repeatDays: zod
+    .number()
+    .min(1)
+    .max(updateMealEntryResponseRepeatDaysMax)
+    .default(updateMealEntryResponseRepeatDaysDefault),
+  repeatedFromEntryId: zod.number().nullish(),
   recipe: zod
     .union([
       zod.object({
@@ -794,6 +863,9 @@ export const UpdateMealEntryServingsBody = zod.object({
   overrideServings: zod.number().nullable(),
 });
 
+export const updateMealEntryServingsResponseRepeatDaysDefault = 1;
+export const updateMealEntryServingsResponseRepeatDaysMax = 3;
+
 export const UpdateMealEntryServingsResponse = zod.object({
   id: zod.number(),
   mealPlanDayId: zod.number(),
@@ -803,6 +875,12 @@ export const UpdateMealEntryServingsResponse = zod.object({
   timeSlot: zod.string().nullish(),
   overrideCookTime: zod.number().nullish(),
   overrideServings: zod.number().nullish(),
+  repeatDays: zod
+    .number()
+    .min(1)
+    .max(updateMealEntryServingsResponseRepeatDaysMax)
+    .default(updateMealEntryServingsResponseRepeatDaysDefault),
+  repeatedFromEntryId: zod.number().nullish(),
   recipe: zod
     .union([
       zod.object({
@@ -1117,9 +1195,17 @@ export const AiGenerateRecipeResponse = zod.object({
 /**
  * @summary Generate a weekly meal plan using AI
  */
+export const aiGeneratePlanBodyCycleLengthDaysDefault = 7;
+export const aiGeneratePlanBodyCycleLengthDaysMax = 30;
+
 export const AiGeneratePlanBody = zod.object({
   preferences: zod.string(),
   weeksCount: zod.number().optional(),
+  cycleLengthDays: zod
+    .number()
+    .min(1)
+    .max(aiGeneratePlanBodyCycleLengthDaysMax)
+    .default(aiGeneratePlanBodyCycleLengthDaysDefault),
 });
 
 export const AiGeneratePlanResponse = zod.object({
