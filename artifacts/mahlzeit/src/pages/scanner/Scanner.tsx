@@ -1,5 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { useZxing } from "react-zxing";
+import { DecodeHintType, BarcodeFormat } from "@zxing/library";
 import { useScannerLookup, useGetScanHistory } from "@workspace/api-client-react";
 import type { ScannedProduct } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -264,10 +265,24 @@ function HistoryItem({ product, onClick }: { product: ScannedProduct; onClick: (
 
 function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [torchOn, setTorchOn] = useState(false);
-  const [torchSupported, setTorchSupported] = useState(false);
 
-  const { ref } = useZxing({
+  const hints = useMemo(() => {
+    const map = new Map();
+    map.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+    ]);
+    map.set(DecodeHintType.TRY_HARDER, true);
+    return map;
+  }, []);
+
+  const {
+    ref,
+    torch: { on: torchOn, off: torchOff, isOn: torchIsOn, isAvailable: torchAvailable },
+  } = useZxing({
     onDecodeResult(result) {
       onDetected(result.getText());
     },
@@ -285,45 +300,17 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
         }
       }
     },
+    hints,
     constraints: {
-      video: { facingMode: "environment" },
+      video: {
+        facingMode: "environment",
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      },
       audio: false,
     },
-    timeBetweenDecodingAttempts: 500,
+    timeBetweenDecodingAttempts: 150,
   });
-
-  useEffect(() => {
-    const video = ref.current;
-    if (!video) return;
-    const checkTorch = () => {
-      const stream = video.srcObject as MediaStream | null;
-      if (!stream) return;
-      const track = stream.getVideoTracks()[0];
-      if (!track) return;
-      const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
-      if (caps?.torch) {
-        setTorchSupported(true);
-      }
-    };
-    const timer = setTimeout(checkTorch, 1000);
-    return () => clearTimeout(timer);
-  }, [ref]);
-
-  const toggleTorch = async () => {
-    const video = ref.current;
-    if (!video) return;
-    const stream = video.srcObject as MediaStream | null;
-    if (!stream) return;
-    const track = stream.getVideoTracks()[0];
-    if (!track) return;
-    const newVal = !torchOn;
-    try {
-      await track.applyConstraints({ advanced: [{ torch: newVal } as MediaTrackConstraintSet] });
-      setTorchOn(newVal);
-    } catch (e) {
-      console.warn("[Scanner] Torch toggle failed:", e);
-    }
-  };
 
   if (cameraError) {
     return (
@@ -348,16 +335,16 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
           <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-xl" />
         </div>
       </div>
-      {torchSupported && (
+      {torchAvailable && (
         <button
-          onClick={toggleTorch}
+          onClick={() => (torchIsOn ? torchOff() : torchOn())}
           className={cn(
             "absolute top-3 right-3 w-10 h-10 rounded-full flex items-center justify-center transition-colors",
-            torchOn ? "bg-yellow-400 text-black" : "bg-black/50 text-white hover:bg-black/70"
+            torchIsOn ? "bg-yellow-400 text-black" : "bg-black/50 text-white hover:bg-black/70"
           )}
-          aria-label={torchOn ? "Taschenlampe aus" : "Taschenlampe an"}
+          aria-label={torchIsOn ? "Taschenlampe aus" : "Taschenlampe an"}
         >
-          {torchOn ? <FlashlightOff className="w-5 h-5" /> : <Flashlight className="w-5 h-5" />}
+          {torchIsOn ? <FlashlightOff className="w-5 h-5" /> : <Flashlight className="w-5 h-5" />}
         </button>
       )}
       <p className="absolute bottom-4 inset-x-0 text-center text-white/80 text-sm">

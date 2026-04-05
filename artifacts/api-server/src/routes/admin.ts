@@ -422,7 +422,7 @@ router.post("/admin/restart", requireAdmin, async (req, res) => {
   req.log.warn("Admin-initiated server restart requested");
   res.json({ message: "Server wird neu gestartet…" });
   setTimeout(() => {
-    process.exit(0);
+    process.exit(1);
   }, 500);
 });
 

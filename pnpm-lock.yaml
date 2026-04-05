@@ -258,6 +258,9 @@ importers:
       '@clerk/react':
         specifier: ^6.1.4
         version: 6.1.4(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      '@zxing/library':
+        specifier: 0.20.0
+        version: 0.20.0
       react-zxing:
         specifier: ^2.1.0
         version: 2.1.0(react@19.1.0)

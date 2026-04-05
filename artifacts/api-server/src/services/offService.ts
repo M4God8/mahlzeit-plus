@@ -60,6 +60,11 @@ async function singleFetch(barcode: string, attempt: number): Promise<OffResult>
 
     console.log(`[OFF] Attempt ${attempt}/${MAX_RETRIES} response status=${res.status} for barcode=${barcode}`);
 
+    if (res.status === 404) {
+      console.log(`[OFF] Product not found (404) for barcode=${barcode} (attempt ${attempt}/${MAX_RETRIES})`);
+      return null;
+    }
+
     if (!res.ok) {
       console.error(`[OFF] Upstream error: HTTP ${res.status} for barcode=${barcode} (attempt ${attempt}/${MAX_RETRIES})`);
       return "upstream_error";

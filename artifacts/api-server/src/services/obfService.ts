@@ -44,6 +44,11 @@ export async function fetchProductFromObf(barcode: string): Promise<ObfResult> {
 
     console.log(`[OBF] Response status=${res.status} for barcode=${barcode}`);
 
+    if (res.status === 404) {
+      console.log(`[OBF] Product not found (404) for barcode=${barcode}`);
+      return null;
+    }
+
     if (!res.ok) {
       console.error(`[OBF] Upstream error: HTTP ${res.status} for barcode=${barcode}`);
       return "upstream_error";
