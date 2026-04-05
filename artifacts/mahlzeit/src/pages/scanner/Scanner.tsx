@@ -294,8 +294,28 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
       if (!video) return;
 
       try {
-        await reader.decodeFromConstraints(
-          { video: { facingMode: "environment" }, audio: false },
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+          audio: false,
+        });
+        if (cancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        video.srcObject = stream;
+        await video.play();
+        streamRef.current = stream;
+
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          try {
+            const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+            if (caps?.torch) setTorchAvailable(true);
+          } catch {}
+        }
+
+        await reader.decodeFromVideoDevice(
+          null,
           video,
           (result, error) => {
             if (cancelled) return;
@@ -323,18 +343,6 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
           setCameraError("Kamera konnte nicht gestartet werden. Bitte nutze die manuelle Eingabe.");
         }
         return;
-      }
-
-      const stream = video.srcObject as MediaStream;
-      if (stream) {
-        streamRef.current = stream;
-        const track = stream.getVideoTracks()[0];
-        if (track) {
-          try {
-            const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
-            if (caps?.torch) setTorchAvailable(true);
-          } catch {}
-        }
       }
     }
 
