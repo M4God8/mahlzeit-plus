@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Html5Qrcode, Html5QrcodeScanType } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { useScannerLookup, useGetScanHistory } from "@workspace/api-client-react";
 import type { ScannedProduct } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -292,7 +292,16 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
       container.appendChild(div);
     }
 
-    const html5QrCode = new Html5Qrcode(scannerId);
+    const html5QrCode = new Html5Qrcode(scannerId, {
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_39,
+      ],
+    });
     scannerRef.current = html5QrCode;
 
     html5QrCode
