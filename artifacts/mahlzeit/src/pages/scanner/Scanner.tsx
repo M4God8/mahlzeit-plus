@@ -495,8 +495,10 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
     const video = videoRef.current;
     if (!video) return;
 
-    reader
-      .decodeFromConstraints(
+    let usingFallback = false;
+    let decodePromise: ReturnType<typeof reader.decodeFromConstraints> | undefined;
+    try {
+      decodePromise = reader.decodeFromConstraints(
         { video: { facingMode: "environment" }, audio: false },
         video,
         (result, _error) => {
@@ -505,44 +507,97 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
             onDetectedRef.current(result.getText());
           }
         }
-      )
-      .then((c) => {
-        if (cancelled) {
-          c.stop();
-          return;
-        }
-        controlsRef.current = c;
-        const stream = video.srcObject as MediaStream | null;
-        if (stream) {
-          streamRef.current = stream;
-          const track = stream.getVideoTracks()[0];
-          if (track) {
-            try {
-              const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
-              if (caps?.torch) setTorchAvailable(true);
-            } catch {}
+      );
+    } catch (syncErr: unknown) {
+      if (
+        syncErr instanceof DOMException &&
+        syncErr.name === "NotReadableError"
+      ) {
+        usingFallback = true;
+        navigator.mediaDevices
+          .getUserMedia({ video: { facingMode: "environment" }, audio: false })
+          .then((stream) => {
+            if (cancelled) {
+              stream.getTracks().forEach((t) => t.stop());
+              return;
+            }
+            video.srcObject = stream;
+            video.play();
+            streamRef.current = stream;
+            const fallbackControls = reader.decodeFromVideoElement(
+              video,
+              (result, _error) => {
+                if (cancelled) return;
+                if (result) {
+                  onDetectedRef.current(result.getText());
+                }
+              }
+            );
+            fallbackControls
+              .then((c) => {
+                if (cancelled) {
+                  c.stop();
+                  return;
+                }
+                controlsRef.current = c;
+              })
+              .catch((err: unknown) => {
+                if (cancelled) return;
+                console.error("[Scanner] Fallback decode error:", err);
+              });
+          })
+          .catch((fallbackErr: unknown) => {
+            if (cancelled) return;
+            console.error("[Scanner] Fallback camera error:", fallbackErr);
+            setCameraError(
+              "Kamera konnte nicht gestartet werden. Bitte nutze die manuelle Eingabe."
+            );
+          });
+      } else {
+        throw syncErr;
+      }
+    }
+
+    if (!usingFallback && decodePromise) {
+      decodePromise
+        .then((c) => {
+          if (cancelled) {
+            c.stop();
+            return;
           }
-        }
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        console.error("[Scanner] Camera error:", err);
-        if (err instanceof DOMException) {
-          if (err.name === "NotAllowedError") {
-            setCameraError("Kamera-Zugriff wurde verweigert. Bitte erlaube den Zugriff in den Browser-Einstellungen.");
-          } else if (err.name === "NotFoundError") {
-            setCameraError("Keine Kamera gefunden. Bitte nutze die manuelle Eingabe unten.");
-          } else if (err.name === "NotReadableError") {
-            setCameraError("Kamera wird von einer anderen App verwendet. Bitte schließe andere Kamera-Apps.");
-          } else if (err.name === "OverconstrainedError") {
-            setCameraError("Kamera-Einstellungen werden nicht unterstützt. Bitte nutze die manuelle Eingabe.");
+          controlsRef.current = c;
+          const stream = video.srcObject as MediaStream | null;
+          if (stream) {
+            streamRef.current = stream;
+            const track = stream.getVideoTracks()[0];
+            if (track) {
+              try {
+                const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+                if (caps?.torch) setTorchAvailable(true);
+              } catch {}
+            }
+          }
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          console.error("[Scanner] Camera error:", err);
+          if (err instanceof DOMException) {
+            if (err.name === "NotAllowedError") {
+              setCameraError("Kamera-Zugriff wurde verweigert. Bitte erlaube den Zugriff in den Browser-Einstellungen.");
+            } else if (err.name === "NotFoundError") {
+              setCameraError("Keine Kamera gefunden. Bitte nutze die manuelle Eingabe unten.");
+            } else if (err.name === "NotReadableError") {
+              setCameraError("Kamera wird von einer anderen App verwendet. Bitte schließe andere Kamera-Apps.");
+            } else if (err.name === "OverconstrainedError") {
+              setCameraError("Kamera-Einstellungen werden nicht unterstützt. Bitte nutze die manuelle Eingabe.");
+            } else {
+              setCameraError(`Kamera-Fehler: ${err.message}`);
+            }
           } else {
-            setCameraError(`Kamera-Fehler: ${err.message}`);
+            setCameraError("Kamera konnte nicht gestartet werden. Bitte nutze die manuelle Eingabe.");
           }
-        } else {
-          setCameraError("Kamera konnte nicht gestartet werden. Bitte nutze die manuelle Eingabe.");
-        }
-      });
+        });
+    }
 
     return () => {
       cancelled = true;
