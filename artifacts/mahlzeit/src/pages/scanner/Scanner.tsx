@@ -1,14 +1,22 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { BrowserMultiFormatReader, DecodeHintType, BarcodeFormat } from "@zxing/library";
+import { Html5Qrcode, Html5QrcodeScanType } from "html5-qrcode";
 import { useScannerLookup, useGetScanHistory } from "@workspace/api-client-react";
 import type { ScannedProduct } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, ScanBarcode, History, ChevronLeft, X, AlertCircle, CheckCircle2, XCircle, Info, Sparkles, ShoppingBasket, ChefHat, Flashlight, FlashlightOff } from "lucide-react";
+import { Loader2, ScanBarcode, History, ChevronLeft, X, AlertCircle, CheckCircle2, XCircle, Info, Sparkles, ShoppingBasket, ChefHat, Flashlight, FlashlightOff, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import ScannerRecipeModal from "./ScannerRecipeModal";
+
+function isInIframe(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+}
 
 type Tab = "scan" | "history";
 
@@ -267,44 +275,56 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
   const [torchAvailable, setTorchAvailable] = useState(false);
   const [torchIsOn, setTorchIsOn] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
   const onDetectedRef = useRef(onDetected);
   onDetectedRef.current = onDetected;
 
   useEffect(() => {
     let cancelled = false;
+    const scannerId = "reader-" + retryToken;
 
-    const hints = new Map();
-    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-      BarcodeFormat.EAN_13,
-      BarcodeFormat.EAN_8,
-      BarcodeFormat.CODE_128,
-      BarcodeFormat.UPC_A,
-      BarcodeFormat.UPC_E,
-    ]);
-    hints.set(DecodeHintType.TRY_HARDER, true);
+    const container = document.getElementById("reader-container");
+    if (container) {
+      const div = document.createElement("div");
+      div.id = scannerId;
+      container.innerHTML = "";
+      container.appendChild(div);
+    }
 
-    const reader = new BrowserMultiFormatReader(hints, 200);
-    readerRef.current = reader;
+    const html5QrCode = new Html5Qrcode(scannerId);
+    scannerRef.current = html5QrCode;
 
-    async function startCamera() {
-      const video = videoRef.current;
-      if (!video) return;
-
-      try {
-        await reader.decodeFromConstraints(
-          { video: { facingMode: "environment" }, audio: false },
-          video,
-          (result, error) => {
-            if (cancelled) return;
-            if (result) {
-              onDetectedRef.current(result.getText());
-            }
+    html5QrCode
+      .start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
+        },
+        (decodedText) => {
+          if (cancelled) return;
+          onDetectedRef.current(decodedText);
+        },
+        undefined
+      )
+      .then(() => {
+        if (cancelled) return;
+        const videoElem = document.querySelector(`#${scannerId} video`) as HTMLVideoElement | null;
+        const stream = videoElem?.srcObject as MediaStream | null;
+        if (stream) {
+          streamRef.current = stream;
+          const track = stream.getVideoTracks()[0];
+          if (track) {
+            try {
+              const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+              if (caps?.torch) setTorchAvailable(true);
+            } catch {}
           }
-        );
-      } catch (err) {
+        }
+      })
+      .catch((err: unknown) => {
         if (cancelled) return;
         console.error("[Scanner] Camera error:", err);
         if (err instanceof DOMException) {
@@ -317,37 +337,24 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
           } else if (err.name === "OverconstrainedError") {
             setCameraError("Kamera-Einstellungen werden nicht unterstützt. Bitte nutze die manuelle Eingabe.");
           } else {
-            setCameraError(`Kamera-Fehler: ${(err as DOMException).message}`);
+            setCameraError(`Kamera-Fehler: ${err.message}`);
           }
         } else {
           setCameraError("Kamera konnte nicht gestartet werden. Bitte nutze die manuelle Eingabe.");
         }
-        return;
-      }
-
-      const stream = video.srcObject as MediaStream;
-      if (stream) {
-        streamRef.current = stream;
-        const track = stream.getVideoTracks()[0];
-        if (track) {
-          try {
-            const caps = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
-            if (caps?.torch) setTorchAvailable(true);
-          } catch {}
-        }
-      }
-    }
-
-    startCamera();
+      });
 
     return () => {
       cancelled = true;
-      readerRef.current?.reset();
-      readerRef.current = null;
+      html5QrCode
+        .stop()
+        .catch(() => {})
+        .finally(() => {
+          try { html5QrCode.clear(); } catch {}
+        });
+      scannerRef.current = null;
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
-      const video = videoRef.current;
-      if (video) video.srcObject = null;
     };
   }, [retryToken]);
 
@@ -384,20 +391,12 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
 
   return (
     <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
-      <video ref={videoRef} className="w-full h-full object-cover" playsInline muted autoPlay />
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-56 h-56 border-2 border-white/70 rounded-xl">
-          <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-xl" />
-          <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-xl" />
-          <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-xl" />
-          <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-xl" />
-        </div>
-      </div>
+      <div id="reader-container" className="w-full h-full" />
       {torchAvailable && (
         <button
           onClick={toggleTorch}
           className={cn(
-            "absolute top-3 right-3 w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+            "absolute top-3 right-3 w-10 h-10 rounded-full flex items-center justify-center transition-colors z-10",
             torchIsOn ? "bg-yellow-400 text-black" : "bg-black/50 text-white hover:bg-black/70"
           )}
           aria-label={torchIsOn ? "Taschenlampe aus" : "Taschenlampe an"}
@@ -405,7 +404,7 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
           {torchIsOn ? <FlashlightOff className="w-5 h-5" /> : <Flashlight className="w-5 h-5" />}
         </button>
       )}
-      <p className="absolute bottom-4 inset-x-0 text-center text-white/80 text-sm">
+      <p className="absolute bottom-4 inset-x-0 text-center text-white/80 text-sm z-10">
         Barcode in den Rahmen halten
       </p>
     </div>
@@ -414,6 +413,30 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
 
 function BarcodeScanner({ onDetected }: { onDetected: (code: string) => void }) {
   const [cameraStarted, setCameraStarted] = useState(false);
+  const [inIframe] = useState(() => isInIframe());
+
+  if (inIframe) {
+    return (
+      <div className="w-full aspect-square rounded-2xl bg-amber-50 flex flex-col items-center justify-center p-6 text-center border-2 border-dashed border-amber-200">
+        <AlertCircle className="w-10 h-10 text-amber-500 mb-3" />
+        <p className="text-sm text-amber-700 font-medium mb-2">
+          Kamera ist im eingebetteten Modus nicht verfügbar.
+        </p>
+        <p className="text-xs text-amber-600 mb-4">
+          Bitte öffne die App in einem neuen Tab für die Kamerafunktion.
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-amber-300 text-amber-700 hover:bg-amber-100"
+          onClick={() => window.open(window.location.href, "_blank")}
+        >
+          <ExternalLink className="w-4 h-4 mr-2" />
+          In neuem Tab öffnen
+        </Button>
+      </div>
+    );
+  }
 
   if (!cameraStarted) {
     return (
