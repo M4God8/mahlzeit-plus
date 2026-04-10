@@ -10,9 +10,11 @@ import { eq, and, desc, inArray } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import { fetchProductFromOff } from "../services/offService";
 import { fetchProductFromObf } from "../services/obfService";
+import { fetchProductFromOpf } from "../services/opfService";
 import { fetchProductFromUpc } from "../services/upcService";
 import type { OffProduct } from "../services/offService";
 import type { ObfProduct } from "../services/obfService";
+import type { OpfProduct } from "../services/opfService";
 import type { UpcProduct } from "../services/upcService";
 import { calculateScore, calculateCosmeticScore, calculateGeneralScore, scoreLabel, scoreColor } from "../services/scoreService";
 import { anthropic } from "@workspace/integrations-anthropic-ai";
@@ -46,6 +48,7 @@ async function getExcludedIngredients(userId: string): Promise<string[]> {
 type LookupResult =
   | { type: "food"; product: OffProduct }
   | { type: "cosmetic"; product: ObfProduct }
+  | { type: "product"; product: OpfProduct }
   | { type: "general"; product: UpcProduct }
   | { type: "not_found" }
   | { type: "upstream_error" };
@@ -63,13 +66,19 @@ async function lookupProduct(barcode: string): Promise<LookupResult> {
     return { type: "cosmetic", product: obfResult };
   }
 
+  const opfResult = await fetchProductFromOpf(barcode);
+
+  if (opfResult !== null && opfResult !== "upstream_error") {
+    return { type: "product", product: opfResult };
+  }
+
   const upcResult = await fetchProductFromUpc(barcode);
 
   if (upcResult !== null && upcResult !== "upstream_error") {
     return { type: "general", product: upcResult };
   }
 
-  if (offResult === "upstream_error" && obfResult === "upstream_error" && upcResult === "upstream_error") {
+  if (offResult === "upstream_error" && obfResult === "upstream_error" && opfResult === "upstream_error" && upcResult === "upstream_error") {
     return { type: "upstream_error" };
   }
 
@@ -149,6 +158,40 @@ router.get("/scanner/lookup/:barcode", requireAuth, async (req, res) => {
       .returning();
 
     console.log(`[Scanner] Saved cosmetic barcode=${barcode} name=${product.productName} score=${score.total}`);
+    res.json(inserted);
+    return;
+  }
+
+  if (result.type === "product") {
+    const product = result.product;
+    const score = calculateGeneralScore(
+      { barcode, productName: product.productName, brand: product.brand, imageUrl: product.imageUrl, ingredients: product.ingredients, description: "" },
+      excludedIngredients
+    );
+
+    const [inserted] = await db
+      .insert(scannedProductsTable)
+      .values({
+        barcode,
+        userId,
+        productName: product.productName,
+        brand: product.brand,
+        imageUrl: product.imageUrl,
+        ingredients: product.ingredients,
+        nutriments: {},
+        labels: product.labels,
+        productType: "general",
+        scoreIngredients: score.ingredients,
+        scoreNutrition: score.nutrition,
+        scoreProcessing: score.processing,
+        scoreProfileFit: score.profileFit,
+        totalScore: score.total,
+        profileFitExclusions: score.profileFitExclusions,
+        summary: score.summary,
+      })
+      .returning();
+
+    console.log(`[Scanner] Saved product (OPF) barcode=${barcode} name=${product.productName} score=${score.total}`);
     res.json(inserted);
     return;
   }
@@ -295,6 +338,36 @@ router.get("/scanner/score/:barcode", requireAuth, async (req, res) => {
       totalScore: score.total,
       profileFitExclusions: score.profileFitExclusions,
       fluorideNote: score.fluorideNote ?? null,
+    });
+
+    res.json(score);
+    return;
+  }
+
+  if (result.type === "product") {
+    const product = result.product;
+    const score = calculateGeneralScore(
+      { barcode, productName: product.productName, brand: product.brand, imageUrl: product.imageUrl, ingredients: product.ingredients, description: "" },
+      excludedIngredients
+    );
+
+    await db.insert(scannedProductsTable).values({
+      barcode,
+      userId,
+      productName: product.productName,
+      brand: product.brand,
+      imageUrl: product.imageUrl,
+      ingredients: product.ingredients,
+      nutriments: {},
+      labels: product.labels,
+      productType: "general",
+      scoreIngredients: score.ingredients,
+      scoreNutrition: score.nutrition,
+      scoreProcessing: score.processing,
+      scoreProfileFit: score.profileFit,
+      totalScore: score.total,
+      profileFitExclusions: score.profileFitExclusions,
+      summary: score.summary,
     });
 
     res.json(score);

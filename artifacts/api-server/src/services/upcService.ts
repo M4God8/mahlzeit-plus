@@ -21,7 +21,7 @@ interface UpcApiResponse {
 }
 
 const UPC_BASE = "https://api.upcitemdb.com/prod/trial/lookup";
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 6000;
 
 export type UpcResult = UpcProduct | null | "upstream_error";
 

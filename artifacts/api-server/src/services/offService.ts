@@ -38,7 +38,7 @@ interface OffApiResponse {
 }
 
 const OFF_BASE = "https://world.openfoodfacts.org/api/v2/product";
-const TIMEOUT_MS = 10000;
+const TIMEOUT_MS = 6000;
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 800;
 
