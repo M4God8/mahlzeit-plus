@@ -1,5 +1,6 @@
 import type { OffProduct } from "./offService";
 import type { ObfProduct } from "./obfService";
+import type { UpcProduct } from "./upcService";
 
 export interface SugarContext {
   hasNaturalSugar: boolean;
@@ -364,6 +365,47 @@ function calcCosmeticProfileFit(
   let score = 25;
   score -= exclusions.length * 8;
   return { score: cap(score), exclusions };
+}
+
+export function calculateGeneralScore(
+  product: UpcProduct,
+  excludedIngredients: string[]
+): ScoreBreakdown {
+  const ingredientsScore = 12;
+  const nutritionScore = 12;
+  const processingScore = 12;
+
+  const lc = (product.ingredients ?? "").toLowerCase() + " " + (product.description ?? "").toLowerCase();
+  const exclusions = excludedIngredients.filter((ex) => lc.includes(ex.toLowerCase()));
+  let profileFit = 25;
+  profileFit -= exclusions.length * 8;
+  profileFit = cap(profileFit);
+
+  const total = ingredientsScore + nutritionScore + processingScore + profileFit;
+
+  let profileFitLabel: string;
+  if (profileFit >= 20) {
+    profileFitLabel = "✅ Passt gut zu deinem Profil";
+  } else if (profileFit >= 10) {
+    profileFitLabel = "🟡 Mit Bedacht genießen";
+  } else {
+    profileFitLabel = "🔶 Für dein Profil nur eingeschränkt passend";
+  }
+
+  return {
+    ingredients: ingredientsScore,
+    nutrition: nutritionScore,
+    processing: processingScore,
+    profileFit,
+    total,
+    label: scoreLabel(total),
+    color: scoreColor(total),
+    contextLabel: null,
+    warningFlags: [],
+    summary: "Keine detaillierte Bewertung verfügbar — nur Profil-Fit geprüft",
+    profileFitLabel,
+    profileFitExclusions: exclusions,
+  };
 }
 
 export function calculateCosmeticScore(

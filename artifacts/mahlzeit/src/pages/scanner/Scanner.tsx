@@ -63,8 +63,17 @@ const COSMETIC_SUB_SCORES = [
   { key: "scoreProfileFit", label: "Profil-Fit" },
 ] as const;
 
+const GENERAL_SUB_SCORES = [
+  { key: "scoreIngredients", label: "Inhaltsstoffe" },
+  { key: "scoreNutrition", label: "Bewertung" },
+  { key: "scoreProcessing", label: "Qualität" },
+  { key: "scoreProfileFit", label: "Profil-Fit" },
+] as const;
+
 function getSubScores(productType: string) {
-  return productType === "cosmetic" ? COSMETIC_SUB_SCORES : FOOD_SUB_SCORES;
+  if (productType === "cosmetic") return COSMETIC_SUB_SCORES;
+  if (productType === "general") return GENERAL_SUB_SCORES;
+  return FOOD_SUB_SCORES;
 }
 
 function ScoreBar({ value, max = 25 }: { value: number; max?: number }) {
@@ -94,6 +103,8 @@ function getProfileFitStyle(product: ScannedProduct): string {
 
 function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedProduct; onReset: () => void; onCreateRecipe?: () => void }) {
   const isCosmetic = product.productType === "cosmetic";
+  const isGeneral = product.productType === "general";
+  const isFood = product.productType === "food";
   const subScores = getSubScores(product.productType);
   const contextLabel = product.contextLabel ?? null;
   const warningFlags = product.warningFlags ?? [];
@@ -114,11 +125,15 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
             "text-xs font-semibold px-2 py-0.5 shrink-0",
             isCosmetic
               ? "bg-purple-50 text-purple-700 border-purple-200"
-              : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              : isGeneral
+                ? "bg-slate-50 text-slate-700 border-slate-200"
+                : "bg-emerald-50 text-emerald-700 border-emerald-200"
           )}
         >
           {isCosmetic ? (
             <><Sparkles className="w-3 h-3 mr-1 inline" />Kosmetik</>
+          ) : isGeneral ? (
+            <><ShoppingBasket className="w-3 h-3 mr-1 inline" />Produkt</>
           ) : (
             <><ShoppingBasket className="w-3 h-3 mr-1 inline" />Lebensmittel</>
           )}
@@ -215,7 +230,7 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
         </div>
       )}
 
-      {!isCosmetic && product.ingredients && onCreateRecipe && (
+      {isFood && product.ingredients && onCreateRecipe && (
         <Button
           onClick={onCreateRecipe}
           variant="outline"
@@ -229,7 +244,7 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
       {product.ingredients && (
         <details className="group">
           <summary className="text-sm text-muted-foreground cursor-pointer select-none hover:text-foreground transition-colors">
-            {isCosmetic ? "INCI / Inhaltsstoffe anzeigen" : "Zutaten anzeigen"}
+            {isCosmetic ? "INCI / Inhaltsstoffe anzeigen" : isGeneral ? "Beschreibung anzeigen" : "Zutaten anzeigen"}
           </summary>
           <p className="mt-2 text-xs text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-xl">
             {product.ingredients}
@@ -259,6 +274,11 @@ function HistoryItem({ product, onClick }: { product: ScannedProduct; onClick: (
           {product.productType === "cosmetic" && (
             <Badge variant="outline" className="text-[10px] px-1 py-0 bg-purple-50 text-purple-600 border-purple-200 shrink-0">
               Kosmetik
+            </Badge>
+          )}
+          {product.productType === "general" && (
+            <Badge variant="outline" className="text-[10px] px-1 py-0 bg-slate-50 text-slate-600 border-slate-200 shrink-0">
+              Produkt
             </Badge>
           )}
         </div>
