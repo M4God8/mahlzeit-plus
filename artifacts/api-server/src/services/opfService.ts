@@ -32,7 +32,7 @@ export type OpfResult = OpfProduct | null | "upstream_error";
 export async function fetchProductFromOpf(barcode: string): Promise<OpfResult> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  const url = `${OPF_BASE}/${encodeURIComponent(barcode)}?fields=product_name,brands,image_url,ingredients_text,labels,labels_tags,categories,categories_tags`;
+  const url = `${OPF_BASE}/${encodeURIComponent(barcode)}.json?fields=product_name,brands,image_url,ingredients_text,labels,labels_tags,categories,categories_tags`;
 
   console.log(`[OPF] Fetching barcode=${barcode} url=${url}`);
 
