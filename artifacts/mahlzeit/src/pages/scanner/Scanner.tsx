@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Html5Qrcode, Html5QrcodeScanType, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { BrowserMultiFormatReader } from "@zxing/browser";
+import { DecodeHintType, BarcodeFormat } from "@zxing/library";
 import { useScannerLookup, useGetScanHistory } from "@workspace/api-client-react";
 import type { ScannedProduct } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -275,53 +276,49 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
   const [torchAvailable, setTorchAvailable] = useState(false);
   const [torchIsOn, setTorchIsOn] = useState(false);
   const [retryToken, setRetryToken] = useState(0);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const controlsRef = useRef<{ stop: () => void; switchTorch?: (onOff: boolean) => Promise<void> } | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const onDetectedRef = useRef(onDetected);
   onDetectedRef.current = onDetected;
 
   useEffect(() => {
     let cancelled = false;
-    const scannerId = "reader-" + retryToken;
+    controlsRef.current = null;
 
-    const container = document.getElementById("reader-container");
-    if (container) {
-      const div = document.createElement("div");
-      div.id = scannerId;
-      container.innerHTML = "";
-      container.appendChild(div);
-    }
+    const hints = new Map();
+    hints.set(DecodeHintType.TRY_HARDER, true);
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.EAN_13,
+      BarcodeFormat.EAN_8,
+      BarcodeFormat.CODE_128,
+      BarcodeFormat.UPC_A,
+      BarcodeFormat.UPC_E,
+      BarcodeFormat.CODE_39,
+    ]);
+    const reader = new BrowserMultiFormatReader(hints);
 
-    const html5QrCode = new Html5Qrcode(scannerId, {
-      formatsToSupport: [
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.UPC_E,
-        Html5QrcodeSupportedFormats.CODE_39,
-      ],
-    });
-    scannerRef.current = html5QrCode;
+    const video = videoRef.current;
+    if (!video) return;
 
-    html5QrCode
-      .start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA],
-        },
-        (decodedText) => {
+    reader
+      .decodeFromConstraints(
+        { video: { facingMode: "environment" }, audio: false },
+        video,
+        (result, _error) => {
           if (cancelled) return;
-          onDetectedRef.current(decodedText);
-        },
-        undefined
+          if (result) {
+            onDetectedRef.current(result.getText());
+          }
+        }
       )
-      .then(() => {
-        if (cancelled) return;
-        const videoElem = document.querySelector(`#${scannerId} video`) as HTMLVideoElement | null;
-        const stream = videoElem?.srcObject as MediaStream | null;
+      .then((c) => {
+        if (cancelled) {
+          c.stop();
+          return;
+        }
+        controlsRef.current = c;
+        const stream = video.srcObject as MediaStream | null;
         if (stream) {
           streamRef.current = stream;
           const track = stream.getVideoTracks()[0];
@@ -355,13 +352,7 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
 
     return () => {
       cancelled = true;
-      html5QrCode
-        .stop()
-        .catch(() => {})
-        .finally(() => {
-          try { html5QrCode.clear(); } catch {}
-        });
-      scannerRef.current = null;
+      controlsRef.current?.stop();
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
@@ -375,9 +366,16 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
   }, []);
 
   const toggleTorch = useCallback(async () => {
+    const next = !torchIsOn;
+    if (controlsRef.current?.switchTorch) {
+      try {
+        await controlsRef.current.switchTorch(next);
+        setTorchIsOn(next);
+        return;
+      } catch {}
+    }
     const track = streamRef.current?.getVideoTracks()[0];
     if (!track) return;
-    const next = !torchIsOn;
     try {
       await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
       setTorchIsOn(next);
@@ -400,7 +398,7 @@ function ActiveScanner({ onDetected }: { onDetected: (code: string) => void }) {
 
   return (
     <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-black">
-      <div id="reader-container" className="w-full h-full" />
+      <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
       {torchAvailable && (
         <button
           onClick={toggleTorch}

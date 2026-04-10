@@ -76,6 +76,7 @@
   },
   "dependencies": {
     "@clerk/react": "^6.1.4",
-    "html5-qrcode": "^2.3.8"
+    "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.3"
   }
 }
