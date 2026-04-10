@@ -101,86 +101,149 @@ function getProfileFitStyle(product: ScannedProduct): string {
   return "bg-orange-50 text-orange-600";
 }
 
-function getSubScoreExplanation(key: string, product: ScannedProduct): string[] {
-  const lines: string[] = [];
+function getScoreExplanation(key: string, product: ScannedProduct): string {
+  const isCosmetic = product.productType === "cosmetic";
+  const isGeneral = product.productType === "general";
+  const n = product.nutriments as Record<string, number> | null | undefined;
+  const ingredientsRaw = product.ingredients ?? "";
+  const ingredients = ingredientsRaw.toLowerCase();
+  const labels = (product.labels ?? []).map((l: string) => l.toLowerCase()).join(" ");
 
   if (key === "scoreIngredients") {
-    const ingredientsText = product.ingredients ?? "";
-    const ingredientsList = ingredientsText.split(/,/).filter((s) => s.trim().length > 0);
-    lines.push(`${ingredientsList.length} erkannte Zutat${ingredientsList.length !== 1 ? "en" : ""}`);
-    const eNumbers = ingredientsText.match(/\bE\s*\d{3,4}[a-z]?\b/gi) ?? [];
+    if (isCosmetic) {
+      const parts: string[] = [];
+      if (/paraben|silikon|sulfat|peg-/i.test(ingredients)) parts.push("🔴 Potenziell bedenkliche Stoffe erkannt");
+      else parts.push("✅ Keine bekannten Problemstoffe erkannt");
+      if (/natural|natürlich|bio|organic/i.test(labels)) parts.push("✅ Natürlichkeits-Label vorhanden");
+      if (!ingredients) parts.push("🟡 Keine INCI-Liste verfügbar");
+      return parts.join("\n");
+    }
+    if (isGeneral) {
+      const parts: string[] = [];
+      if (ingredients) parts.push("✅ Inhaltsstoffe deklariert");
+      else parts.push("🟡 Keine Inhaltsstoff-Informationen verfügbar");
+      if (/bio|organic/i.test(labels)) parts.push("✅ Bio/Organic-Label");
+      return parts.join("\n");
+    }
+    if (!ingredients) {
+      const score = product.scoreIngredients;
+      const parts: string[] = [];
+      if (score >= 20) parts.push("✅ Gute Bewertung");
+      else if (score >= 12) parts.push("🟡 Durchschnittliche Bewertung");
+      else parts.push("🔴 Einschränkungen erkannt");
+      parts.push("🟡 Keine Zutatenliste verfügbar — Bewertung basiert auf verfügbaren Daten");
+      return parts.join("\n");
+    }
+    const parts: string[] = [];
+    const ingredientsList = ingredientsRaw.split(/,/).filter((s) => s.trim().length > 0);
+    parts.push(`${ingredientsList.length} erkannte Zutat${ingredientsList.length !== 1 ? "en" : ""}`);
+    const eNumbers = ingredientsRaw.match(/\bE\s*\d{3,4}[a-z]?\b/gi) ?? [];
     if (eNumbers.length > 0) {
-      lines.push(`⚠️ ${eNumbers.length} E-Nummer${eNumbers.length !== 1 ? "n" : ""} gefunden (${eNumbers.slice(0, 3).join(", ")}${eNumbers.length > 3 ? " …" : ""})`);
+      parts.push(`⚠️ ${eNumbers.length} E-Nummer${eNumbers.length !== 1 ? "n" : ""} gefunden (${eNumbers.slice(0, 3).join(", ")}${eNumbers.length > 3 ? " …" : ""})`);
     } else {
-      lines.push("✅ Keine E-Nummern erkannt");
+      parts.push("✅ Keine E-Nummern erkannt");
     }
-    const labelStr = (product.labels ?? []).join(" ").toLowerCase();
-    if (/bio|organic|ökologisch/i.test(labelStr)) {
-      lines.push("🌿 Bio-Produkt");
-    }
-    if (/fairtrade|fair-trade/i.test(labelStr)) {
-      lines.push("🤝 Fairtrade-zertifiziert");
-    }
-    lines.push(`Score: ${product.scoreIngredients}/25`);
+    if (/konservierungsstoff|preservative|sorbat|benzoat/i.test(ingredients)) parts.push("🔴 Konservierungsstoffe enthalten");
+    if (/bio|organic|ökologisch/i.test(labels)) parts.push("🌿 Bio-Produkt");
+    if (/fairtrade|fair-trade/i.test(labels)) parts.push("🤝 Fairtrade-zertifiziert");
+    return parts.join("\n");
   }
 
   if (key === "scoreNutrition") {
-    const n = product.nutriments as Record<string, number> | null | undefined;
-    if (n && Object.keys(n).length > 0) {
-      const sugar = n.sugars_100g ?? n["sugars_100g"];
-      const salt = n.salt_100g ?? n["salt_100g"];
-      const protein = n.proteins_100g ?? n["proteins_100g"];
-      if (sugar != null) {
-        const level = sugar > 15 ? "hoch 🔴" : sugar > 5 ? "mittel 🟡" : "niedrig 🟢";
-        lines.push(`Zucker: ${sugar.toFixed(1)} g/100 g — ${level}`);
+    if (isCosmetic) {
+      const parts: string[] = [];
+      if (ingredients) {
+        const count = ingredients.split(",").length;
+        parts.push(count <= 10 ? "✅ Kurze, übersichtliche INCI-Liste" : count <= 25 ? "🟡 Mittellange INCI-Liste" : "🔴 Sehr lange INCI-Liste");
+      } else {
+        parts.push("🟡 Keine INCI-Liste zur Analyse verfügbar");
       }
-      if (salt != null) {
-        const level = salt > 1.5 ? "hoch 🔴" : salt > 0.6 ? "mittel 🟡" : "niedrig 🟢";
-        lines.push(`Salz: ${salt.toFixed(1)} g/100 g — ${level}`);
-      }
-      if (protein != null) {
-        const level = protein > 10 ? "hoch 🟢" : protein > 5 ? "mittel 🟡" : "niedrig 🔴";
-        lines.push(`Protein: ${protein.toFixed(1)} g/100 g — ${level}`);
-      }
-    } else {
-      lines.push("Keine Nährwertdaten verfügbar");
+      return parts.join("\n");
     }
-    lines.push(`Score: ${product.scoreNutrition}/25`);
+    if (isGeneral) {
+      const score = product.scoreNutrition;
+      if (score >= 20) return "✅ Gute Bewertung in dieser Kategorie";
+      if (score >= 12) return "🟡 Durchschnittliche Bewertung";
+      return "🔴 Unterdurchschnittliche Bewertung";
+    }
+    if (!n || Object.keys(n).length === 0) {
+      const score = product.scoreNutrition;
+      if (score >= 20) return "🟡 Keine Nährstoffdaten — Bewertung basiert auf Schätzung (gut)";
+      return "🟡 Keine Nährstoffdaten verfügbar — Schätzwert verwendet";
+    }
+    const parts: string[] = [];
+    const sugar = (n.sugars_100g as number) ?? 0;
+    if (sugar > 30) parts.push(`🔴 Zucker: ${sugar}g/100g (sehr hoch)`);
+    else if (sugar > 15) parts.push(`🔴 Zucker: ${sugar}g/100g (hoch)`);
+    else if (sugar > 5) parts.push(`🟡 Zucker: ${sugar}g/100g (moderat)`);
+    else parts.push(`✅ Zucker: ${sugar}g/100g (niedrig)`);
+    const salt = (n.salt_100g as number) ?? 0;
+    if (salt > 1.5) parts.push(`🔴 Salz: ${salt}g/100g (hoch)`);
+    else if (salt > 0.6) parts.push(`🟡 Salz: ${salt}g/100g (moderat)`);
+    else parts.push(`✅ Salz: ${salt}g/100g (niedrig)`);
+    const protein = (n.proteins_100g as number) ?? 0;
+    if (protein > 10) parts.push(`✅ Protein: ${protein}g/100g (gut)`);
+    else parts.push(`🟡 Protein: ${protein}g/100g`);
+    const fat = (n.fat_100g as number) ?? 0;
+    if (fat > 20) parts.push(`🔴 Fett: ${fat}g/100g (hoch)`);
+    else if (fat > 10) parts.push(`🟡 Fett: ${fat}g/100g (moderat)`);
+    else parts.push(`✅ Fett: ${fat}g/100g (niedrig)`);
+    return parts.join("\n");
   }
 
   if (key === "scoreProcessing") {
+    if (isCosmetic) {
+      const score = product.scoreProcessing;
+      if (score >= 20) return "✅ Hoher Qualitätsbonus — natürliche oder hochwertige Formulierung";
+      if (score >= 12) return "🟡 Standard-Qualität";
+      return "🔴 Hinweise auf stark verarbeitete Inhaltsstoffe";
+    }
+    if (isGeneral) {
+      const score = product.scoreProcessing;
+      if (score >= 20) return "✅ Gute Qualitätsbewertung";
+      if (score >= 12) return "🟡 Durchschnittliche Qualität";
+      return "🔴 Hinweise auf geringere Qualität";
+    }
+    const parts: string[] = [];
     const score = product.scoreProcessing;
     const gradeLabel = score >= 20 ? "minimal verarbeitet" : score >= 15 ? "moderat verarbeitet" : score >= 10 ? "stärker verarbeitet" : "hoch verarbeitet";
-    lines.push(`Verarbeitungsgrad: ${gradeLabel}`);
-    const ingredientsText = (product.ingredients ?? "").toLowerCase();
+    parts.push(`Verarbeitungsgrad: ${gradeLabel}`);
     const additives: string[] = [];
-    if (/maltodextrin/i.test(ingredientsText)) additives.push("Maltodextrin");
-    if (/sirup/i.test(ingredientsText)) additives.push("Sirup");
-    if (/aroma|flavou?r/i.test(ingredientsText)) additives.push("Aromen");
-    if (/konservierungsstoff|preservative|sorbat|benzoat/i.test(ingredientsText)) additives.push("Konservierungsstoffe");
+    if (/maltodextrin/i.test(ingredients)) additives.push("Maltodextrin");
+    if (/sirup/i.test(ingredients)) additives.push("Sirup");
+    if (/aroma|flavou?r/i.test(ingredients)) additives.push("Aromen");
+    if (/konservierungsstoff|preservative|sorbat|benzoat/i.test(ingredients)) additives.push("Konservierungsstoffe");
     if (additives.length > 0) {
-      lines.push(`⚠️ Zusatzstoffe: ${additives.join(", ")}`);
+      parts.push(`⚠️ Zusatzstoffe: ${additives.join(", ")}`);
     } else {
-      lines.push("✅ Keine bedenklichen Zusatzstoffe erkannt");
+      parts.push("✅ Keine bedenklichen Zusatzstoffe erkannt");
     }
-    lines.push(`Score: ${product.scoreProcessing}/25`);
+    return parts.join("\n");
   }
 
   if (key === "scoreProfileFit") {
+    const parts: string[] = [];
     const exclusions = product.profileFitExclusions ?? [];
     if (exclusions.length > 0) {
-      lines.push(`❌ Ausschlüsse: ${exclusions.join(", ")}`);
+      parts.push(`🔴 Ausschlüsse gefunden: ${exclusions.join(", ")}`);
     } else {
-      lines.push("✅ Keine Ausschlüsse — passt zu deinem Profil");
+      parts.push("✅ Keine persönlichen Ausschlüsse betroffen");
     }
-    lines.push(`Score: ${product.scoreProfileFit}/25`);
+    if (product.contextLabel) {
+      parts.push(`ℹ️ ${product.contextLabel}`);
+    }
+    const score = product.scoreProfileFit;
+    if (score >= 20) parts.push("✅ Passt gut zu deinem Profil");
+    else if (score >= 10) parts.push("🟡 Eingeschränkt passend");
+    else parts.push("🔴 Für dein Profil nur bedingt geeignet");
+    return parts.join("\n");
   }
 
-  return lines;
+  return "";
 }
 
 function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedProduct; onReset: () => void; onCreateRecipe?: () => void }) {
-  const [expandedScores, setExpandedScores] = useState<Record<string, boolean>>({});
+  const [expandedScore, setExpandedScore] = useState<string | null>(null);
   const isCosmetic = product.productType === "cosmetic";
   const isGeneral = product.productType === "general";
   const isFood = product.productType === "food";
@@ -188,10 +251,6 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
   const contextLabel = product.contextLabel ?? null;
   const warningFlags = product.warningFlags ?? [];
   const summary = product.summary ?? null;
-
-  const toggleScore = (key: string) => {
-    setExpandedScores((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -289,11 +348,11 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
             <p className="text-xs text-muted-foreground">{summary}</p>
           )}
 
-          <div className="space-y-3 pt-2 border-t border-border/50">
+          <div className="space-y-1 pt-2 border-t border-border/50">
             {subScores.map(({ key, label }) => {
               const value = product[key];
-              const isExpanded = !!expandedScores[key];
-              const explanation = getSubScoreExplanation(key, product);
+              const isExpanded = expandedScore === key;
+              const explanation = getScoreExplanation(key, product);
               const btnId = `score-btn-${key}`;
               const panelId = `score-panel-${key}`;
               return (
@@ -303,8 +362,8 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
                     id={btnId}
                     aria-expanded={isExpanded}
                     aria-controls={panelId}
-                    onClick={() => toggleScore(key)}
-                    className="w-full text-left space-y-1"
+                    onClick={() => setExpandedScore(isExpanded ? null : key)}
+                    className="w-full text-left space-y-1 py-1.5 rounded-lg px-1 -mx-1 hover:bg-muted/50 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground flex items-center gap-1">
@@ -320,16 +379,14 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
                     role="region"
                     aria-labelledby={btnId}
                     aria-hidden={!isExpanded}
-                    className={cn(
-                      "grid transition-all duration-200 overflow-hidden",
-                      isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                    )}
+                    className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                    style={{ gridTemplateRows: isExpanded ? "1fr" : "0fr" }}
                   >
                     <div className="overflow-hidden">
-                      <div className="pt-2 pb-1 pl-1 space-y-0.5">
-                        {explanation.map((line, i) => (
-                          <p key={i} className="text-xs text-muted-foreground">{line}</p>
-                        ))}
+                      <div className="px-2 pt-2 pb-3">
+                        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line bg-muted/30 p-2.5 rounded-lg">
+                          {explanation}
+                        </p>
                       </div>
                     </div>
                   </div>
