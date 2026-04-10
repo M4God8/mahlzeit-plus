@@ -6,7 +6,7 @@ import type { ScannedProduct } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, ScanBarcode, History, ChevronLeft, X, AlertCircle, CheckCircle2, XCircle, Info, Sparkles, ShoppingBasket, ChefHat, Flashlight, FlashlightOff, ExternalLink } from "lucide-react";
+import { Loader2, ScanBarcode, History, ChevronLeft, ChevronDown, X, AlertCircle, CheckCircle2, XCircle, Info, Sparkles, ShoppingBasket, ChefHat, Flashlight, FlashlightOff, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
 import ScannerRecipeModal from "./ScannerRecipeModal";
@@ -101,7 +101,86 @@ function getProfileFitStyle(product: ScannedProduct): string {
   return "bg-orange-50 text-orange-600";
 }
 
+function getSubScoreExplanation(key: string, product: ScannedProduct): string[] {
+  const lines: string[] = [];
+
+  if (key === "scoreIngredients") {
+    const ingredientsText = product.ingredients ?? "";
+    const ingredientsList = ingredientsText.split(/,/).filter((s) => s.trim().length > 0);
+    lines.push(`${ingredientsList.length} erkannte Zutat${ingredientsList.length !== 1 ? "en" : ""}`);
+    const eNumbers = ingredientsText.match(/\bE\s*\d{3,4}[a-z]?\b/gi) ?? [];
+    if (eNumbers.length > 0) {
+      lines.push(`⚠️ ${eNumbers.length} E-Nummer${eNumbers.length !== 1 ? "n" : ""} gefunden (${eNumbers.slice(0, 3).join(", ")}${eNumbers.length > 3 ? " …" : ""})`);
+    } else {
+      lines.push("✅ Keine E-Nummern erkannt");
+    }
+    const labelStr = (product.labels ?? []).join(" ").toLowerCase();
+    if (/bio|organic|ökologisch/i.test(labelStr)) {
+      lines.push("🌿 Bio-Produkt");
+    }
+    if (/fairtrade|fair-trade/i.test(labelStr)) {
+      lines.push("🤝 Fairtrade-zertifiziert");
+    }
+    lines.push(`Score: ${product.scoreIngredients}/25`);
+  }
+
+  if (key === "scoreNutrition") {
+    const n = product.nutriments as Record<string, number> | null | undefined;
+    if (n && Object.keys(n).length > 0) {
+      const sugar = n.sugars_100g ?? n["sugars_100g"];
+      const salt = n.salt_100g ?? n["salt_100g"];
+      const protein = n.proteins_100g ?? n["proteins_100g"];
+      if (sugar != null) {
+        const level = sugar > 15 ? "hoch 🔴" : sugar > 5 ? "mittel 🟡" : "niedrig 🟢";
+        lines.push(`Zucker: ${sugar.toFixed(1)} g/100 g — ${level}`);
+      }
+      if (salt != null) {
+        const level = salt > 1.5 ? "hoch 🔴" : salt > 0.6 ? "mittel 🟡" : "niedrig 🟢";
+        lines.push(`Salz: ${salt.toFixed(1)} g/100 g — ${level}`);
+      }
+      if (protein != null) {
+        const level = protein > 10 ? "hoch 🟢" : protein > 5 ? "mittel 🟡" : "niedrig 🔴";
+        lines.push(`Protein: ${protein.toFixed(1)} g/100 g — ${level}`);
+      }
+    } else {
+      lines.push("Keine Nährwertdaten verfügbar");
+    }
+    lines.push(`Score: ${product.scoreNutrition}/25`);
+  }
+
+  if (key === "scoreProcessing") {
+    const score = product.scoreProcessing;
+    const gradeLabel = score >= 20 ? "minimal verarbeitet" : score >= 15 ? "moderat verarbeitet" : score >= 10 ? "stärker verarbeitet" : "hoch verarbeitet";
+    lines.push(`Verarbeitungsgrad: ${gradeLabel}`);
+    const ingredientsText = (product.ingredients ?? "").toLowerCase();
+    const additives: string[] = [];
+    if (/maltodextrin/i.test(ingredientsText)) additives.push("Maltodextrin");
+    if (/sirup/i.test(ingredientsText)) additives.push("Sirup");
+    if (/aroma|flavou?r/i.test(ingredientsText)) additives.push("Aromen");
+    if (/konservierungsstoff|preservative|sorbat|benzoat/i.test(ingredientsText)) additives.push("Konservierungsstoffe");
+    if (additives.length > 0) {
+      lines.push(`⚠️ Zusatzstoffe: ${additives.join(", ")}`);
+    } else {
+      lines.push("✅ Keine bedenklichen Zusatzstoffe erkannt");
+    }
+    lines.push(`Score: ${product.scoreProcessing}/25`);
+  }
+
+  if (key === "scoreProfileFit") {
+    const exclusions = product.profileFitExclusions ?? [];
+    if (exclusions.length > 0) {
+      lines.push(`❌ Ausschlüsse: ${exclusions.join(", ")}`);
+    } else {
+      lines.push("✅ Keine Ausschlüsse — passt zu deinem Profil");
+    }
+    lines.push(`Score: ${product.scoreProfileFit}/25`);
+  }
+
+  return lines;
+}
+
 function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedProduct; onReset: () => void; onCreateRecipe?: () => void }) {
+  const [expandedScores, setExpandedScores] = useState<Record<string, boolean>>({});
   const isCosmetic = product.productType === "cosmetic";
   const isGeneral = product.productType === "general";
   const isFood = product.productType === "food";
@@ -109,6 +188,10 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
   const contextLabel = product.contextLabel ?? null;
   const warningFlags = product.warningFlags ?? [];
   const summary = product.summary ?? null;
+
+  const toggleScore = (key: string) => {
+    setExpandedScores((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
@@ -159,9 +242,9 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
         </Badge>
       </div>
 
-      {product.profileFitExclusions.length > 0 && (
+      {(product.profileFitExclusions ?? []).length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {product.profileFitExclusions.map((ex: string) => (
+          {(product.profileFitExclusions ?? []).map((ex: string) => (
             <Badge key={ex} variant="destructive" className="text-xs">
               {ex}
             </Badge>
@@ -209,13 +292,47 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
           <div className="space-y-3 pt-2 border-t border-border/50">
             {subScores.map(({ key, label }) => {
               const value = product[key];
+              const isExpanded = !!expandedScores[key];
+              const explanation = getSubScoreExplanation(key, product);
+              const btnId = `score-btn-${key}`;
+              const panelId = `score-panel-${key}`;
               return (
-                <div key={key} className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{label}</span>
-                    <span className="font-mono font-medium">{value}/25</span>
+                <div key={key}>
+                  <button
+                    type="button"
+                    id={btnId}
+                    aria-expanded={isExpanded}
+                    aria-controls={panelId}
+                    onClick={() => toggleScore(key)}
+                    className="w-full text-left space-y-1"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        {label}
+                        <ChevronDown className={cn("w-3 h-3 transition-transform duration-200", isExpanded && "rotate-180")} />
+                      </span>
+                      <span className="font-mono font-medium">{value}/25</span>
+                    </div>
+                    <ScoreBar value={value} />
+                  </button>
+                  <div
+                    id={panelId}
+                    role="region"
+                    aria-labelledby={btnId}
+                    aria-hidden={!isExpanded}
+                    className={cn(
+                      "grid transition-all duration-200 overflow-hidden",
+                      isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                    )}
+                  >
+                    <div className="overflow-hidden">
+                      <div className="pt-2 pb-1 pl-1 space-y-0.5">
+                        {explanation.map((line, i) => (
+                          <p key={i} className="text-xs text-muted-foreground">{line}</p>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <ScoreBar value={value} />
                 </div>
               );
             })}
