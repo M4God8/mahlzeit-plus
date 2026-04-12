@@ -148,6 +148,7 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
       res.status(404).json({ error: "Kein aktiver Mahlzeitenplan gefunden" });
       return;
     }
+    console.log('[Shopping] Plan ID:', activePlan.id, '| cycleDays:', activePlan.cycleLengthDays);
 
     const days = await db
       .select()
@@ -161,6 +162,8 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
           .from(mealEntriesTable)
           .where(inArray(mealEntriesTable.mealPlanDayId, dayIds))
       : [];
+    console.log('[Shopping] Days:', dayIds.length, '| Meal entries:', entries.length);
+    console.log('[Shopping] Entries detail:', entries.map(e => ({ id: e.id, recipeId: e.recipeId, repeated: e.repeatedFromEntryId })));
 
     const [userSettings] = await db
       .select()
@@ -182,6 +185,8 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
         });
       }
     }
+    console.log('[Shopping] entryInfos (recipeId → multiplier):', entryInfos);
+    console.log('[Shopping] recipeIds collected:', [...recipeIds]);
 
     const recipeBaseServingsMap = new Map<number, number>();
     if (recipeIds.size > 0) {
@@ -231,6 +236,7 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
       if (!ingredients) {
         ingredients = await fetchRecipeIngredients(info.recipeId);
         ingredientsCache.set(info.recipeId, ingredients);
+        console.log('[Shopping] Recipe', info.recipeId, 'ingredients:', ingredients.map(i => ({ name: i.ingName ?? i.customName, ingredientId: i.ingredientId, amount: i.amount, unit: i.unit })));
       }
 
       const baseServings = recipeBaseServingsMap.get(info.recipeId) ?? 2;
@@ -270,6 +276,7 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
         }
       }
     }
+    console.log('[Shopping] mergedMap size:', mergedMap.size, '| keys:', [...mergedMap.keys()]);
 
     const now = new Date();
     const weekFrom = now.toISOString().split("T")[0]!;
