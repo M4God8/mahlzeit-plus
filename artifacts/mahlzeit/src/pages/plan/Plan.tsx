@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { useListMealPlans, useActivateMealPlan, useGetActiveMealPlan } from "@workspace/api-client-react";
+import { useListMealPlans, useGetActiveMealPlan } from "@workspace/api-client-react";
 import type { MealPlanDetail, MealPlanDay } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +16,6 @@ import {
   Calendar as CalendarIcon,
   List,
   Plus,
-  Zap,
   ChevronRight,
   ChefHat,
 } from "lucide-react";
@@ -33,7 +31,6 @@ import {
 } from "date-fns";
 import { de } from "date-fns/locale";
 import PlanCreate from "./PlanCreate";
-import { useToast } from "@/hooks/use-toast";
 
 type ViewMode = "list" | "calendar";
 
@@ -247,26 +244,8 @@ export default function Plan() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [createOpen, setCreateOpen] = useState(false);
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const { data: plans, isLoading } = useListMealPlans();
-  const activatePlan = useActivateMealPlan();
-
-  const handleActivate = (planId: number) => {
-    activatePlan.mutate(
-      { id: planId },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ["/api/meal-plans"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/meal-plans/active"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/today"] });
-          toast({ title: "Plan aktiviert" });
-        },
-        onError: () => toast({ title: "Fehler", variant: "destructive" }),
-      }
-    );
-  };
 
   return (
     <div className="flex flex-col min-h-[100dvh] pb-24 animate-in fade-in duration-500">
@@ -348,19 +327,6 @@ export default function Plan() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      {!plan.active && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="rounded-full text-xs h-8 px-3"
-                          onClick={(e) => { e.stopPropagation(); handleActivate(plan.id); }}
-                          disabled={activatePlan.isPending}
-                          data-testid={`btn-activate-${plan.id}`}
-                        >
-                          <Zap className="w-3 h-3 mr-1" />
-                          Aktivieren
-                        </Button>
-                      )}
                       <ChevronRight className="w-4 h-4 text-muted-foreground" />
                     </div>
                   </div>

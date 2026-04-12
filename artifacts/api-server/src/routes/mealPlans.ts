@@ -171,9 +171,10 @@ router.post("/meal-plans", requireAuth, async (req, res): Promise<void> => {
     const userId = req.userId!;
     const { title, cycleLengthDays, repeatEnabled } = parsed.data;
 
+    await db.update(mealPlansTable).set({ active: false }).where(eq(mealPlansTable.userId, userId));
     const [plan] = await db
       .insert(mealPlansTable)
-      .values({ userId, title, cycleLengthDays, repeatEnabled, active: false })
+      .values({ userId, title, cycleLengthDays, repeatEnabled, active: true })
       .returning();
 
     const days: typeof mealPlanDaysTable.$inferInsert[] = [];

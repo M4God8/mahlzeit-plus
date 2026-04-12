@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Lock, Sparkles, LayoutTemplate, PenLine } from "lucide-react";
+import { Loader2, Sparkles, LayoutTemplate, PenLine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PlanCreateProps {
@@ -39,16 +39,16 @@ const PLAN_MODES = [
   {
     key: "ai" as PlanMode,
     label: "KI-generiert",
-    description: "Kommt bald",
+    description: "KI-Vorschläge",
     icon: Sparkles,
-    locked: true,
+    locked: false,
   },
   {
     key: "template" as PlanMode,
     label: "Vorlage",
-    description: "Kommt bald",
+    description: "Vorlage wählen",
     icon: LayoutTemplate,
-    locked: true,
+    locked: false,
   },
 ];
 

@@ -188,6 +188,11 @@ router.post("/shopping-lists/generate", requireAuth, async (req, res): Promise<v
     console.log('[Shopping] entryInfos (recipeId → multiplier):', entryInfos);
     console.log('[Shopping] recipeIds collected:', [...recipeIds]);
 
+    if (entryInfos.length === 0) {
+      res.status(422).json({ error: "Dein aktiver Plan hat keine Rezepte zugewiesen. Weise zuerst Rezepte zu den Tagen zu." });
+      return;
+    }
+
     const recipeBaseServingsMap = new Map<number, number>();
     if (recipeIds.size > 0) {
       const recipes = await db

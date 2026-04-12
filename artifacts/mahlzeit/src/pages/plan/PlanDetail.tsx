@@ -44,7 +44,6 @@ import {
   Repeat2,
   ArrowLeftRight,
   Trash2,
-  Zap,
   Plus,
   PlusCircle,
   ChefHat,
@@ -553,12 +552,6 @@ export default function PlanDetail() {
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          {!plan.active && (
-            <Button size="sm" variant="outline" className="rounded-full text-xs" onClick={handleActivate} disabled={activatePlan.isPending} data-testid="btn-activate">
-              <Zap className="w-3 h-3 mr-1" />
-              Aktivieren
-            </Button>
-          )}
           {plan.active && (
             <Badge className="bg-primary/10 text-primary border-0 rounded-full text-xs px-2.5">Aktiv</Badge>
           )}
@@ -604,7 +597,7 @@ export default function PlanDetail() {
                     toast({ title: "Einkaufsliste erstellt" });
                     setLocation("/einkauf");
                   },
-                  onError: () => toast({ title: "Fehler beim Erstellen", variant: "destructive" }),
+                  onError: (err) => toast({ title: "Fehler beim Erstellen", description: (err as { data?: { error?: string } })?.data?.error ?? undefined, variant: "destructive" }),
                 });
               }}
               disabled={generateList.isPending}
