@@ -244,9 +244,28 @@ function getScoreExplanation(key: string, product: ScannedProduct): string {
 
 function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedProduct; onReset: () => void; onCreateRecipe?: () => void }) {
   const [expandedScore, setExpandedScore] = useState<string | null>(null);
+  const [ingredientCache, setIngredientCache] = useState<Record<string, string>>({});
+  const [loadingIngredient, setLoadingIngredient] = useState<string | null>(null);
+  const [expandedIngredients, setExpandedIngredients] = useState(false);
   const isCosmetic = product.productType === "cosmetic";
   const isGeneral = product.productType === "general";
   const isFood = product.productType === "food";
+
+  const fetchIngredientInfo = useCallback(async (name: string) => {
+    if (ingredientCache[name] !== undefined || loadingIngredient === name) return;
+    setLoadingIngredient(name);
+    try {
+      const res = await fetch(`/api/scanner/ingredient-info/${encodeURIComponent(name)}`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json() as { explanation: string };
+        setIngredientCache(prev => ({ ...prev, [name]: data.explanation }));
+      }
+    } catch {
+    } finally {
+      setLoadingIngredient(null);
+    }
+  }, [ingredientCache, loadingIngredient]);
+
   const subScores = getSubScores(product.productType);
   const contextLabel = product.contextLabel ?? null;
   const warningFlags = product.warningFlags ?? [];
@@ -425,6 +444,58 @@ function ProductResult({ product, onReset, onCreateRecipe }: { product: ScannedP
           </p>
         </details>
       )}
+
+      {product.ingredients && !isGeneral && (() => {
+        const parts = product.ingredients.split(/,\s*/).map(s => s.replace(/\*|\(.*?\)/g, "").trim()).filter(Boolean);
+        if (parts.length < 2) return null;
+        return (
+          <div className="space-y-2">
+            <button
+              onClick={() => setExpandedIngredients(v => !v)}
+              className="flex items-center justify-between w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+              aria-expanded={expandedIngredients}
+            >
+              <span>Zutaten im Detail ({parts.length})</span>
+              <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", expandedIngredients && "rotate-180")} />
+            </button>
+
+            {expandedIngredients && (
+              <div className="flex flex-wrap gap-2">
+                {parts.map((name) => {
+                  const explanation = ingredientCache[name];
+                  const isLoading = loadingIngredient === name;
+                  return (
+                    <div key={name} className="w-full">
+                      <button
+                        onClick={() => fetchIngredientInfo(name)}
+                        className={cn(
+                          "w-full text-left px-3 py-1.5 rounded-lg text-xs border transition-colors",
+                          explanation
+                            ? "bg-muted/60 border-border/50 text-foreground cursor-default"
+                            : "bg-muted/30 border-border/30 text-muted-foreground hover:border-primary/40 hover:text-foreground active:bg-muted/60"
+                        )}
+                        disabled={isLoading || explanation !== undefined}
+                      >
+                        {isLoading ? (
+                          <span className="flex items-center gap-1.5">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            {name}
+                          </span>
+                        ) : name}
+                      </button>
+                      {explanation && (
+                        <p className="mt-1 px-3 py-2 text-xs text-muted-foreground leading-relaxed bg-muted/40 rounded-lg border border-border/20">
+                          {explanation}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }

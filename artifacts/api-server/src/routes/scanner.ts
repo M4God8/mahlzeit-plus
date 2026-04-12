@@ -594,4 +594,66 @@ Antworte mit folgendem JSON:
   }
 });
 
+router.get("/scanner/ingredient-info/:name", requireAuth, async (req, res) => {
+  const name = (req.params["name"] as string).trim();
+
+  if (!name || name.length > 120) {
+    res.status(400).json({ error: "Ungültiger Zutatname" });
+    return;
+  }
+
+  const [cached] = await db
+    .select()
+    .from(aiGenerationsTable)
+    .where(
+      and(
+        eq(aiGenerationsTable.type, "ingredient-info"),
+        eq(aiGenerationsTable.input, name.toLowerCase())
+      )
+    )
+    .limit(1);
+
+  if (cached?.output) {
+    const out = cached.output as { explanation: string };
+    res.json({ name, explanation: out.explanation });
+    return;
+  }
+
+  try {
+    const response = await anthropic.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 120,
+      system: "Du bist ein präziser Inhaltsstoff-Erklärer. Antworte immer auf Deutsch mit exakt 2 Sätzen: Was ist dieser Inhaltsstoff, und ist er unbedenklich? Beende mit ✅, 🟡 oder 🔴.",
+      messages: [{ role: "user", content: `Erkläre den Inhaltsstoff: "${name}"` }],
+    });
+
+    const explanation = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => (b as { type: "text"; text: string }).text)
+      .join("")
+      .trim();
+
+    const costEur = (
+      (response.usage.input_tokens * 0.0000008) +
+      (response.usage.output_tokens * 0.000001)
+    ).toFixed(6);
+
+    await db.insert(aiGenerationsTable).values({
+      userId: req.userId!,
+      type: "ingredient-info",
+      input: name.toLowerCase(),
+      output: { explanation },
+      model: "claude-haiku-4-5",
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      costEur,
+    });
+
+    res.json({ name, explanation });
+  } catch (err) {
+    console.error("[Scanner] Ingredient info failed:", err);
+    res.status(500).json({ error: "KI-Erklärung fehlgeschlagen" });
+  }
+});
+
 export default router;
